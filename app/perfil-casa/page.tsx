@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
+import { PublicLocationControl } from "../../components/public-location-control";
 
 type StatusVerificacao =
   | "pending"
@@ -15,6 +16,8 @@ type Casa = {
   owner_user_id: string;
   trade_name: string;
   legal_name: string | null;
+  venue_type: string | null;
+  avatar_url: string | null;
   cnpj: string;
   phone: string | null;
   email: string | null;
@@ -32,6 +35,8 @@ type Casa = {
 type FormCasa = {
   trade_name: string;
   legal_name: string;
+  venue_type: string;
+  avatar_url: string;
   cnpj: string;
   phone: string;
   email: string;
@@ -57,6 +62,8 @@ type AvaliacaoCasa = {
 const FORM_VAZIO: FormCasa = {
   trade_name: "",
   legal_name: "",
+  venue_type: "",
+  avatar_url: "",
   cnpj: "",
   phone: "",
   email: "",
@@ -203,6 +210,8 @@ export default function PerfilCasaPage() {
           owner_user_id,
           trade_name,
           legal_name,
+          venue_type,
+          avatar_url,
           cnpj,
           phone,
           email,
@@ -240,6 +249,8 @@ export default function PerfilCasaPage() {
       setForm({
         trade_name: perfil.trade_name || "",
         legal_name: perfil.legal_name || "",
+        venue_type: perfil.venue_type || "",
+        avatar_url: perfil.avatar_url || "",
         cnpj: formatarCnpj(perfil.cnpj || ""),
         phone: formatarTelefone(perfil.phone || ""),
         email: perfil.email || "",
@@ -485,6 +496,12 @@ export default function PerfilCasaPage() {
         legal_name:
           form.legal_name.trim() || null,
 
+        venue_type:
+          form.venue_type.trim() || null,
+
+        avatar_url:
+          form.avatar_url.trim() || null,
+
         cnpj,
 
         phone: telefone || null,
@@ -545,6 +562,8 @@ export default function PerfilCasaPage() {
             owner_user_id,
             trade_name,
             legal_name,
+            venue_type,
+            avatar_url,
             cnpj,
             phone,
             email,
@@ -601,6 +620,8 @@ export default function PerfilCasaPage() {
             owner_user_id,
             trade_name,
             legal_name,
+            venue_type,
+            avatar_url,
             cnpj,
             phone,
             email,
@@ -1020,6 +1041,44 @@ export default function PerfilCasaPage() {
 
             <div>
               <label className="mb-2 block text-sm font-bold text-zinc-300">
+                Tipo de estabelecimento
+              </label>
+
+              <input
+                type="text"
+                value={form.venue_type}
+                onChange={(event) =>
+                  atualizarCampo(
+                    "venue_type",
+                    event.target.value
+                  )
+                }
+                placeholder="Ex.: Casa noturna, bar, espaço de eventos"
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 outline-none transition focus:border-red-500"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-sm font-bold text-zinc-300">
+                URL do logo ou foto pública
+              </label>
+
+              <input
+                type="url"
+                value={form.avatar_url}
+                onChange={(event) =>
+                  atualizarCampo(
+                    "avatar_url",
+                    event.target.value
+                  )
+                }
+                placeholder="https://…"
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 outline-none transition focus:border-red-500"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-bold text-zinc-300">
                 Telefone / WhatsApp
               </label>
 
@@ -1064,6 +1123,12 @@ export default function PerfilCasaPage() {
           <h2 className="text-xl font-black">
             📍 Endereço
           </h2>
+
+          {casa && (
+            <div className="mt-5">
+              <PublicLocationControl kind="venue" />
+            </div>
+          )}
 
           <div className="mt-6 grid gap-5 md:grid-cols-2">
             <div className="md:col-span-2">

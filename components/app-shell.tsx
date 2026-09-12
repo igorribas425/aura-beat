@@ -47,7 +47,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const events = mode === "venue" ? "/eventos-casa" : "/eventos-artista";
   const profile = mode === "venue" ? "/perfil-casa" : "/perfil-artista";
   const items = [
-    [home, "⌂", "Home"], ["/buscar", "⌕", "Buscar"], [offers, "◈", "Ofertas"],
+    [home, "⌂", "Home"], ["/buscar", "⌕", "Explorar"], [offers, "◈", "Ofertas"],
     [events, "◆", "Eventos"], ["/chat", "●", "Chat"], ["/notificacoes", "♢", "Alertas"],
   ];
   return <div className="min-h-screen bg-[#050507] text-white">

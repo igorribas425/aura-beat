@@ -1071,7 +1071,28 @@ export default function HomeArtistaPage() {
             Acesso rápido
           </h2>
 
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+            <button
+              onClick={() =>
+                router.push(
+                  "/buscar"
+                )
+              }
+              className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-purple-500/50"
+            >
+              <div className="text-2xl">
+                ⌕
+              </div>
+
+              <p className="mt-3 font-bold">
+                Explorar
+              </p>
+
+              <p className="mt-1 text-xs text-zinc-500">
+                Artistas e Casas
+              </p>
+            </button>
+
             <button
               onClick={() =>
                 router.push(

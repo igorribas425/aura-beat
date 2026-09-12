@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { PublicLocationControl } from "../../components/public-location-control";
 import { supabase } from "../../lib/supabase";
 
 export default function PerfilArtistaPage() {
@@ -12,9 +13,12 @@ export default function PerfilArtistaPage() {
   const [fixedFee, setFixedFee] = useState("");
   const [priceKm, setPriceKm] = useState("");
   const [freeRadius, setFreeRadius] = useState("");
+  const [availabilityRadius, setAvailabilityRadius] = useState("");
+  const [acceptedEventTypes, setAcceptedEventTypes] = useState("");
   const [style, setStyle] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [profileExists, setProfileExists] = useState(false);
 
   useEffect(() => {
     async function carregarPerfil() {
@@ -34,6 +38,7 @@ export default function PerfilArtistaPage() {
         .maybeSingle();
 
       if (data) {
+        setProfileExists(true);
         setStageName(data.stage_name ?? "");
         setBio(data.bio ?? "");
         setCity(data.base_city ?? "");
@@ -42,6 +47,8 @@ export default function PerfilArtistaPage() {
         setFixedFee(String(data.fixed_fee ?? ""));
         setPriceKm(String(data.price_per_km ?? ""));
         setFreeRadius(String(data.free_radius_km ?? ""));
+        setAvailabilityRadius(String(data.availability_radius_km ?? ""));
+        setAcceptedEventTypes((data.accepted_event_types ?? []).join(", "));
       }
     }
 
@@ -76,6 +83,13 @@ export default function PerfilArtistaPage() {
             fixed_fee: Number(fixedFee || 0),
             price_per_km: Number(priceKm || 0),
             free_radius_km: Number(freeRadius || 0),
+            availability_radius_km: availabilityRadius
+              ? Number(availabilityRadius)
+              : null,
+            accepted_event_types: acceptedEventTypes
+              .split(",")
+              .map((item) => item.trim())
+              .filter(Boolean),
           },
           { onConflict: "user_id" }
         )
@@ -86,6 +100,8 @@ export default function PerfilArtistaPage() {
         setMessage("❌ " + error.message);
         return;
       }
+
+      setProfileExists(true);
 
       if (style.trim()) {
         await supabase
@@ -255,6 +271,44 @@ export default function PerfilArtistaPage() {
               />
             </div>
           </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-2 block text-sm font-semibold">
+                Raio de disponibilidade
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="500"
+                step="1"
+                value={availabilityRadius}
+                onChange={(e) => setAvailabilityRadius(e.target.value)}
+                placeholder="Ex.: 80 km"
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-red-500"
+              />
+              <p className="mt-2 text-xs text-zinc-500">
+                Exibido no Explorar quando você estiver disponível.
+              </p>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold">
+                Tipos de evento aceitos
+              </label>
+              <input
+                value={acceptedEventTypes}
+                onChange={(e) => setAcceptedEventTypes(e.target.value)}
+                placeholder="Casamento, festival, corporativo"
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-red-500"
+              />
+              <p className="mt-2 text-xs text-zinc-500">
+                Separe os tipos por vírgula.
+              </p>
+            </div>
+          </div>
+
+          {profileExists && <PublicLocationControl kind="artist" />}
 
           <button
             disabled={loading}
