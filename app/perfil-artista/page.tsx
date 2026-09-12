@@ -212,7 +212,7 @@ export default function PerfilArtistaPage() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
               <label className="mb-2 block text-sm font-semibold">
-                Cachê fixo
+                Cachê por hora
               </label>
               <input
                 type="number"
