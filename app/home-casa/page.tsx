@@ -1263,15 +1263,15 @@ export default function HomeCasaPage() {
           <button
             onClick={() =>
               router.push(
-                "/home-casa"
+                "/buscar"
               )
             }
-            className="py-3 text-xs text-red-500"
+            className="py-3 text-xs text-zinc-400"
           >
             <div className="text-xl">
-              🗺️
+              ⌕
             </div>
-            Mapa
+            Explorar
           </button>
 
           <button

@@ -1,12 +1,402 @@
 "use client";
+
 import Link from "next/link";
-import { useEffect,useMemo,useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "../../lib/supabase";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { ExploreMap } from "../../components/explore-map";
+import {
+  EXPLORE_PAGE_SIZE,
+  ExploreFilters,
+  ExploreKind,
+  ExploreProfile,
+  INITIAL_EXPLORE_FILTERS,
+  isVerified,
+  matchesExploreFilters,
+  profilePath,
+  withDistances,
+} from "../../lib/explore";
 import { formatBRL } from "../../lib/finance";
-type Artist={id:string;stage_name:string;city:string|null;state:string|null;style:string|null;fixed_fee:number|null;is_verified:boolean|null;avatar_url:string|null};
-export default function SearchPage(){const router=useRouter();const [artists,setArtists]=useState<Artist[]>([]);const [query,setQuery]=useState("");const [loading,setLoading]=useState(true);const [error,setError]=useState("");
-useEffect(()=>{(async()=>{const {data:{user}}=await supabase.auth.getUser();if(!user){router.replace("/login");return}const {data,error}=await supabase.from("artist_profiles").select("id,stage_name,city,state,style,fixed_fee,is_verified,avatar_url").eq("is_active",true).order("stage_name").limit(100);if(error)setError(error.message);else setArtists((data||[]) as Artist[]);setLoading(false)})()},[router]);
-const filtered=useMemo(()=>artists.filter(a=>`${a.stage_name} ${a.style||""} ${a.city||""}`.toLowerCase().includes(query.toLowerCase())),[artists,query]);
-return <main className="mx-auto min-h-screen max-w-6xl px-4 py-8"><p className="text-sm font-bold text-purple-400">DESCUBRA TALENTOS</p><h1 className="text-3xl font-black">Buscar artistas</h1><p className="mt-2 text-zinc-400">Compare estilo, localização e cachê por hora.</p><label className="mt-6 block"><span className="sr-only">Buscar por nome, estilo ou cidade</span><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Nome, estilo ou cidade…" className="w-full rounded-2xl border border-zinc-800 bg-zinc-950 px-5 py-4"/></label>
-{loading?<p className="mt-8 text-zinc-500">Buscando artistas…</p>:error?<p role="alert" className="mt-8 text-red-400">{error}</p>:<div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{filtered.map(a=><article key={a.id} className="rounded-3xl border border-zinc-800 bg-zinc-950 p-5"><div className="flex items-start gap-4"><div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-purple-700 text-xl font-black">{a.stage_name.charAt(0)}</div><div><h2 className="font-bold">{a.stage_name} {a.is_verified&&<span title="Artista verificado" className="text-blue-400">✓</span>}</h2><p className="text-sm text-zinc-400">{a.style||"Estilos diversos"}</p><p className="text-xs text-zinc-500">{[a.city,a.state].filter(Boolean).join(" — ")||"Localização não informada"}</p></div></div><div className="mt-5 flex items-end justify-between"><div><p className="text-xs text-zinc-500">Cachê por hora</p><p className="font-black text-red-400">{formatBRL(Number(a.fixed_fee||0))}/h</p></div><Link href={`/ofertas?artist=${a.id}`} className="rounded-xl bg-red-500 px-4 py-2 text-sm font-bold">Enviar oferta</Link></div></article>)}{filtered.length===0&&<p className="text-zinc-500">Nenhum artista encontrado.</p>}</div>}</main>}
+import { supabase } from "../../lib/supabase";
+
+type Mode = "artist" | "venue";
+type ViewMode = "list" | "map";
+type FavoriteRow = { id: string; artist_id: string | null; venue_id: string | null };
+
+type RpcProfile = {
+  profile_kind: "artist" | "venue";
+  profile_id: string;
+  display_name: string;
+  avatar_url: string | null;
+  city: string | null;
+  state: string | null;
+  description: string | null;
+  styles: string[] | null;
+  event_types: string[] | null;
+  venue_type: string | null;
+  verification_status: string | null;
+  rating: number | string | null;
+  review_count: number | string | null;
+  hourly_fee: number | string | null;
+  available_now: boolean | null;
+  radius_km: number | string | null;
+  latitude: number | string | null;
+  longitude: number | string | null;
+  location_precision_km: number | string | null;
+  total_count: number | string;
+};
+
+type ArtistRow = {
+  id: string;
+  stage_name: string;
+  bio: string | null;
+  base_city: string | null;
+  base_state: string | null;
+  fixed_fee: number | null;
+  free_radius_km: number | null;
+  verification_status: string | null;
+  avatar_url: string | null;
+};
+
+type VenueRow = {
+  id: string;
+  trade_name: string;
+  city: string | null;
+  state: string | null;
+  verification_status: string | null;
+};
+
+type ReviewRow = {
+  artist_id: string | null;
+  venue_id: string | null;
+  overall_rating: number | string | null;
+};
+
+const FALLBACK_LIMIT_PER_KIND = 48;
+
+function optionalNumber(value: number | string | null | undefined) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function averageReviews(reviews: ReviewRow[], kind: "artist" | "venue", id: string) {
+  const values = reviews
+    .filter((review) => (kind === "artist" ? review.artist_id === id : review.venue_id === id))
+    .map((review) => Number(review.overall_rating ?? 0))
+    .filter((value) => value > 0);
+  return {
+    rating: values.length ? values.reduce((total, value) => total + value, 0) / values.length : 0,
+    reviewCount: values.length,
+  };
+}
+
+function fromRpc(row: RpcProfile, ownArtistId: string | null, ownVenueId: string | null) {
+  const kind = row.profile_kind;
+  return {
+    kind,
+    id: row.profile_id,
+    name: row.display_name,
+    avatarUrl: row.avatar_url,
+    city: row.city,
+    state: row.state,
+    description: row.description,
+    styles: row.styles ?? [],
+    eventTypes: row.event_types ?? [],
+    venueType: row.venue_type,
+    verificationStatus: row.verification_status,
+    rating: Number(row.rating ?? 0),
+    reviewCount: Number(row.review_count ?? 0),
+    hourlyFee: optionalNumber(row.hourly_fee),
+    availableNow: Boolean(row.available_now),
+    radiusKm: optionalNumber(row.radius_km),
+    latitude: optionalNumber(row.latitude),
+    longitude: optionalNumber(row.longitude),
+    locationPrecisionKm: optionalNumber(row.location_precision_km),
+    distanceKm: null,
+    isOwnProfile:
+      (kind === "artist" && row.profile_id === ownArtistId) ||
+      (kind === "venue" && row.profile_id === ownVenueId),
+  } satisfies ExploreProfile;
+}
+
+async function loadFallbackProfiles(
+  filters: ExploreFilters,
+  page: number,
+  ownArtistId: string | null,
+  ownVenueId: string | null,
+) {
+  const [artistsResult, venuesResult] = await Promise.all([
+    filters.kind === "venue"
+      ? Promise.resolve({ data: [] as ArtistRow[], error: null })
+      : supabase
+          .from("artist_profiles")
+          .select("id,stage_name,bio,base_city,base_state,fixed_fee,free_radius_km,verification_status,avatar_url")
+          .eq("is_active", true)
+          .order("stage_name")
+          .limit(FALLBACK_LIMIT_PER_KIND),
+    filters.kind === "artist"
+      ? Promise.resolve({ data: [] as VenueRow[], error: null })
+      : supabase
+          .from("venue_profiles")
+          .select("id,trade_name,city,state,verification_status")
+          .eq("is_active", true)
+          .order("trade_name")
+          .limit(FALLBACK_LIMIT_PER_KIND),
+  ]);
+
+  if (artistsResult.error) throw artistsResult.error;
+  if (venuesResult.error) throw venuesResult.error;
+
+  const artists = (artistsResult.data ?? []) as ArtistRow[];
+  const venues = (venuesResult.data ?? []) as VenueRow[];
+  const artistIds = artists.map((artist) => artist.id);
+  const venueIds = venues.map((venue) => venue.id);
+  const [stylesResult, availabilityResult, artistReviewsResult, venueReviewsResult] = await Promise.all([
+    artistIds.length ? supabase.from("artist_styles").select("artist_id,style_name").in("artist_id", artistIds) : Promise.resolve({ data: [], error: null }),
+    artistIds.length ? supabase.from("artist_availability").select("artist_id,is_available,last_seen_at").in("artist_id", artistIds) : Promise.resolve({ data: [], error: null }),
+    artistIds.length ? supabase.from("reviews").select("artist_id,venue_id,overall_rating").eq("reviewee_type", "artist").in("artist_id", artistIds) : Promise.resolve({ data: [], error: null }),
+    venueIds.length ? supabase.from("reviews").select("artist_id,venue_id,overall_rating").eq("reviewee_type", "venue").in("venue_id", venueIds) : Promise.resolve({ data: [], error: null }),
+  ]);
+  const secondaryError = stylesResult.error || availabilityResult.error || artistReviewsResult.error || venueReviewsResult.error;
+  if (secondaryError) throw secondaryError;
+
+  const styles = (stylesResult.data ?? []) as Array<{ artist_id: string; style_name: string }>;
+  const availability = (availabilityResult.data ?? []) as Array<{ artist_id: string; is_available: boolean; last_seen_at: string | null }>;
+  const reviews = [...((artistReviewsResult.data ?? []) as ReviewRow[]), ...((venueReviewsResult.data ?? []) as ReviewRow[])];
+  const freshnessThreshold = Date.now() - 30 * 60 * 1000;
+  const artistProfiles: ExploreProfile[] = artists.map((artist) => {
+    const status = availability.find((item) => item.artist_id === artist.id);
+    const lastSeen = status?.last_seen_at ? new Date(status.last_seen_at).getTime() : 0;
+    return {
+      kind: "artist", id: artist.id, name: artist.stage_name, avatarUrl: artist.avatar_url,
+      city: artist.base_city, state: artist.base_state, description: artist.bio,
+      styles: styles.filter((item) => item.artist_id === artist.id).map((item) => item.style_name),
+      eventTypes: [], venueType: null, verificationStatus: artist.verification_status,
+      ...averageReviews(reviews, "artist", artist.id), hourlyFee: optionalNumber(artist.fixed_fee),
+      availableNow: Boolean(status?.is_available && lastSeen >= freshnessThreshold),
+      radiusKm: optionalNumber(artist.free_radius_km), latitude: null, longitude: null,
+      locationPrecisionKm: null, distanceKm: null, isOwnProfile: artist.id === ownArtistId,
+    };
+  });
+  const venueProfiles: ExploreProfile[] = venues.map((venue) => ({
+    kind: "venue", id: venue.id, name: venue.trade_name, avatarUrl: null,
+    city: venue.city, state: venue.state, description: null, styles: [], eventTypes: [], venueType: null,
+    verificationStatus: venue.verification_status, ...averageReviews(reviews, "venue", venue.id),
+    hourlyFee: null, availableNow: false, radiusKm: null, latitude: null, longitude: null,
+    locationPrecisionKm: null, distanceKm: null, isOwnProfile: venue.id === ownVenueId,
+  }));
+  const filtered = [...artistProfiles, ...venueProfiles]
+    .filter((profile) => matchesExploreFilters(profile, filters))
+    .sort((left, right) => left.availableNow !== right.availableNow ? (left.availableNow ? -1 : 1) : left.name.localeCompare(right.name, "pt-BR"));
+  const offset = (page - 1) * EXPLORE_PAGE_SIZE;
+  return { profiles: filtered.slice(offset, offset + EXPLORE_PAGE_SIZE), totalCount: filtered.length };
+}
+
+function Avatar({ profile, compact = false }: { profile: ExploreProfile; compact?: boolean }) {
+  const size = compact ? "h-14 w-14 rounded-2xl" : "h-20 w-20 rounded-3xl";
+  if (profile.avatarUrl) {
+    return <div role="img" aria-label={`Foto de ${profile.name}`} className={`${size} shrink-0 bg-cover bg-center ring-1 ring-white/10`} style={{ backgroundImage: `url(${JSON.stringify(profile.avatarUrl).slice(1, -1)})` }} />;
+  }
+  return <div aria-hidden="true" className={`${size} flex shrink-0 items-center justify-center bg-gradient-to-br ${profile.kind === "artist" ? "from-red-500 to-purple-700" : "from-blue-600 to-cyan-500"} text-2xl font-black`}>{profile.name.charAt(0).toUpperCase() || (profile.kind === "artist" ? "A" : "C")}</div>;
+}
+
+type ProfileCardProps = { profile: ExploreProfile; canSendOffer: boolean; favorite: boolean; favoriteBusy: boolean; onToggleFavorite: (profile: ExploreProfile) => void; mapPopup?: boolean };
+
+function ProfileCard({ profile, canSendOffer, favorite, favoriteBusy, onToggleFavorite, mapPopup = false }: ProfileCardProps) {
+  return (
+    <article className={`border border-white/10 bg-zinc-950 ${mapPopup ? "rounded-2xl p-4 shadow-2xl" : "rounded-3xl p-5"}`}>
+      <div className="flex items-start gap-4">
+        <Avatar profile={profile} compact={mapPopup} />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-wider ${profile.kind === "artist" ? "bg-red-500/15 text-red-300" : "bg-blue-500/15 text-blue-300"}`}>{profile.kind === "artist" ? "Artista" : "Casa"}</span>
+            {profile.isOwnProfile && <span className="rounded-full bg-green-500/15 px-2 py-1 text-[10px] font-bold text-green-300">Seu perfil</span>}
+          </div>
+          <h2 className="mt-2 truncate text-lg font-black">{profile.name} {isVerified(profile.verificationStatus) && <span title="Perfil verificado" className="text-blue-400" aria-label="Verificado">✓</span>}</h2>
+          <p className="mt-1 text-sm text-zinc-400">{[profile.city, profile.state].filter(Boolean).join(" — ") || "Localização não informada"}</p>
+          {profile.kind === "venue" && profile.venueType && <p className="mt-1 text-xs text-zinc-500">{profile.venueType}</p>}
+        </div>
+      </div>
+      {profile.kind === "artist" && <div className="mt-4 flex flex-wrap gap-2">
+        {profile.availableNow && <span className="rounded-full bg-green-500/15 px-3 py-1 text-xs font-bold text-green-300">● Disponível agora</span>}
+        {(profile.styles.length ? profile.styles : ["Estilos diversos"]).slice(0, 4).map((style) => <span key={style} className="rounded-full bg-purple-500/10 px-3 py-1 text-xs text-purple-200">{style}</span>)}
+      </div>}
+      <div className="mt-5 grid grid-cols-2 gap-3 border-y border-white/10 py-4 text-sm">
+        <div><p className="text-xs text-zinc-500">Avaliação</p><p className="mt-1 font-bold">{profile.rating > 0 ? `★ ${profile.rating.toFixed(1)}` : "Sem avaliações"}{profile.reviewCount > 0 && <span className="ml-1 text-xs font-normal text-zinc-500">({profile.reviewCount})</span>}</p></div>
+        <div><p className="text-xs text-zinc-500">Distância</p><p className="mt-1 font-bold">{profile.distanceKm === null ? "Não calculada" : `${profile.distanceKm.toFixed(1)} km`}</p></div>
+        {profile.kind === "artist" && <><div><p className="text-xs text-zinc-500">Cachê por hora</p><p className="mt-1 font-black text-red-400">{profile.hourlyFee === null ? "Sob consulta" : `${formatBRL(profile.hourlyFee)}/h`}</p></div><div><p className="text-xs text-zinc-500">Raio disponível</p><p className="mt-1 font-bold">{profile.radiusKm === null ? "Não informado" : `${profile.radiusKm} km`}</p></div></>}
+      </div>
+      {profile.kind === "artist" && profile.eventTypes.length > 0 && <p className="mt-3 text-xs leading-5 text-zinc-400">Eventos: {profile.eventTypes.join(", ")}</p>}
+      {mapPopup && profile.locationPrecisionKm !== null && <p className="mt-3 text-xs text-zinc-500">Localização pública aproximada (precisão de {profile.locationPrecisionKm} km).</p>}
+      {profile.description && !mapPopup && <p className="mt-3 line-clamp-2 text-sm leading-6 text-zinc-400">{profile.description}</p>}
+      <div className="mt-5 flex flex-wrap gap-2">
+        <Link href={profilePath(profile)} className="flex-1 rounded-xl border border-zinc-700 px-4 py-2 text-center text-sm font-bold transition hover:border-zinc-500 hover:bg-zinc-900">Ver perfil</Link>
+        {!profile.isOwnProfile && <button type="button" disabled={favoriteBusy} aria-pressed={favorite} onClick={() => onToggleFavorite(profile)} className="rounded-xl border border-zinc-700 px-4 py-2 text-sm font-bold transition hover:border-red-500 disabled:opacity-50">{favorite ? "♥ Favorito" : "♡ Favoritar"}</button>}
+        {canSendOffer && profile.kind === "artist" && !profile.isOwnProfile && <Link href={`/ofertas?artist=${profile.id}`} className="flex-1 rounded-xl bg-red-500 px-4 py-2 text-center text-sm font-black transition hover:bg-red-600">Enviar oferta</Link>}
+      </div>
+    </article>
+  );
+}
+
+export default function ExplorePage() {
+  const router = useRouter();
+  const [filters, setFilters] = useState<ExploreFilters>(INITIAL_EXPLORE_FILTERS);
+  const [profiles, setProfiles] = useState<ExploreProfile[]>([]);
+  const [favorites, setFavorites] = useState<FavoriteRow[]>([]);
+  const [favoriteBusy, setFavoriteBusy] = useState<string | null>(null);
+  const [mode, setMode] = useState<Mode>("artist");
+  const [ownArtistId, setOwnArtistId] = useState<string | null>(null);
+  const [ownVenueId, setOwnVenueId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [view, setView] = useState<ViewMode>("list");
+  const [selectedProfile, setSelectedProfile] = useState<ExploreProfile | null>(null);
+  const [location, setLocation] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
+  const [locationMessage, setLocationMessage] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [contextLoading, setContextLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [usingFallback, setUsingFallback] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    async function loadContext() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!active) return;
+      if (!user) { router.replace("/login"); return; }
+      const [profileResult, artistResult, venueResult, favoritesResult] = await Promise.all([
+        supabase.from("profiles").select("default_mode").eq("id", user.id).maybeSingle(),
+        supabase.from("artist_profiles").select("id").eq("user_id", user.id).maybeSingle(),
+        supabase.from("venue_profiles").select("id").eq("owner_user_id", user.id).maybeSingle(),
+        supabase.from("favorites").select("id,artist_id,venue_id").eq("user_id", user.id),
+      ]);
+      if (!active) return;
+      const preferredMode: Mode = profileResult.data?.default_mode === "venue" ? "venue" : "artist";
+      setUserId(user.id); setOwnArtistId(artistResult.data?.id ?? null); setOwnVenueId(venueResult.data?.id ?? null);
+      setMode(
+        preferredMode === "venue" && venueResult.data
+          ? "venue"
+          : preferredMode === "artist" && artistResult.data
+            ? "artist"
+            : venueResult.data
+              ? "venue"
+              : "artist",
+      );
+      if (!favoritesResult.error) setFavorites((favoritesResult.data ?? []) as FavoriteRow[]);
+      setContextLoading(false);
+    }
+    void loadContext();
+    return () => { active = false; };
+  }, [router]);
+
+  useEffect(() => {
+    if (contextLoading) return;
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      setLoading(true); setError(""); setSelectedProfile(null);
+      try {
+        const { data, error: rpcError } = await supabase.rpc("explore_profiles_v1", {
+          p_kind: filters.kind, p_query: filters.query || null, p_city: filters.city || null,
+          p_style: filters.style || null, p_event_type: filters.eventType || null,
+          p_available_now: filters.availableNow, p_verified_only: filters.verifiedOnly,
+          p_min_rating: filters.minimumRating, p_max_hourly_fee: filters.maximumHourlyFee,
+          p_origin_lat: location?.lat ?? null, p_origin_lng: location?.lng ?? null,
+          p_max_distance_km: filters.maximumDistanceKm,
+          p_limit: EXPLORE_PAGE_SIZE, p_offset: (page - 1) * EXPLORE_PAGE_SIZE,
+        });
+        let nextProfiles: ExploreProfile[]; let nextTotal: number;
+        if (!rpcError) {
+          const rows = (data ?? []) as RpcProfile[];
+          nextProfiles = rows.map((row) => fromRpc(row, ownArtistId, ownVenueId));
+          nextTotal = Number(rows[0]?.total_count ?? 0); setUsingFallback(false);
+        } else {
+          const fallback = await loadFallbackProfiles(filters, page, ownArtistId, ownVenueId);
+          nextProfiles = fallback.profiles; nextTotal = fallback.totalCount; setUsingFallback(true);
+        }
+        const located = withDistances(nextProfiles, location);
+        const distanceFiltered = located.filter((profile) => matchesExploreFilters(profile, filters));
+        if (!active) return;
+        setProfiles(distanceFiltered);
+        setTotalCount(nextTotal);
+      } catch (loadError) {
+        console.error(loadError);
+        if (active) setError("Não foi possível carregar o Explorar. Tente novamente.");
+      } finally { if (active) setLoading(false); }
+    }, 250);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [contextLoading, filters, location, ownArtistId, ownVenueId, page, reloadKey]);
+
+  const favoriteKeys = useMemo(() => new Set(favorites.map((favorite) => favorite.artist_id ? `artist:${favorite.artist_id}` : `venue:${favorite.venue_id}`)), [favorites]);
+  const canSendOffer = mode === "venue" && Boolean(ownVenueId);
+  const totalPages = Math.max(1, Math.ceil(totalCount / EXPLORE_PAGE_SIZE));
+  const mappableCount = profiles.filter((profile) => profile.latitude !== null && profile.longitude !== null).length;
+  const updateFilter = useCallback(<Key extends keyof ExploreFilters>(key: Key, value: ExploreFilters[Key]) => { setFilters((current) => ({ ...current, [key]: value })); setPage(1); }, []);
+
+  async function toggleFavorite(profile: ExploreProfile) {
+    if (!userId) return;
+    const key = `${profile.kind}:${profile.id}`;
+    const existing = favorites.find((favorite) => profile.kind === "artist" ? favorite.artist_id === profile.id : favorite.venue_id === profile.id);
+    setFavoriteBusy(key); setError("");
+    try {
+      if (existing) {
+        const { error: deleteError } = await supabase.from("favorites").delete().eq("id", existing.id);
+        if (deleteError) throw deleteError;
+        setFavorites((current) => current.filter((favorite) => favorite.id !== existing.id));
+      } else {
+        const { data, error: insertError } = await supabase.from("favorites").insert({ user_id: userId, artist_id: profile.kind === "artist" ? profile.id : null, venue_id: profile.kind === "venue" ? profile.id : null }).select("id,artist_id,venue_id").single();
+        if (insertError) throw insertError;
+        setFavorites((current) => [...current, data as FavoriteRow]);
+      }
+    } catch (favoriteError) { console.error(favoriteError); setError("Não foi possível atualizar o favorito. Tente novamente."); }
+    finally { setFavoriteBusy(null); }
+  }
+
+  function requestLocation() {
+    setLocationMessage("");
+    if (!navigator.geolocation) { setLocationMessage("Este navegador não oferece localização."); return; }
+    navigator.geolocation.getCurrentPosition(
+      (position) => { setLocation({ lat: position.coords.latitude, lng: position.coords.longitude, accuracy: position.coords.accuracy }); setLocationMessage("Localização usada somente nesta sessão para calcular distâncias."); },
+      () => setLocationMessage("Não foi possível acessar sua localização. A lista continua disponível."),
+      { enableHighAccuracy: false, timeout: 12000, maximumAge: 300000 },
+    );
+  }
+
+  function clearFilters(event?: FormEvent) { event?.preventDefault(); setFilters(INITIAL_EXPLORE_FILTERS); setPage(1); }
+
+  if (contextLoading) return <main className="flex min-h-[70vh] items-center justify-center bg-[#050507] text-white"><div className="text-center"><div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-zinc-800 border-t-red-500" /><p className="mt-4 text-zinc-400">Preparando o Explorar…</p></div></main>;
+
+  return (
+    <main className="min-h-screen bg-[#050507] pb-28 text-white">
+      <div className="mx-auto max-w-7xl px-4 py-7 sm:py-10">
+        <header className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between"><div><p className="text-sm font-black uppercase tracking-[0.25em] text-purple-400">Descoberta universal</p><h1 className="mt-2 text-4xl font-black tracking-tight sm:text-5xl">Explorar</h1><p className="mt-3 max-w-2xl text-zinc-400">Descubra Artistas e Casas, compare reputação, localização pública e disponibilidade.</p></div><div className="flex rounded-2xl border border-white/10 bg-zinc-950 p-1" role="group" aria-label="Visualização">{(["list", "map"] as ViewMode[]).map((item) => <button key={item} type="button" aria-pressed={view === item} onClick={() => setView(item)} className={`rounded-xl px-5 py-2 text-sm font-bold transition ${view === item ? "bg-white text-black" : "text-zinc-400 hover:text-white"}`}>{item === "list" ? "Lista" : "Mapa"}</button>)}</div></header>
+
+        <section className="mt-8 rounded-3xl border border-white/10 bg-zinc-950/80 p-4 sm:p-6" aria-label="Filtros do Explorar">
+          <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Tipos de perfil">{([["all", "Todos"], ["artist", "Artistas"], ["venue", "Casas"]] as Array<[ExploreKind, string]>).map(([kind, label]) => <button key={kind} type="button" role="tab" aria-selected={filters.kind === kind} onClick={() => updateFilter("kind", kind)} className={`rounded-full px-5 py-2 text-sm font-bold transition ${filters.kind === kind ? "bg-red-500 text-white" : "border border-zinc-800 text-zinc-400 hover:border-zinc-600 hover:text-white"}`}>{label}</button>)}</div>
+          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <label className="xl:col-span-2"><span className="mb-2 block text-xs font-bold uppercase tracking-wider text-zinc-500">Nome</span><input value={filters.query} onChange={(event) => updateFilter("query", event.target.value)} placeholder="Nome de Artista ou Casa" className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none transition focus:border-red-500" /></label>
+            <label><span className="mb-2 block text-xs font-bold uppercase tracking-wider text-zinc-500">Cidade</span><input value={filters.city} onChange={(event) => updateFilter("city", event.target.value)} placeholder="Ex.: Porto Alegre" className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none transition focus:border-red-500" /></label>
+            <label><span className="mb-2 block text-xs font-bold uppercase tracking-wider text-zinc-500">Distância</span><select value={filters.maximumDistanceKm ?? ""} disabled={!location} onChange={(event) => updateFilter("maximumDistanceKm", event.target.value ? Number(event.target.value) : null)} className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 disabled:cursor-not-allowed disabled:opacity-50"><option value="">Qualquer distância</option>{[10, 25, 50, 100, 250].map((distance) => <option key={distance} value={distance}>{`Até ${distance} km`}</option>)}</select></label>
+          </div>
+          <details className="mt-4 rounded-2xl border border-zinc-800 bg-black/40 p-4"><summary className="cursor-pointer text-sm font-bold text-zinc-300">Mais filtros</summary><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <label><span className="mb-2 block text-xs text-zinc-500">Estilo musical</span><input value={filters.style} onChange={(event) => updateFilter("style", event.target.value)} placeholder="Ex.: Sertanejo" className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2.5" /></label>
+            <label><span className="mb-2 block text-xs text-zinc-500">Tipo de evento</span><input value={filters.eventType} onChange={(event) => updateFilter("eventType", event.target.value)} placeholder="Ex.: Casamento" className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2.5" /></label>
+            <label><span className="mb-2 block text-xs text-zinc-500">Avaliação mínima</span><select value={filters.minimumRating} onChange={(event) => updateFilter("minimumRating", Number(event.target.value))} className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2.5"><option value={0}>Qualquer avaliação</option>{[3, 4, 4.5].map((rating) => <option key={rating} value={rating}>{rating}+ estrelas</option>)}</select></label>
+            <label><span className="mb-2 block text-xs text-zinc-500">Cachê máximo por hora</span><input type="number" min="0" step="50" value={filters.maximumHourlyFee ?? ""} onChange={(event) => updateFilter("maximumHourlyFee", event.target.value ? Number(event.target.value) : null)} placeholder="R$" className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2.5" /></label>
+          </div><div className="mt-4 flex flex-wrap gap-4"><label className="flex items-center gap-2 text-sm text-zinc-300"><input type="checkbox" checked={filters.availableNow} onChange={(event) => updateFilter("availableNow", event.target.checked)} className="h-4 w-4 accent-green-500" /> Disponível agora</label><label className="flex items-center gap-2 text-sm text-zinc-300"><input type="checkbox" checked={filters.verifiedOnly} onChange={(event) => updateFilter("verifiedOnly", event.target.checked)} className="h-4 w-4 accent-blue-500" /> Somente verificados</label></div></details>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3"><div><button type="button" onClick={requestLocation} className="rounded-xl border border-green-500/40 bg-green-500/10 px-4 py-2 text-sm font-bold text-green-300 hover:bg-green-500/20">{location ? "✓ Localização desta sessão" : "Usar minha localização"}</button>{locationMessage && <p className="mt-2 text-xs text-zinc-500">{locationMessage}</p>}</div><button type="button" onClick={() => clearFilters()} className="text-sm font-bold text-zinc-400 hover:text-white">Limpar filtros</button></div>
+        </section>
+
+        {error && <div role="alert" className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-900 bg-red-950/30 p-4 text-sm text-red-200"><span>{error}</span><button type="button" onClick={() => setReloadKey((key) => key + 1)} className="rounded-lg border border-red-700 px-3 py-1.5 font-bold">Tentar novamente</button></div>}
+        {usingFallback && view === "map" && <p className="mt-5 rounded-2xl border border-yellow-800/50 bg-yellow-950/20 p-4 text-sm text-yellow-200">Os perfis continuam disponíveis na lista. Os marcadores públicos aparecem após aplicar a migration de descoberta segura, sem revelar GPS exato.</p>}
+        <div className="mt-7 flex items-center justify-between gap-4"><p className="text-sm text-zinc-400" aria-live="polite">{loading ? "Atualizando resultados…" : `${totalCount} perfil(is) encontrado(s)`}</p>{view === "map" && !loading && <p className="text-xs text-zinc-500">{mappableCount} marcador(es) nesta página</p>}</div>
+
+        {loading ? <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-label="Carregando perfis">{Array.from({ length: 6 }, (_, index) => <div key={index} className="h-72 animate-pulse rounded-3xl border border-zinc-800 bg-zinc-950" />)}</div> : profiles.length === 0 ? <section className="mt-5 rounded-3xl border border-dashed border-zinc-800 bg-zinc-950 p-10 text-center"><p className="text-4xl" aria-hidden="true">⌕</p><h2 className="mt-3 text-xl font-black">Nenhum perfil encontrado</h2><p className="mt-2 text-sm text-zinc-500">Ajuste os filtros ou procure outra cidade.</p><button type="button" onClick={() => clearFilters()} className="mt-5 rounded-xl bg-white px-5 py-2.5 text-sm font-black text-black">Limpar filtros</button></section> : view === "list" ? <section className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="Resultados em lista">{profiles.map((profile) => <ProfileCard key={`${profile.kind}-${profile.id}`} profile={profile} canSendOffer={canSendOffer} favorite={favoriteKeys.has(`${profile.kind}:${profile.id}`)} favoriteBusy={favoriteBusy === `${profile.kind}:${profile.id}`} onToggleFavorite={toggleFavorite} />)}</section> : <section className="relative mt-5 overflow-hidden rounded-3xl border border-white/10 bg-zinc-950" aria-label="Resultados no mapa"><ExploreMap profiles={profiles} userLocation={location} onSelect={setSelectedProfile} />{selectedProfile && <div className="absolute inset-x-3 bottom-3 z-[500] max-h-[70%] overflow-y-auto sm:left-auto sm:w-[430px]"><button type="button" aria-label="Fechar perfil selecionado" onClick={() => setSelectedProfile(null)} className="absolute right-6 top-5 z-10 rounded-full bg-black/70 px-2.5 py-1 text-sm">×</button><ProfileCard profile={selectedProfile} canSendOffer={canSendOffer} favorite={favoriteKeys.has(`${selectedProfile.kind}:${selectedProfile.id}`)} favoriteBusy={favoriteBusy === `${selectedProfile.kind}:${selectedProfile.id}`} onToggleFavorite={toggleFavorite} mapPopup /></div>}</section>}
+
+        {!loading && totalPages > 1 && <nav className="mt-8 flex items-center justify-center gap-3" aria-label="Paginação dos perfis"><button type="button" disabled={page === 1} onClick={() => setPage((current) => Math.max(1, current - 1))} className="rounded-xl border border-zinc-800 px-4 py-2 text-sm font-bold disabled:opacity-40">Anterior</button><span className="text-sm text-zinc-400">Página {page} de {totalPages}</span><button type="button" disabled={page >= totalPages} onClick={() => setPage((current) => current + 1)} className="rounded-xl border border-zinc-800 px-4 py-2 text-sm font-bold disabled:opacity-40">Próxima</button></nav>}
+        <p className="mt-8 text-center text-xs leading-5 text-zinc-600">A localização de Artistas no mapa é aproximada. O GPS de acompanhamento de bookings nunca é consultado pelo Explorar.</p>
+      </div>
+    </main>
+  );
+}
