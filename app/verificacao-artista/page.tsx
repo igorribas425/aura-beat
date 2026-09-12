@@ -1,0 +1,480 @@
+"use client";
+
+import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "../../lib/supabase";
+
+type VerificationStatus = "pending" | "verified" | "rejected";
+type DocumentType = "rg" | "cnh" | "passport" | "other";
+
+type ArtistProfile = {
+  id: string;
+  stage_name: string;
+  verification_status: string | null;
+};
+
+type VerificationRequest = {
+  id: string;
+  status: VerificationStatus;
+  document_type: DocumentType;
+  rejection_reason: string | null;
+  submitted_at: string;
+  reviewed_at: string | null;
+};
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+
+function descricaoStatus(status: string | null) {
+  if (status === "verified") {
+    return {
+      title: "Artista Verificado",
+      body: "Sua identidade foi aprovada. O selo de verificação pode ser exibido no Aura Beat.",
+      className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
+      icon: "✓",
+    };
+  }
+
+  if (status === "pending") {
+    return {
+      title: "Verificação em análise",
+      body: "Seus documentos foram enviados e estão aguardando análise.",
+      className: "border-amber-500/30 bg-amber-500/10 text-amber-100",
+      icon: "⌛",
+    };
+  }
+
+  if (status === "rejected") {
+    return {
+      title: "Verificação recusada",
+      body: "Revise o motivo informado e envie uma nova solicitação com documentos legíveis.",
+      className: "border-red-500/30 bg-red-500/10 text-red-200",
+      icon: "!",
+    };
+  }
+
+  return {
+    title: "Identidade ainda não verificada",
+    body: "Envie um documento oficial e uma selfie para solicitar a verificação.",
+    className: "border-purple-500/30 bg-purple-500/10 text-purple-100",
+    icon: "◇",
+  };
+}
+
+function nomeArquivoSeguro(file: File) {
+  const extension = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "bin";
+  return `${crypto.randomUUID()}.${extension}`;
+}
+
+function validarArquivo(file: File | null, label: string, obrigatorio = true) {
+  if (!file) {
+    return obrigatorio ? `Selecione ${label}.` : null;
+  }
+
+  if (!ACCEPTED_TYPES.includes(file.type)) {
+    return `${label} precisa ser JPG, PNG, WEBP ou PDF.`;
+  }
+
+  if (file.size > MAX_FILE_SIZE) {
+    return `${label} deve ter no máximo 10 MB.`;
+  }
+
+  return null;
+}
+
+export default function VerificacaoArtistaPage() {
+  const router = useRouter();
+  const [artist, setArtist] = useState<ArtistProfile | null>(null);
+  const [request, setRequest] = useState<VerificationRequest | null>(null);
+  const [documentType, setDocumentType] = useState<DocumentType>("cnh");
+  const [front, setFront] = useState<File | null>(null);
+  const [back, setBack] = useState<File | null>(null);
+  const [selfie, setSelfie] = useState<File | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [moduleReady, setModuleReady] = useState(true);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    void carregar();
+  }, []);
+
+  async function carregar() {
+    try {
+      setLoading(true);
+      setError("");
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.replace("/login");
+        return;
+      }
+
+      const { data: artistData, error: artistError } = await supabase
+        .from("artist_profiles")
+        .select("id,stage_name,verification_status")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (artistError) {
+        throw artistError;
+      }
+
+      if (!artistData) {
+        router.replace("/perfil-artista");
+        return;
+      }
+
+      const currentArtist = artistData as ArtistProfile;
+      setArtist(currentArtist);
+
+      const { data: requestData, error: requestError } = await supabase
+        .from("artist_verification_requests")
+        .select("id,status,document_type,rejection_reason,submitted_at,reviewed_at")
+        .eq("artist_id", currentArtist.id)
+        .order("submitted_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (requestError) {
+        const text = `${requestError.code || ""} ${requestError.message || ""}`.toLowerCase();
+        const missingModule =
+          text.includes("42p01") ||
+          text.includes("pgrst205") ||
+          text.includes("artist_verification_requests");
+
+        if (missingModule) {
+          setModuleReady(false);
+          return;
+        }
+
+        throw requestError;
+      }
+
+      setModuleReady(true);
+      setRequest((requestData as VerificationRequest | null) ?? null);
+    } catch (err) {
+      console.error(err);
+      setError("Não foi possível carregar a verificação de identidade.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const status = useMemo(
+    () => descricaoStatus(request?.status || artist?.verification_status || null),
+    [request?.status, artist?.verification_status],
+  );
+
+  const blocked = request?.status === "pending" || artist?.verification_status === "verified";
+
+  function handleFile(
+    setter: (file: File | null) => void,
+    event: ChangeEvent<HTMLInputElement>,
+  ) {
+    setter(event.target.files?.[0] || null);
+  }
+
+  async function uploadDocument(userId: string, requestId: string, kind: string, file: File) {
+    const path = `artist/${userId}/${requestId}/${kind}-${nomeArquivoSeguro(file)}`;
+    const { error: uploadError } = await supabase.storage
+      .from("verification-documents")
+      .upload(path, file, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType: file.type,
+      });
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    return path;
+  }
+
+  async function cleanup(paths: string[]) {
+    if (paths.length === 0) return;
+    await supabase.storage.from("verification-documents").remove(paths);
+  }
+
+  async function enviar() {
+    setError("");
+    setMessage("");
+
+    if (!moduleReady) {
+      setError("O módulo seguro de verificação ainda não foi ativado no banco.");
+      return;
+    }
+
+    if (!artist) {
+      setError("Perfil de Artista não encontrado.");
+      return;
+    }
+
+    if (blocked) {
+      setError("Esta verificação não pode receber um novo envio agora.");
+      return;
+    }
+
+    const frontError = validarArquivo(front, "a frente do documento");
+    const selfieError = validarArquivo(selfie, "a selfie");
+    const backRequired = documentType === "rg" || documentType === "cnh";
+    const backError = validarArquivo(back, "o verso do documento", backRequired);
+
+    const validationError = frontError || selfieError || backError;
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    if (!front || !selfie) return;
+
+    try {
+      setSending(true);
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.replace("/login");
+        return;
+      }
+
+      const requestId = crypto.randomUUID();
+      const uploaded: string[] = [];
+
+      try {
+        const frontPath = await uploadDocument(user.id, requestId, "front", front);
+        uploaded.push(frontPath);
+
+        let backPath: string | null = null;
+        if (back) {
+          backPath = await uploadDocument(user.id, requestId, "back", back);
+          uploaded.push(backPath);
+        }
+
+        const selfiePath = await uploadDocument(user.id, requestId, "selfie", selfie);
+        uploaded.push(selfiePath);
+
+        const { error: insertError } = await supabase
+          .from("artist_verification_requests")
+          .insert({
+            id: requestId,
+            artist_id: artist.id,
+            user_id: user.id,
+            document_type: documentType,
+            document_front_path: frontPath,
+            document_back_path: backPath,
+            selfie_path: selfiePath,
+            status: "pending",
+          });
+
+        if (insertError) {
+          await cleanup(uploaded);
+          throw insertError;
+        }
+      } catch (uploadOrInsertError) {
+        await cleanup(uploaded);
+        throw uploadOrInsertError;
+      }
+
+      setFront(null);
+      setBack(null);
+      setSelfie(null);
+      setMessage("Documentos enviados com segurança. Sua verificação entrou em análise.");
+      await carregar();
+    } catch (err) {
+      console.error(err);
+      setError("Não foi possível enviar os documentos. Nenhum selo foi liberado.");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#07080b] px-4 text-white">
+        <div className="text-center">
+          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-zinc-800 border-t-purple-500" />
+          <p className="text-sm text-zinc-400">Carregando verificação...</p>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-[#07080b] px-4 py-8 text-white">
+      <div className="mx-auto max-w-2xl">
+        <button
+          type="button"
+          onClick={() => router.push("/perfil-artista")}
+          className="mb-6 rounded-xl border border-zinc-800 px-4 py-2 text-sm font-bold text-zinc-300 transition hover:border-purple-500/40 hover:bg-zinc-900"
+        >
+          ← Voltar ao perfil
+        </button>
+
+        <div className="mb-7">
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-purple-400">Segurança Aura Beat</p>
+          <h1 className="mt-2 text-3xl font-black">Verificação de identidade</h1>
+          <p className="mt-2 text-sm leading-6 text-zinc-400">
+            A verificação protege Artistas e Casas nas contratações. Seus documentos não aparecem no perfil público.
+          </p>
+        </div>
+
+        <section className={`rounded-3xl border p-5 ${status.className}`}>
+          <div className="flex items-start gap-4">
+            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-current/20 bg-black/10 text-xl font-black">
+              {status.icon}
+            </div>
+            <div>
+              <h2 className="font-black">{status.title}</h2>
+              <p className="mt-1 text-sm opacity-80">{status.body}</p>
+            </div>
+          </div>
+        </section>
+
+        {!moduleReady && (
+          <section className="mt-5 rounded-3xl border border-amber-500/30 bg-amber-500/10 p-5 text-amber-100">
+            <p className="font-black">Módulo ainda não ativado no banco</p>
+            <p className="mt-2 text-sm leading-6 opacity-85">
+              A tela já está preparada, mas o envio permanece bloqueado até a estrutura privada de documentos ser revisada e ativada no Supabase.
+            </p>
+          </section>
+        )}
+
+        {request?.status === "rejected" && request.rejection_reason && (
+          <section className="mt-5 rounded-3xl border border-red-500/30 bg-red-500/10 p-5 text-red-100">
+            <p className="text-xs font-black uppercase tracking-[0.16em]">Motivo da recusa</p>
+            <p className="mt-2 text-sm leading-6">{request.rejection_reason}</p>
+          </section>
+        )}
+
+        <section className="mt-5 rounded-3xl border border-zinc-800 bg-zinc-950 p-5 sm:p-6">
+          <div className="mb-5">
+            <h2 className="text-xl font-black">Enviar documentos</h2>
+            <p className="mt-2 text-sm leading-6 text-zinc-400">
+              Use fotos nítidas, sem cortes. Para RG ou CNH, envie frente e verso. A selfie deve mostrar claramente o seu rosto.
+            </p>
+          </div>
+
+          <div className="space-y-5">
+            <div>
+              <label className="mb-2 block text-sm font-bold">Documento oficial</label>
+              <select
+                value={documentType}
+                onChange={(event) => setDocumentType(event.target.value as DocumentType)}
+                disabled={blocked || !moduleReady}
+                className="w-full rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3.5 outline-none focus:border-purple-500 disabled:opacity-50"
+              >
+                <option value="cnh">CNH</option>
+                <option value="rg">RG</option>
+                <option value="passport">Passaporte</option>
+                <option value="other">Outro documento oficial</option>
+              </select>
+            </div>
+
+            <FileField
+              label="Frente do documento"
+              hint="JPG, PNG, WEBP ou PDF · até 10 MB"
+              disabled={blocked || !moduleReady}
+              onChange={(event) => handleFile(setFront, event)}
+              fileName={front?.name}
+            />
+
+            <FileField
+              label={`Verso do documento${documentType === "passport" || documentType === "other" ? " (opcional)" : ""}`}
+              hint="JPG, PNG, WEBP ou PDF · até 10 MB"
+              disabled={blocked || !moduleReady}
+              onChange={(event) => handleFile(setBack, event)}
+              fileName={back?.name}
+            />
+
+            <FileField
+              label="Selfie para conferência"
+              hint="Foto atual do rosto · até 10 MB"
+              disabled={blocked || !moduleReady}
+              onChange={(event) => handleFile(setSelfie, event)}
+              fileName={selfie?.name}
+              accept="image/jpeg,image/png,image/webp"
+            />
+
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4 text-xs leading-5 text-zinc-400">
+              🔒 Os arquivos são destinados à verificação de identidade. O bucket é privado e o cliente não possui permissão para aprovar a própria conta.
+            </div>
+
+            <button
+              type="button"
+              onClick={enviar}
+              disabled={sending || blocked || !moduleReady}
+              className="w-full rounded-2xl bg-gradient-to-r from-purple-600 to-red-500 py-4 font-black text-white shadow-lg transition hover:from-purple-500 hover:to-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {sending
+                ? "Enviando com segurança..."
+                : artist?.verification_status === "verified"
+                  ? "Identidade já verificada"
+                  : request?.status === "pending"
+                    ? "Verificação em análise"
+                    : "Enviar para análise"}
+            </button>
+
+            {message && (
+              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-100">
+                {message}
+              </div>
+            )}
+
+            {error && (
+              <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-100">
+                {error}
+              </div>
+            )}
+          </div>
+        </section>
+
+        <p className="mt-5 text-center text-xs leading-5 text-zinc-500">
+          Nunca envie documentos pelo chat entre usuários. A verificação deve acontecer somente por este fluxo privado.
+        </p>
+      </div>
+    </main>
+  );
+}
+
+function FileField({
+  label,
+  hint,
+  disabled,
+  onChange,
+  fileName,
+  accept = "image/jpeg,image/png,image/webp,application/pdf",
+}: {
+  label: string;
+  hint: string;
+  disabled: boolean;
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  fileName?: string;
+  accept?: string;
+}) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-bold">{label}</label>
+      <label className={`block rounded-2xl border border-dashed border-zinc-700 bg-zinc-900 p-4 transition ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:border-purple-500/50"}`}>
+        <input
+          type="file"
+          accept={accept}
+          disabled={disabled}
+          onChange={onChange}
+          className="sr-only"
+        />
+        <span className="block text-sm font-bold text-zinc-200">
+          {fileName || "Selecionar arquivo"}
+        </span>
+        <span className="mt-1 block text-xs text-zinc-500">{hint}</span>
+      </label>
+    </div>
+  );
+}
