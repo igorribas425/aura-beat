@@ -124,16 +124,12 @@ export function ExploreMap({ profiles, userLocation, onSelect }: ExploreMapProps
         leaflet.control.zoom({ position: "bottomright" }).addTo(mapRef.current);
 
         leaflet
-          .tileLayer(
-            "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-            {
-              maxZoom: 20,
-              subdomains: "abcd",
-              className: "aura-map-tiles",
-              attribution:
-                '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-            },
-          )
+          .tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 19,
+            className: "aura-map-tiles",
+            attribution:
+              '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+          })
           .addTo(mapRef.current);
 
         markersRef.current = leaflet.layerGroup().addTo(mapRef.current);
@@ -156,8 +152,8 @@ export function ExploreMap({ profiles, userLocation, onSelect }: ExploreMapProps
             radius: Math.max(userLocation.accuracy, 80),
             color: "#8b5cf6",
             fillColor: "#8b5cf6",
-            fillOpacity: 0.1,
-            weight: 1.5,
+            fillOpacity: 0.08,
+            weight: 1.25,
           })
           .addTo(layer);
 
@@ -198,11 +194,11 @@ export function ExploreMap({ profiles, userLocation, onSelect }: ExploreMapProps
         if (profile.kind === "artist" && profile.availableNow) {
           leaflet
             .circleMarker(point, {
-              radius: 32,
+              radius: 31,
               color: "#22c55e",
               fillColor: "#22c55e",
-              fillOpacity: 0.045,
-              opacity: 0.5,
+              fillOpacity: 0.035,
+              opacity: 0.45,
               weight: 1.5,
             })
             .on("click", () => marker.fire("click"))
@@ -244,17 +240,17 @@ export function ExploreMap({ profiles, userLocation, onSelect }: ExploreMapProps
   );
 
   return (
-    <div className="aura-explore-map relative overflow-hidden bg-[#0b0d14]">
+    <div className="aura-explore-map relative overflow-hidden bg-[#15131d]">
       <div className="pointer-events-none absolute left-3 top-3 z-[450] flex flex-wrap gap-2">
-        <span className="rounded-full border border-purple-400/30 bg-[#0b0b13]/90 px-3 py-1.5 text-[11px] font-bold text-purple-200 shadow-lg backdrop-blur">
+        <span className="rounded-full border border-purple-400/30 bg-[#0b0b13]/88 px-3 py-1.5 text-[11px] font-bold text-purple-100 shadow-lg backdrop-blur">
           <span className="mr-1.5 text-purple-400">●</span>
           Artistas
         </span>
-        <span className="rounded-full border border-red-400/30 bg-[#0b0b13]/90 px-3 py-1.5 text-[11px] font-bold text-red-200 shadow-lg backdrop-blur">
+        <span className="rounded-full border border-red-400/30 bg-[#0b0b13]/88 px-3 py-1.5 text-[11px] font-bold text-red-100 shadow-lg backdrop-blur">
           <span className="mr-1.5 text-red-400">●</span>
           Casas
         </span>
-        <span className="rounded-full border border-green-400/30 bg-[#0b0b13]/90 px-3 py-1.5 text-[11px] font-bold text-green-200 shadow-lg backdrop-blur">
+        <span className="rounded-full border border-green-400/30 bg-[#0b0b13]/88 px-3 py-1.5 text-[11px] font-bold text-green-100 shadow-lg backdrop-blur">
           <span className="mr-1.5 text-green-400">●</span>
           Disponível
         </span>
@@ -262,11 +258,11 @@ export function ExploreMap({ profiles, userLocation, onSelect }: ExploreMapProps
 
       <div
         ref={elementRef}
-        className="h-[64vh] min-h-[460px] w-full bg-[#0b0d14]"
+        className="h-[64vh] min-h-[460px] w-full bg-[#15131d]"
         aria-label="Mapa universal de Artistas e Casas"
       />
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[400] h-20 bg-gradient-to-t from-[#050507]/45 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[400] h-20 bg-gradient-to-t from-[#050507]/32 to-transparent" />
 
       <div className="sr-only" aria-label="Perfis no mapa">
         {mappableProfiles.map((profile) => (
