@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { getAuthenticatedDestination } from "../../lib/auth-navigation";
 import { supabase } from "../../lib/supabase";
 
 type TipoPerfil = "artist" | "venue";
@@ -66,6 +67,7 @@ export default function CadastroPage() {
   const [tipo, setTipo] = useState<TipoPerfil>("artist");
   const [etapa, setEtapa] = useState<Etapa>("perfil");
   const [carregando, setCarregando] = useState(false);
+  const [verificandoSessao, setVerificandoSessao] = useState(true);
   const [mensagem, setMensagem] = useState("");
   const [usuarioJaExiste, setUsuarioJaExiste] = useState(false);
 
@@ -75,6 +77,26 @@ export default function CadastroPage() {
   const [telefone, setTelefone] = useState("");
   const [cidade, setCidade] = useState("");
   const [estado, setEstado] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    async function redirectAuthenticatedUser() {
+      const { data } = await supabase.auth.getUser();
+      if (!active) return;
+
+      if (data.user) {
+        const destination = await getAuthenticatedDestination(data.user.id);
+        if (active) router.replace(destination);
+        return;
+      }
+
+      setVerificandoSessao(false);
+    }
+
+    void redirectAuthenticatedUser();
+    return () => { active = false; };
+  }, [router]);
 
   function irParaLogin() {
     router.push("/login");
@@ -245,8 +267,19 @@ export default function CadastroPage() {
     }
   }
 
+  if (verificandoSessao) {
+    return (
+      <main className="aura-page flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-zinc-800 border-t-purple-500" />
+          <p className="mt-4 text-sm text-zinc-400">Preparando o cadastro…</p>
+        </div>
+      </main>
+    );
+  }
+
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#050507] text-white">
+    <main className="aura-page relative overflow-hidden">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-purple-700/15 blur-3xl" />
         <div className="absolute -right-24 top-1/3 h-80 w-80 rounded-full bg-red-600/15 blur-3xl" />
@@ -269,7 +302,7 @@ export default function CadastroPage() {
         </div>
 
         {etapa === "perfil" ? (
-          <section className="mx-auto w-full max-w-4xl rounded-[32px] border border-zinc-800 bg-zinc-950/90 p-5 shadow-2xl backdrop-blur sm:p-8">
+          <section className="aura-card mx-auto w-full max-w-4xl rounded-[32px] border p-5 backdrop-blur sm:p-8">
             <div className="text-center">
               <p className="text-xs font-black uppercase tracking-[0.22em] text-red-500">
                 Crie sua conta
@@ -340,7 +373,7 @@ export default function CadastroPage() {
             </div>
           </section>
         ) : (
-          <section className="mx-auto w-full max-w-xl rounded-[32px] border border-zinc-800 bg-zinc-950/90 p-5 shadow-2xl backdrop-blur sm:p-8">
+          <section className="aura-card mx-auto w-full max-w-xl rounded-[32px] border p-5 backdrop-blur sm:p-8">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <button

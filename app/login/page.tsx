@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { getAuthenticatedDestination } from "../../lib/auth-navigation";
 import { supabase } from "../../lib/supabase";
 
 export default function LoginPage() {
@@ -11,7 +12,28 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [carregando, setCarregando] = useState(false);
+  const [verificandoSessao, setVerificandoSessao] = useState(true);
   const [mensagem, setMensagem] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    async function redirectAuthenticatedUser() {
+      const { data } = await supabase.auth.getUser();
+      if (!active) return;
+
+      if (data.user) {
+        const destination = await getAuthenticatedDestination(data.user.id);
+        if (active) router.replace(destination);
+        return;
+      }
+
+      setVerificandoSessao(false);
+    }
+
+    void redirectAuthenticatedUser();
+    return () => { active = false; };
+  }, [router]);
 
   async function entrar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -37,37 +59,27 @@ export default function LoginPage() {
         return;
       }
 
-      const { data: perfil, error: perfilError } = await supabase
-        .from("profiles")
-        .select("full_name, default_mode")
-        .eq("id", data.user.id)
-        .single();
-
-      if (perfilError) {
-        setMensagem("❌ Não foi possível carregar seu perfil.");
-        setCarregando(false);
-        return;
-      }
-
-      setMensagem(
-        `✅ Bem-vindo${perfil?.full_name ? ", " + perfil.full_name : ""}!`
-      );
-
-      setTimeout(() => {
-        if (perfil?.default_mode === "venue") {
-          router.push("/perfil-casa");
-        } else {
-          router.push("/perfil-artista");
-        }
-      }, 500);
+      const destination = await getAuthenticatedDestination(data.user.id);
+      router.replace(destination);
     } catch {
       setMensagem("❌ Ocorreu um erro inesperado.");
       setCarregando(false);
     }
   }
 
+  if (verificandoSessao) {
+    return (
+      <main className="aura-page flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-zinc-800 border-t-red-500" />
+          <p className="mt-4 text-sm text-zinc-400">Verificando sua sessão…</p>
+        </div>
+      </main>
+    );
+  }
+
   return (
-    <main className="min-h-screen bg-[#050507] text-white">
+    <main className="aura-page">
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-6 py-10">
         
         <div className="mb-8 text-center">
@@ -84,7 +96,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <div className="rounded-3xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl">
+        <div className="aura-card rounded-3xl border p-5">
           <h2 className="text-2xl font-bold">
             Bem-vindo de volta
           </h2>
