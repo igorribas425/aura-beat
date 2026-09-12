@@ -607,7 +607,7 @@ export default function OfertasCasaPage() {
       !Number.isFinite(
         budget
       ) ||
-      budget < 0
+      budget <= 0
     ) {
       return "Informe um orçamento válido.";
     }
