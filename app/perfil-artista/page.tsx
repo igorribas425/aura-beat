@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { ProfileAvatar } from "../../components/profile-avatar";
 import { PublicLocationControl } from "../../components/public-location-control";
@@ -237,6 +238,12 @@ export default function PerfilArtistaPage() {
               <p className="mt-3 text-xs opacity-70">
                 Documentos pessoais, CPF e imagens de verificação nunca devem aparecer no perfil público.
               </p>
+              <Link
+                href="/verificacao-artista"
+                className="mt-4 inline-flex rounded-xl border border-current/30 bg-black/10 px-4 py-2 text-sm font-black"
+              >
+                {verificationStatus === "verified" ? "Ver verificação" : "Verificar identidade"}
+              </Link>
             </div>
           </div>
         </section>

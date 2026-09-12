@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useEffect, useEffectEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 
@@ -96,8 +96,12 @@ export default function VerificacaoArtistaPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  useEffect(() => {
+  const carregarEffect = useEffectEvent(() => {
     void carregar();
+  });
+
+  useEffect(() => {
+    carregarEffect();
   }, []);
 
   async function carregar() {
@@ -298,7 +302,7 @@ export default function VerificacaoArtistaPage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#07080b] px-4 text-white">
+      <main className="aura-page flex min-h-screen items-center justify-center px-4">
         <div className="text-center">
           <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-zinc-800 border-t-purple-500" />
           <p className="text-sm text-zinc-400">Carregando verificação...</p>
@@ -308,7 +312,7 @@ export default function VerificacaoArtistaPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#07080b] px-4 py-8 text-white">
+    <main className="aura-page px-4 py-8">
       <div className="mx-auto max-w-2xl">
         <button
           type="button"
