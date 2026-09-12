@@ -10,6 +10,11 @@ type ThemePreference = "system" | "dark" | "light";
 type ResolvedTheme = "dark" | "light";
 
 const publicPaths = new Set(["/", "/login", "/cadastro", "/cadastro/login"]);
+const themeStorageKey = "aura-theme-preference";
+
+function isThemePreference(value: string | null): value is ThemePreference {
+  return value === "system" || value === "dark" || value === "light";
+}
 
 function resolveTheme(preference: ThemePreference): ResolvedTheme {
   if (preference === "dark" || preference === "light") return preference;
@@ -49,6 +54,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [authenticated, setAuthenticated] = useState(false);
 
   useEffect(() => {
+    const savedTheme = window.localStorage.getItem(themeStorageKey);
+    if (isThemePreference(savedTheme)) {
+      setTheme(savedTheme);
+      applyTheme(savedTheme);
+    }
+  }, []);
+
+  useEffect(() => {
     let alive = true;
 
     async function loadSessionContext() {
@@ -58,8 +71,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       if (!data.user) {
         setAuthenticated(false);
         setMode(null);
-        setTheme("system");
-        applyTheme("system");
+
+        const savedTheme = window.localStorage.getItem(themeStorageKey);
+        const nextTheme: ThemePreference = isThemePreference(savedTheme) ? savedTheme : "system";
+        setTheme(nextTheme);
+        applyTheme(nextTheme);
         return;
       }
 
@@ -75,11 +91,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       const nextMode: Mode = profile?.default_mode === "venue" ? "venue" : "artist";
       const nextTheme: ThemePreference =
-        profile?.theme === "light" || profile?.theme === "dark" ? profile.theme : "system";
+        profile?.theme === "light" || profile?.theme === "dark" || profile?.theme === "system"
+          ? profile.theme
+          : "system";
 
       setMode(nextMode);
       setTheme(nextTheme);
       applyTheme(nextTheme);
+      window.localStorage.setItem(themeStorageKey, nextTheme);
     }
 
     void loadSessionContext();
@@ -100,6 +119,46 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
     return () => media.removeEventListener("change", onChange);
   }, [theme]);
+
+  useEffect(() => {
+    if (pathname !== "/configuracoes") return;
+
+    const handleThemeClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      const button = target?.closest("button");
+      if (!button) return;
+
+      const label = (button.textContent || "").replace(/\s+/g, "").toLowerCase();
+      let nextTheme: ThemePreference | null = null;
+
+      if (label.includes("sistema")) nextTheme = "system";
+      if (label.includes("escuro")) nextTheme = "dark";
+      if (label.includes("claro")) nextTheme = "light";
+      if (!nextTheme) return;
+
+      setTheme(nextTheme);
+      applyTheme(nextTheme);
+      window.localStorage.setItem(themeStorageKey, nextTheme);
+
+      void (async () => {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user) return;
+
+        const { error } = await supabase
+          .from("profiles")
+          .update({ theme: nextTheme })
+          .eq("id", user.id);
+
+        if (error) console.error("Erro ao salvar tema:", error);
+      })();
+    };
+
+    document.addEventListener("click", handleThemeClick);
+    return () => document.removeEventListener("click", handleThemeClick);
+  }, [pathname]);
 
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
@@ -131,6 +190,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             if (updated.theme === "light" || updated.theme === "dark" || updated.theme === "system") {
               setTheme(updated.theme);
               applyTheme(updated.theme);
+              window.localStorage.setItem(themeStorageKey, updated.theme);
             }
           },
         )
