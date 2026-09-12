@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { ProfileAvatar } from "../../components/profile-avatar";
 import { PublicLocationControl } from "../../components/public-location-control";
 import { supabase } from "../../lib/supabase";
 
@@ -66,6 +67,7 @@ export default function PerfilArtistaPage() {
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [instagram, setInstagram] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
   const [fixedFee, setFixedFee] = useState("");
   const [priceKm, setPriceKm] = useState("");
   const [freeRadius, setFreeRadius] = useState("");
@@ -102,6 +104,7 @@ export default function PerfilArtistaPage() {
         setCity(data.base_city ?? "");
         setState(data.base_state ?? "");
         setInstagram(data.instagram_handle ?? "");
+        setAvatarUrl(data.avatar_url ?? "");
         setFixedFee(String(data.fixed_fee ?? ""));
         setPriceKm(String(data.price_per_km ?? ""));
         setFreeRadius(String(data.free_radius_km ?? ""));
@@ -141,6 +144,7 @@ export default function PerfilArtistaPage() {
             base_city: city,
             base_state: state.toUpperCase(),
             instagram_handle: instagram,
+            avatar_url: avatarUrl.trim() || null,
             fixed_fee: Number(fixedFee || 0),
             price_per_km: Number(priceKm || 0),
             free_radius_km: Number(freeRadius || 0),
@@ -202,7 +206,7 @@ export default function PerfilArtistaPage() {
   const verification = verificationInfo(verificationStatus);
 
   return (
-    <main className="min-h-screen bg-[#07080b] px-4 py-8 text-white">
+    <main className="aura-page px-4 py-8">
       <div className="mx-auto max-w-2xl">
         <div className="mb-8">
           <p className="text-sm font-semibold text-red-500">AURA BEAT</p>
@@ -239,8 +243,12 @@ export default function PerfilArtistaPage() {
 
         <form
           onSubmit={salvar}
-          className="space-y-5 rounded-3xl border border-zinc-800 bg-zinc-950 p-6"
+          className="aura-card space-y-5 rounded-3xl border p-6"
         >
+          <div className="flex items-center gap-4 rounded-2xl border border-zinc-800 bg-black/30 p-4">
+            <ProfileAvatar kind="artist" name={stageName || "Artista"} url={avatarUrl} sizeClassName="h-20 w-20" className="rounded-2xl" />
+            <div><p className="font-black">Prévia do Press Kit</p><p className="mt-1 text-xs leading-5 text-zinc-500">A imagem principal também aparece no Explorar e nos marcadores do mapa.</p></div>
+          </div>
           <div>
             <label className="mb-2 block text-sm font-semibold">
               Nome artístico
@@ -312,6 +320,22 @@ export default function PerfilArtistaPage() {
               placeholder="@seuinstagram"
               className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-red-500"
             />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-semibold">
+              URL da foto profissional
+            </label>
+            <input
+              type="url"
+              value={avatarUrl}
+              onChange={(e) => setAvatarUrl(e.target.value)}
+              placeholder="https://..."
+              className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-purple-500"
+            />
+            <p className="mt-2 text-xs text-zinc-500">
+              Use uma imagem pública em HTTPS. E-mail, telefone e documentos nunca aparecem no perfil público.
+            </p>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

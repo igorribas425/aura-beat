@@ -232,6 +232,45 @@ html[data-theme="light"] .aura-brand-mark {
   background: var(--aura-stat-accent, linear-gradient(#ef4444, #a855f7));
 }
 
+.aura-profile-card {
+  position: relative;
+}
+
+.aura-profile-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 22px auto;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, #a855f7, transparent);
+  opacity: .72;
+}
+
+.aura-profile-card[data-kind="venue"]::before {
+  background: linear-gradient(90deg, transparent, #ef4444, transparent);
+}
+
+.aura-profile-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 22px 58px rgba(0,0,0,.38);
+}
+
+html[data-theme="light"] .aura-profile-card:hover {
+  box-shadow: 0 22px 52px rgba(15,23,42,.12);
+}
+
+.aura-mini-presskit-cover {
+  background:
+    radial-gradient(circle at 85% 15%, rgba(255,255,255,.18), transparent 22%),
+    linear-gradient(135deg, #25103d, #0d0a13 70%);
+}
+
+.aura-mini-presskit[data-kind="venue"] .aura-mini-presskit-cover {
+  background:
+    radial-gradient(circle at 85% 15%, rgba(255,255,255,.17), transparent 22%),
+    linear-gradient(135deg, #3d1017, #12090b 70%);
+}
+
 /* Acabamento premium para cards antigos sem precisar reescrever todas as telas agora. */
 main section[class*="rounded-3xl"],
 main article[class*="rounded-2xl"],

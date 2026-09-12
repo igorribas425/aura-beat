@@ -1,21 +1,18 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { ExploreMap } from "../../components/explore-map";
+import { ExploreProfileCard, MiniPressKit } from "../../components/explore-profile-card";
 import {
   EXPLORE_PAGE_SIZE,
   ExploreFilters,
   ExploreKind,
   ExploreProfile,
   INITIAL_EXPLORE_FILTERS,
-  isVerified,
   matchesExploreFilters,
-  profilePath,
   withDistances,
 } from "../../lib/explore";
-import { formatBRL } from "../../lib/finance";
 import { supabase } from "../../lib/supabase";
 
 type Mode = "artist" | "venue";
@@ -192,52 +189,6 @@ async function loadFallbackProfiles(
   return { profiles: filtered.slice(offset, offset + EXPLORE_PAGE_SIZE), totalCount: filtered.length };
 }
 
-function Avatar({ profile, compact = false }: { profile: ExploreProfile; compact?: boolean }) {
-  const size = compact ? "h-14 w-14 rounded-2xl" : "h-20 w-20 rounded-3xl";
-  if (profile.avatarUrl) {
-    return <div role="img" aria-label={`Foto de ${profile.name}`} className={`${size} shrink-0 bg-cover bg-center ring-1 ring-white/10`} style={{ backgroundImage: `url(${JSON.stringify(profile.avatarUrl).slice(1, -1)})` }} />;
-  }
-  return <div aria-hidden="true" className={`${size} flex shrink-0 items-center justify-center bg-gradient-to-br ${profile.kind === "artist" ? "from-red-500 to-purple-700" : "from-blue-600 to-cyan-500"} text-2xl font-black`}>{profile.name.charAt(0).toUpperCase() || (profile.kind === "artist" ? "A" : "C")}</div>;
-}
-
-type ProfileCardProps = { profile: ExploreProfile; canSendOffer: boolean; favorite: boolean; favoriteBusy: boolean; onToggleFavorite: (profile: ExploreProfile) => void; mapPopup?: boolean };
-
-function ProfileCard({ profile, canSendOffer, favorite, favoriteBusy, onToggleFavorite, mapPopup = false }: ProfileCardProps) {
-  return (
-    <article className={`border border-white/10 bg-zinc-950 ${mapPopup ? "rounded-2xl p-4 shadow-2xl" : "rounded-3xl p-5"}`}>
-      <div className="flex items-start gap-4">
-        <Avatar profile={profile} compact={mapPopup} />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-wider ${profile.kind === "artist" ? "bg-red-500/15 text-red-300" : "bg-blue-500/15 text-blue-300"}`}>{profile.kind === "artist" ? "Artista" : "Casa"}</span>
-            {profile.isOwnProfile && <span className="rounded-full bg-green-500/15 px-2 py-1 text-[10px] font-bold text-green-300">Seu perfil</span>}
-          </div>
-          <h2 className="mt-2 truncate text-lg font-black">{profile.name} {isVerified(profile.verificationStatus) && <span title="Perfil verificado" className="text-blue-400" aria-label="Verificado">✓</span>}</h2>
-          <p className="mt-1 text-sm text-zinc-400">{[profile.city, profile.state].filter(Boolean).join(" — ") || "Localização não informada"}</p>
-          {profile.kind === "venue" && profile.venueType && <p className="mt-1 text-xs text-zinc-500">{profile.venueType}</p>}
-        </div>
-      </div>
-      {profile.kind === "artist" && <div className="mt-4 flex flex-wrap gap-2">
-        {profile.availableNow && <span className="rounded-full bg-green-500/15 px-3 py-1 text-xs font-bold text-green-300">● Disponível agora</span>}
-        {(profile.styles.length ? profile.styles : ["Estilos diversos"]).slice(0, 4).map((style) => <span key={style} className="rounded-full bg-purple-500/10 px-3 py-1 text-xs text-purple-200">{style}</span>)}
-      </div>}
-      <div className="mt-5 grid grid-cols-2 gap-3 border-y border-white/10 py-4 text-sm">
-        <div><p className="text-xs text-zinc-500">Avaliação</p><p className="mt-1 font-bold">{profile.rating > 0 ? `★ ${profile.rating.toFixed(1)}` : "Sem avaliações"}{profile.reviewCount > 0 && <span className="ml-1 text-xs font-normal text-zinc-500">({profile.reviewCount})</span>}</p></div>
-        <div><p className="text-xs text-zinc-500">Distância</p><p className="mt-1 font-bold">{profile.distanceKm === null ? "Não calculada" : `${profile.distanceKm.toFixed(1)} km`}</p></div>
-        {profile.kind === "artist" && <><div><p className="text-xs text-zinc-500">Cachê por hora</p><p className="mt-1 font-black text-red-400">{profile.hourlyFee === null ? "Sob consulta" : `${formatBRL(profile.hourlyFee)}/h`}</p></div><div><p className="text-xs text-zinc-500">Raio disponível</p><p className="mt-1 font-bold">{profile.radiusKm === null ? "Não informado" : `${profile.radiusKm} km`}</p></div></>}
-      </div>
-      {profile.kind === "artist" && profile.eventTypes.length > 0 && <p className="mt-3 text-xs leading-5 text-zinc-400">Eventos: {profile.eventTypes.join(", ")}</p>}
-      {mapPopup && profile.locationPrecisionKm !== null && <p className="mt-3 text-xs text-zinc-500">Localização pública aproximada (precisão de {profile.locationPrecisionKm} km).</p>}
-      {profile.description && !mapPopup && <p className="mt-3 line-clamp-2 text-sm leading-6 text-zinc-400">{profile.description}</p>}
-      <div className="mt-5 flex flex-wrap gap-2">
-        <Link href={profilePath(profile)} className="flex-1 rounded-xl border border-zinc-700 px-4 py-2 text-center text-sm font-bold transition hover:border-zinc-500 hover:bg-zinc-900">Ver perfil</Link>
-        {!profile.isOwnProfile && <button type="button" disabled={favoriteBusy} aria-pressed={favorite} onClick={() => onToggleFavorite(profile)} className="rounded-xl border border-zinc-700 px-4 py-2 text-sm font-bold transition hover:border-red-500 disabled:opacity-50">{favorite ? "♥ Favorito" : "♡ Favoritar"}</button>}
-        {canSendOffer && profile.kind === "artist" && !profile.isOwnProfile && <Link href={`/ofertas?artist=${profile.id}`} className="flex-1 rounded-xl bg-red-500 px-4 py-2 text-center text-sm font-black transition hover:bg-red-600">Enviar oferta</Link>}
-      </div>
-    </article>
-  );
-}
-
 export default function ExplorePage() {
   const router = useRouter();
   const [filters, setFilters] = useState<ExploreFilters>(INITIAL_EXPLORE_FILTERS);
@@ -365,14 +316,14 @@ export default function ExplorePage() {
 
   function clearFilters(event?: FormEvent) { event?.preventDefault(); setFilters(INITIAL_EXPLORE_FILTERS); setPage(1); }
 
-  if (contextLoading) return <main className="flex min-h-[70vh] items-center justify-center bg-[#050507] text-white"><div className="text-center"><div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-zinc-800 border-t-red-500" /><p className="mt-4 text-zinc-400">Preparando o Explorar…</p></div></main>;
+  if (contextLoading) return <main className="aura-page flex min-h-[70vh] items-center justify-center"><div className="text-center"><div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-zinc-800 border-t-red-500" /><p className="mt-4 text-zinc-400">Preparando o Explorar…</p></div></main>;
 
   return (
-    <main className="min-h-screen bg-[#050507] pb-28 text-white">
+    <main className="aura-page pb-8">
       <div className="mx-auto max-w-7xl px-4 py-7 sm:py-10">
-        <header className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between"><div><p className="text-sm font-black uppercase tracking-[0.25em] text-purple-400">Descoberta universal</p><h1 className="mt-2 text-4xl font-black tracking-tight sm:text-5xl">Explorar</h1><p className="mt-3 max-w-2xl text-zinc-400">Descubra Artistas e Casas, compare reputação, localização pública e disponibilidade.</p></div><div className="flex rounded-2xl border border-white/10 bg-zinc-950 p-1" role="group" aria-label="Visualização">{(["list", "map"] as ViewMode[]).map((item) => <button key={item} type="button" aria-pressed={view === item} onClick={() => setView(item)} className={`rounded-xl px-5 py-2 text-sm font-bold transition ${view === item ? "bg-white text-black" : "text-zinc-400 hover:text-white"}`}>{item === "list" ? "Lista" : "Mapa"}</button>)}</div></header>
+        <header className="aura-hero aura-artist-hero flex flex-col gap-6 rounded-3xl p-6 sm:p-8 lg:flex-row lg:items-end lg:justify-between"><div><p className="aura-kicker">Descoberta universal</p><h1 className="mt-2 text-4xl font-black tracking-tight sm:text-5xl">Explorar</h1><p className="mt-3 max-w-2xl text-zinc-400">Descubra Artistas e Casas, compare reputação, localização pública e disponibilidade.</p></div><div className="flex rounded-2xl border border-white/10 bg-zinc-950 p-1" role="group" aria-label="Visualização">{(["list", "map"] as ViewMode[]).map((item) => <button key={item} type="button" aria-pressed={view === item} onClick={() => setView(item)} className={`rounded-xl px-5 py-2 text-sm font-bold transition ${view === item ? "bg-white text-black" : "text-zinc-400 hover:text-white"}`}>{item === "list" ? "Lista" : "Mapa"}</button>)}</div></header>
 
-        <section className="mt-8 rounded-3xl border border-white/10 bg-zinc-950/80 p-4 sm:p-6" aria-label="Filtros do Explorar">
+        <section className="aura-card mt-6 rounded-3xl border p-4 sm:p-6" aria-label="Filtros do Explorar">
           <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Tipos de perfil">{([["all", "Todos"], ["artist", "Artistas"], ["venue", "Casas"]] as Array<[ExploreKind, string]>).map(([kind, label]) => <button key={kind} type="button" role="tab" aria-selected={filters.kind === kind} onClick={() => updateFilter("kind", kind)} className={`rounded-full px-5 py-2 text-sm font-bold transition ${filters.kind === kind ? "bg-red-500 text-white" : "border border-zinc-800 text-zinc-400 hover:border-zinc-600 hover:text-white"}`}>{label}</button>)}</div>
           <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <label className="xl:col-span-2"><span className="mb-2 block text-xs font-bold uppercase tracking-wider text-zinc-500">Nome</span><input value={filters.query} onChange={(event) => updateFilter("query", event.target.value)} placeholder="Nome de Artista ou Casa" className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none transition focus:border-red-500" /></label>
@@ -392,7 +343,7 @@ export default function ExplorePage() {
         {usingFallback && view === "map" && <p className="mt-5 rounded-2xl border border-yellow-800/50 bg-yellow-950/20 p-4 text-sm text-yellow-200">Os perfis continuam disponíveis na lista. Os marcadores públicos aparecem após aplicar a migration de descoberta segura, sem revelar GPS exato.</p>}
         <div className="mt-7 flex items-center justify-between gap-4"><p className="text-sm text-zinc-400" aria-live="polite">{loading ? "Atualizando resultados…" : `${totalCount} perfil(is) encontrado(s)`}</p>{view === "map" && !loading && <p className="text-xs text-zinc-500">{mappableCount} marcador(es) nesta página</p>}</div>
 
-        {loading ? <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-label="Carregando perfis">{Array.from({ length: 6 }, (_, index) => <div key={index} className="h-72 animate-pulse rounded-3xl border border-zinc-800 bg-zinc-950" />)}</div> : profiles.length === 0 ? <section className="mt-5 rounded-3xl border border-dashed border-zinc-800 bg-zinc-950 p-10 text-center"><p className="text-4xl" aria-hidden="true">⌕</p><h2 className="mt-3 text-xl font-black">Nenhum perfil encontrado</h2><p className="mt-2 text-sm text-zinc-500">Ajuste os filtros ou procure outra cidade.</p><button type="button" onClick={() => clearFilters()} className="mt-5 rounded-xl bg-white px-5 py-2.5 text-sm font-black text-black">Limpar filtros</button></section> : view === "list" ? <section className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="Resultados em lista">{profiles.map((profile) => <ProfileCard key={`${profile.kind}-${profile.id}`} profile={profile} canSendOffer={canSendOffer} favorite={favoriteKeys.has(`${profile.kind}:${profile.id}`)} favoriteBusy={favoriteBusy === `${profile.kind}:${profile.id}`} onToggleFavorite={toggleFavorite} />)}</section> : <section className="relative mt-5 overflow-hidden rounded-3xl border border-white/10 bg-zinc-950" aria-label="Resultados no mapa"><ExploreMap profiles={profiles} userLocation={location} onSelect={setSelectedProfile} />{selectedProfile && <div className="absolute inset-x-3 bottom-3 z-[500] max-h-[70%] overflow-y-auto sm:left-auto sm:w-[430px]"><button type="button" aria-label="Fechar perfil selecionado" onClick={() => setSelectedProfile(null)} className="absolute right-6 top-5 z-10 rounded-full bg-black/70 px-2.5 py-1 text-sm">×</button><ProfileCard profile={selectedProfile} canSendOffer={canSendOffer} favorite={favoriteKeys.has(`${selectedProfile.kind}:${selectedProfile.id}`)} favoriteBusy={favoriteBusy === `${selectedProfile.kind}:${selectedProfile.id}`} onToggleFavorite={toggleFavorite} mapPopup /></div>}</section>}
+        {loading ? <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-label="Carregando perfis">{Array.from({ length: 6 }, (_, index) => <div key={index} className="h-72 animate-pulse rounded-3xl border border-zinc-800 bg-zinc-950" />)}</div> : profiles.length === 0 ? <section className="aura-card mt-5 rounded-3xl border border-dashed p-10 text-center"><p className="text-4xl" aria-hidden="true">⌕</p><h2 className="mt-3 text-xl font-black">Nenhum perfil encontrado</h2><p className="mt-2 text-sm text-zinc-500">Ajuste os filtros ou procure outra cidade.</p><button type="button" onClick={() => clearFilters()} className="mt-5 rounded-xl bg-white px-5 py-2.5 text-sm font-black text-black">Limpar filtros</button></section> : view === "list" ? <section className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="Resultados em lista">{profiles.map((profile) => <ExploreProfileCard key={`${profile.kind}-${profile.id}`} profile={profile} canSendOffer={canSendOffer} favorite={favoriteKeys.has(`${profile.kind}:${profile.id}`)} favoriteBusy={favoriteBusy === `${profile.kind}:${profile.id}`} onToggleFavorite={toggleFavorite} />)}</section> : <section className="aura-card relative mt-5 overflow-hidden rounded-3xl border" aria-label="Resultados no mapa"><ExploreMap profiles={profiles} userLocation={location} onSelect={setSelectedProfile} />{selectedProfile && <aside className="absolute inset-x-3 bottom-3 z-[500] max-h-[78%] overflow-y-auto rounded-3xl sm:left-auto sm:w-[460px]" aria-label={`Perfil selecionado: ${selectedProfile.name}`}><button type="button" aria-label="Fechar perfil selecionado" onClick={() => setSelectedProfile(null)} className="absolute right-4 top-4 z-10 grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-black/60 text-lg text-white backdrop-blur">×</button><MiniPressKit profile={selectedProfile} canSendOffer={canSendOffer} favorite={favoriteKeys.has(`${selectedProfile.kind}:${selectedProfile.id}`)} favoriteBusy={favoriteBusy === `${selectedProfile.kind}:${selectedProfile.id}`} onToggleFavorite={toggleFavorite} /></aside>}</section>}
 
         {!loading && totalPages > 1 && <nav className="mt-8 flex items-center justify-center gap-3" aria-label="Paginação dos perfis"><button type="button" disabled={page === 1} onClick={() => setPage((current) => Math.max(1, current - 1))} className="rounded-xl border border-zinc-800 px-4 py-2 text-sm font-bold disabled:opacity-40">Anterior</button><span className="text-sm text-zinc-400">Página {page} de {totalPages}</span><button type="button" disabled={page >= totalPages} onClick={() => setPage((current) => current + 1)} className="rounded-xl border border-zinc-800 px-4 py-2 text-sm font-bold disabled:opacity-40">Próxima</button></nav>}
         <p className="mt-8 text-center text-xs leading-5 text-zinc-600">A localização de Artistas no mapa é aproximada. O GPS de acompanhamento de bookings nunca é consultado pelo Explorar.</p>
