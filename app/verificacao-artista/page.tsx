@@ -1,6 +1,13 @@
 "use client";
 
-import { ChangeEvent, useEffect, useEffectEvent, useMemo, useState } from "react";
+import {
+  ChangeEvent,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 
@@ -55,7 +62,7 @@ function descricaoStatus(status: string | null) {
 
   return {
     title: "Identidade ainda não verificada",
-    body: "Envie um documento oficial e uma selfie para solicitar a verificação.",
+    body: "Envie um documento oficial e faça uma foto facial pela câmera para solicitar a verificação.",
     className: "border-purple-500/30 bg-purple-500/10 text-purple-100",
     icon: "◇",
   };
@@ -90,11 +97,16 @@ export default function VerificacaoArtistaPage() {
   const [front, setFront] = useState<File | null>(null);
   const [back, setBack] = useState<File | null>(null);
   const [selfie, setSelfie] = useState<File | null>(null);
+  const [selfiePreview, setSelfiePreview] = useState<string | null>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraError, setCameraError] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [moduleReady, setModuleReady] = useState(true);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const carregarEffect = useEffectEvent(() => {
     void carregar();
@@ -102,6 +114,23 @@ export default function VerificacaoArtistaPage() {
 
   useEffect(() => {
     carregarEffect();
+  }, []);
+
+  useEffect(() => {
+    if (!cameraOpen || !videoRef.current || !streamRef.current) return;
+
+    const video = videoRef.current;
+    video.srcObject = streamRef.current;
+    void video.play().catch(() => {
+      setCameraError("Não foi possível iniciar a visualização da câmera.");
+    });
+  }, [cameraOpen]);
+
+  useEffect(() => {
+    return () => {
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    };
   }, []);
 
   async function carregar() {
@@ -183,6 +212,81 @@ export default function VerificacaoArtistaPage() {
     setter(event.target.files?.[0] || null);
   }
 
+  function pararCamera() {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    setCameraOpen(false);
+  }
+
+  async function abrirCamera() {
+    setCameraError("");
+    setError("");
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError("Este navegador não oferece acesso à câmera. Abra o Aura Beat em um navegador atualizado.");
+      return;
+    }
+
+    try {
+      pararCamera();
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: "user",
+          width: { ideal: 1280 },
+          height: { ideal: 1280 },
+        },
+      });
+
+      streamRef.current = stream;
+      setCameraOpen(true);
+    } catch (err) {
+      console.error(err);
+      setCameraError("Não foi possível abrir a câmera. Confira a permissão da câmera no navegador e tente novamente.");
+    }
+  }
+
+  async function capturarSelfie() {
+    setCameraError("");
+
+    const video = videoRef.current;
+    if (!video || video.videoWidth === 0 || video.videoHeight === 0) {
+      setCameraError("A câmera ainda está iniciando. Aguarde um instante e tente novamente.");
+      return;
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const context = canvas.getContext("2d");
+    if (!context) {
+      setCameraError("Não foi possível capturar a foto facial.");
+      return;
+    }
+
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, "image/jpeg", 0.92);
+    });
+
+    if (!blob) {
+      setCameraError("Não foi possível gerar a foto facial. Tente novamente.");
+      return;
+    }
+
+    const file = new File([blob], `foto-facial-${Date.now()}.jpg`, {
+      type: "image/jpeg",
+      lastModified: Date.now(),
+    });
+
+    setSelfie(file);
+    setSelfiePreview(canvas.toDataURL("image/jpeg", 0.86));
+    pararCamera();
+  }
+
   async function uploadDocument(userId: string, requestId: string, kind: string, file: File) {
     const path = `artist/${userId}/${requestId}/${kind}-${nomeArquivoSeguro(file)}`;
     const { error: uploadError } = await supabase.storage
@@ -225,7 +329,7 @@ export default function VerificacaoArtistaPage() {
     }
 
     const frontError = validarArquivo(front, "a frente do documento");
-    const selfieError = validarArquivo(selfie, "a selfie");
+    const selfieError = validarArquivo(selfie, "a foto facial");
     const backRequired = documentType === "rg" || documentType === "cnh";
     const backError = validarArquivo(back, "o verso do documento", backRequired);
 
@@ -290,11 +394,12 @@ export default function VerificacaoArtistaPage() {
       setFront(null);
       setBack(null);
       setSelfie(null);
-      setMessage("Documentos enviados com segurança. Sua verificação entrou em análise.");
+      setSelfiePreview(null);
+      setMessage("Documentos e foto facial enviados com segurança. Sua verificação entrou em análise.");
       await carregar();
     } catch (err) {
       console.error(err);
-      setError("Não foi possível enviar os documentos. Nenhum selo foi liberado.");
+      setError("Não foi possível enviar a verificação. Nenhum selo foi liberado.");
     } finally {
       setSending(false);
     }
@@ -360,9 +465,9 @@ export default function VerificacaoArtistaPage() {
 
         <section className="mt-5 rounded-3xl border border-zinc-800 bg-zinc-950 p-5 sm:p-6">
           <div className="mb-5">
-            <h2 className="text-xl font-black">Enviar documentos</h2>
+            <h2 className="text-xl font-black">Documento + foto facial</h2>
             <p className="mt-2 text-sm leading-6 text-zinc-400">
-              Use fotos nítidas, sem cortes. Para RG ou CNH, envie frente e verso. A selfie deve mostrar claramente o seu rosto.
+              Os dois são necessários. Envie o documento e faça a foto facial na hora usando a câmera do aparelho. Para RG ou CNH, envie frente e verso.
             </p>
           </div>
 
@@ -398,17 +503,84 @@ export default function VerificacaoArtistaPage() {
               fileName={back?.name}
             />
 
-            <FileField
-              label="Selfie para conferência"
-              hint="Foto atual do rosto · até 10 MB"
-              disabled={blocked || !moduleReady}
-              onChange={(event) => handleFile(setSelfie, event)}
-              fileName={selfie?.name}
-              accept="image/jpeg,image/png,image/webp"
-            />
+            <div>
+              <label className="mb-2 block text-sm font-bold">Foto facial para conferência</label>
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
+                <p className="text-sm leading-6 text-zinc-400">
+                  A foto é feita agora pela câmera. Não é necessário procurar uma selfie na galeria do celular.
+                </p>
+
+                {selfiePreview && (
+                  <div className="mt-4 overflow-hidden rounded-2xl border border-emerald-500/30 bg-black">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={selfiePreview}
+                      alt="Foto facial capturada"
+                      className="mx-auto aspect-square max-h-72 w-full object-cover"
+                    />
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={abrirCamera}
+                  disabled={blocked || !moduleReady || cameraOpen}
+                  className="mt-4 w-full rounded-2xl border border-purple-500/40 bg-purple-500/10 px-4 py-3.5 font-black text-purple-200 transition hover:bg-purple-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {selfie ? "Refazer foto facial" : "Abrir câmera e fazer foto facial"}
+                </button>
+
+                {selfie && !cameraOpen && (
+                  <p className="mt-3 text-center text-xs font-bold text-emerald-300">
+                    ✓ Foto facial capturada neste aparelho
+                  </p>
+                )}
+
+                {cameraOpen && (
+                  <div className="mt-4 rounded-2xl border border-purple-500/30 bg-black p-3">
+                    <div className="overflow-hidden rounded-xl bg-black">
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="aspect-square w-full object-cover [transform:scaleX(-1)]"
+                      />
+                    </div>
+
+                    <p className="mt-3 text-center text-xs leading-5 text-zinc-400">
+                      Centralize o rosto, retire óculos escuros e evite pouca luz.
+                    </p>
+
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={capturarSelfie}
+                        className="rounded-xl bg-gradient-to-r from-purple-600 to-red-500 px-4 py-3 font-black text-white"
+                      >
+                        Capturar foto
+                      </button>
+                      <button
+                        type="button"
+                        onClick={pararCamera}
+                        className="rounded-xl border border-zinc-700 px-4 py-3 font-bold text-zinc-300"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {cameraError && (
+                  <div className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs leading-5 text-red-200">
+                    {cameraError}
+                  </div>
+                )}
+              </div>
+            </div>
 
             <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4 text-xs leading-5 text-zinc-400">
-              🔒 Os arquivos são destinados à verificação de identidade. O bucket é privado e o cliente não possui permissão para aprovar a própria conta.
+              🔒 Documento e foto facial são necessários para a análise. Os arquivos ficam no bucket privado e o cliente não possui permissão para aprovar a própria conta.
             </div>
 
             <button
