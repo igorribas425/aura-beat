@@ -31,12 +31,12 @@ button, a, input, textarea, select { -webkit-tap-highlight-color: transparent; }
 button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid #ef4444; outline-offset: 2px; }
 
 .aura-explore-map .aura-map-tiles {
-  filter: grayscale(0.72) brightness(0.43) contrast(1.18) saturate(0.8) hue-rotate(195deg);
+  filter: brightness(.82) contrast(1.08) saturate(1.15);
 }
 
 .aura-explore-map .leaflet-control-zoom {
   overflow: hidden;
-  border: 1px solid rgba(255,255,255,.12) !important;
+  border: 1px solid rgba(255,255,255,.13) !important;
   border-radius: 16px !important;
   box-shadow: 0 12px 35px rgba(0,0,0,.42) !important;
 }
@@ -47,66 +47,67 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   width: 42px;
   height: 42px;
   border: 0 !important;
-  background: rgba(7,7,12,.92) !important;
+  background: rgba(8,8,15,.94) !important;
   color: #fff !important;
   font-size: 22px;
   backdrop-filter: blur(12px);
 }
 
 .aura-explore-map .leaflet-control-zoom a:hover {
-  background: rgba(26,17,39,.96) !important;
+  background: rgba(34,20,51,.98) !important;
   color: #d8b4fe !important;
 }
 
 .aura-explore-map .leaflet-control-attribution {
-  background: rgba(0,0,0,.58) !important;
-  color: rgba(255,255,255,.5) !important;
+  background: rgba(0,0,0,.5) !important;
+  color: rgba(255,255,255,.52) !important;
   font-size: 9px;
 }
 
 .aura-explore-map .leaflet-control-attribution a {
-  color: rgba(216,180,254,.82) !important;
+  color: rgba(216,180,254,.9) !important;
 }
 
 .aura-map-tooltip {
   border: 1px solid rgba(255,255,255,.12) !important;
   border-radius: 12px !important;
-  background: rgba(7,7,12,.94) !important;
+  background: rgba(8,8,15,.96) !important;
   color: #fff !important;
-  box-shadow: 0 10px 30px rgba(0,0,0,.45) !important;
+  box-shadow: 0 10px 30px rgba(0,0,0,.42) !important;
   font-size: 12px;
   font-weight: 800;
 }
 
 .aura-map-tooltip::before {
-  border-top-color: rgba(7,7,12,.94) !important;
+  border-top-color: rgba(8,8,15,.96) !important;
 }
 
 .aura-profile-marker {
   position: relative;
   display: flex;
-  min-width: 74px;
+  min-width: 80px;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   transform: translateZ(0);
 }
 
 .aura-profile-marker-photo {
   position: relative;
   display: grid;
-  width: 52px;
-  height: 52px;
+  width: 56px;
+  height: 56px;
   place-items: center;
   overflow: visible;
   border: 3px solid var(--aura-marker);
   border-radius: 999px;
-  background: linear-gradient(145deg,#17111f,#09090d);
+  background: radial-gradient(circle at 35% 30%, #241735, #08080d 68%);
   color: #fff;
   box-shadow:
-    0 0 0 3px rgba(0,0,0,.7),
-    0 0 20px color-mix(in srgb, var(--aura-marker) 62%, transparent),
-    0 10px 28px rgba(0,0,0,.58);
+    0 0 0 3px rgba(4,4,8,.9),
+    0 0 14px color-mix(in srgb, var(--aura-marker) 48%, transparent),
+    0 0 30px color-mix(in srgb, var(--aura-marker) 24%, transparent),
+    0 10px 28px rgba(0,0,0,.52);
 }
 
 .aura-profile-marker-photo::after {
@@ -131,7 +132,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 }
 
 .aura-profile-marker-fallback {
-  font-size: 22px;
+  font-size: 23px;
   font-weight: 900;
 }
 
@@ -139,23 +140,23 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   position: absolute;
   right: -1px;
   bottom: 1px;
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
   border: 3px solid #07070b;
   border-radius: 999px;
   background: #22c55e;
-  box-shadow: 0 0 12px rgba(34,197,94,.9);
+  box-shadow: 0 0 13px rgba(34,197,94,.95);
 }
 
 .aura-profile-marker-own {
   position: absolute;
   left: 50%;
-  top: -10px;
+  top: -11px;
   transform: translateX(-50%);
   border: 1px solid rgba(255,255,255,.25);
   border-radius: 999px;
   background: #fff;
-  padding: 1px 5px;
+  padding: 1px 6px;
   color: #09090b;
   font-size: 7px;
   font-weight: 950;
@@ -164,12 +165,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 
 .aura-profile-marker-distance {
   white-space: nowrap;
-  border: 1px solid rgba(255,255,255,.11);
+  border: 1px solid rgba(255,255,255,.12);
   border-radius: 999px;
-  background: rgba(4,4,8,.9);
-  padding: 2px 7px;
+  background: rgba(6,6,12,.94);
+  padding: 3px 8px;
   color: #fff;
-  box-shadow: 0 6px 18px rgba(0,0,0,.4);
+  box-shadow: 0 6px 18px rgba(0,0,0,.38);
   font-size: 10px;
   font-weight: 900;
   line-height: 1.2;
@@ -181,10 +182,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   width: 34px;
   height: 34px;
   place-items: center;
-  border: 1px solid rgba(196,181,253,.8);
+  border: 1px solid rgba(196,181,253,.88);
   border-radius: 999px;
   background: rgba(139,92,246,.18);
-  box-shadow: 0 0 22px rgba(139,92,246,.7);
+  box-shadow: 0 0 22px rgba(139,92,246,.72);
 }
 
 .aura-self-location-marker::before,
