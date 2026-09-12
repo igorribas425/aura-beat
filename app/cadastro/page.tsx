@@ -8,6 +8,55 @@ import { supabase } from "../../lib/supabase";
 type TipoPerfil = "artist" | "venue";
 type Etapa = "perfil" | "dados";
 
+function somenteNumeros(valor: string) {
+  return valor.replace(/\D/g, "");
+}
+
+function formatarCnpj(valor: string) {
+  const numeros = somenteNumeros(valor).slice(0, 14);
+
+  return numeros
+    .replace(/^(\d{2})(\d)/, "$1.$2")
+    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d)/, ".$1/$2")
+    .replace(/(\d{4})(\d)/, "$1-$2");
+}
+
+function formatarTelefone(valor: string) {
+  const numeros = somenteNumeros(valor).slice(0, 11);
+
+  if (numeros.length <= 10) {
+    return numeros
+      .replace(/^(\d{2})(\d)/, "($1) $2")
+      .replace(/(\d{4})(\d)/, "$1-$2");
+  }
+
+  return numeros
+    .replace(/^(\d{2})(\d)/, "($1) $2")
+    .replace(/(\d{5})(\d)/, "$1-$2");
+}
+
+function cnpjValido(valor: string) {
+  const cnpj = somenteNumeros(valor);
+
+  if (cnpj.length !== 14 || /^(\d)\1{13}$/.test(cnpj)) {
+    return false;
+  }
+
+  const calcularDigito = (base: string, pesos: number[]) => {
+    const soma = base
+      .split("")
+      .reduce((total, numero, index) => total + Number(numero) * pesos[index], 0);
+    const resto = soma % 11;
+    return resto < 2 ? 0 : 11 - resto;
+  };
+
+  const primeiro = calcularDigito(cnpj.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const segundo = calcularDigito(cnpj.slice(0, 12) + primeiro, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+
+  return cnpj.endsWith(`${primeiro}${segundo}`);
+}
+
 export default function CadastroPage() {
   const router = useRouter();
 
@@ -19,6 +68,13 @@ export default function CadastroPage() {
   const [carregando, setCarregando] = useState(false);
   const [mensagem, setMensagem] = useState("");
   const [usuarioJaExiste, setUsuarioJaExiste] = useState(false);
+
+  const [nomeCasa, setNomeCasa] = useState("");
+  const [razaoSocial, setRazaoSocial] = useState("");
+  const [cnpj, setCnpj] = useState("");
+  const [telefone, setTelefone] = useState("");
+  const [cidade, setCidade] = useState("");
+  const [estado, setEstado] = useState("");
 
   function irParaLogin() {
     router.push("/login");
@@ -37,13 +93,47 @@ export default function CadastroPage() {
     setUsuarioJaExiste(false);
 
     if (nome.trim().length < 3) {
-      setMensagem("Digite seu nome completo.");
+      setMensagem(tipo === "venue" ? "Digite o nome completo do responsável." : "Digite seu nome completo.");
       return;
     }
 
     if (senha.length < 6) {
       setMensagem("A senha precisa ter pelo menos 6 caracteres.");
       return;
+    }
+
+    if (tipo === "venue") {
+      const telefoneNumeros = somenteNumeros(telefone);
+
+      if (nomeCasa.trim().length < 2) {
+        setMensagem("Informe o nome da Casa ou nome fantasia.");
+        return;
+      }
+
+      if (razaoSocial.trim().length < 2) {
+        setMensagem("Informe a razão social vinculada ao CNPJ.");
+        return;
+      }
+
+      if (!cnpjValido(cnpj)) {
+        setMensagem("Informe um CNPJ válido. O número será enviado para análise antes da contratação.");
+        return;
+      }
+
+      if (telefoneNumeros.length < 10) {
+        setMensagem("Informe um telefone válido da Casa ou do responsável.");
+        return;
+      }
+
+      if (cidade.trim().length < 2) {
+        setMensagem("Informe a cidade da Casa.");
+        return;
+      }
+
+      if (estado.trim().length !== 2) {
+        setMensagem("Informe a sigla do Estado com 2 letras. Exemplo: RS.");
+        return;
+      }
     }
 
     setCarregando(true);
@@ -112,11 +202,43 @@ export default function CadastroPage() {
         return;
       }
 
-      setMensagem("Conta criada com sucesso!");
+      if (tipo === "venue") {
+        const cnpjNumeros = somenteNumeros(cnpj);
+        const telefoneNumeros = somenteNumeros(telefone);
+
+        const { error: venueError } = await supabase.from("venue_profiles").insert({
+          owner_user_id: data.user.id,
+          trade_name: nomeCasa.trim(),
+          legal_name: razaoSocial.trim(),
+          cnpj: cnpjNumeros,
+          phone: telefoneNumeros,
+          email: email.trim().toLowerCase(),
+          city: cidade.trim(),
+          state: estado.trim().toUpperCase(),
+        });
+
+        if (venueError) {
+          const texto = venueError.message.toLowerCase();
+          const cnpjDuplicado = texto.includes("duplicate") || texto.includes("venue_profiles_cnpj_key");
+
+          setUsuarioJaExiste(true);
+          setMensagem(
+            cnpjDuplicado
+              ? "A conta foi criada, mas este CNPJ já está vinculado a outra Casa. Entre na conta e procure o suporte antes de continuar."
+              : "A conta foi criada, mas não foi possível registrar a Casa. Entre na conta para concluir o perfil e a verificação.",
+          );
+          setCarregando(false);
+          return;
+        }
+
+        setMensagem("Conta criada. A Casa está aguardando verificação antes de poder contratar artistas.");
+      } else {
+        setMensagem("Conta criada com sucesso! Complete seu perfil e a verificação de identidade para contratar com segurança.");
+      }
 
       setTimeout(() => {
         router.push(tipo === "artist" ? "/perfil-artista" : "/perfil-casa");
-      }, 700);
+      }, 900);
     } catch {
       setMensagem("Ocorreu um erro inesperado. Tente novamente.");
       setCarregando(false);
@@ -175,7 +297,7 @@ export default function CadastroPage() {
                   </p>
                   <h3 className="mt-2 text-2xl font-black">Sou Artista</h3>
                   <p className="mt-2 max-w-sm text-sm text-zinc-400">
-                    DJs, MCs, bandas e talentos que querem encontrar eventos, receber ofertas e divulgar seu trabalho.
+                    DJs, MCs, bandas e talentos. A identidade deverá ser verificada antes de uma contratação formal.
                   </p>
 
                   <div className="mt-auto pt-5 text-sm font-black text-purple-300">
@@ -200,7 +322,7 @@ export default function CadastroPage() {
                   </p>
                   <h3 className="mt-2 text-2xl font-black">Sou Casa</h3>
                   <p className="mt-2 max-w-sm text-sm text-zinc-400">
-                    Clubes, casas noturnas, produtores e contratantes que procuram artistas para seus eventos.
+                    Clubes, casas noturnas, produtores e contratantes. CNPJ e dados da empresa são obrigatórios.
                   </p>
 
                   <div className="mt-auto pt-5 text-sm font-black text-red-300">
@@ -234,7 +356,9 @@ export default function CadastroPage() {
                 </p>
                 <h2 className="mt-2 text-2xl font-black sm:text-3xl">Crie sua conta</h2>
                 <p className="mt-2 text-sm text-zinc-400">
-                  Preencha seus dados para começar no Aura Beat.
+                  {tipo === "artist"
+                    ? "Seus dados de acesso. A verificação de identidade será concluída no perfil profissional."
+                    : "Dados de acesso e identificação da empresa. A Casa só poderá contratar após ser verificada."}
                 </p>
               </div>
 
@@ -251,17 +375,106 @@ export default function CadastroPage() {
 
             <form onSubmit={cadastrar} className="mt-7 space-y-4">
               <div>
-                <label className="mb-2 block text-sm font-bold text-zinc-300">Nome completo</label>
+                <label className="mb-2 block text-sm font-bold text-zinc-300">
+                  {tipo === "venue" ? "Nome completo do responsável" : "Nome completo"}
+                </label>
                 <input
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
                   type="text"
-                  placeholder="Seu nome"
+                  placeholder={tipo === "venue" ? "Responsável legal ou operacional" : "Seu nome"}
                   required
                   autoComplete="name"
                   className="w-full rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3.5 outline-none transition focus:border-red-500"
                 />
               </div>
+
+              {tipo === "venue" && (
+                <div className="space-y-4 rounded-2xl border border-red-500/20 bg-red-500/[0.04] p-4">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.16em] text-red-400">Identificação da Casa</p>
+                    <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+                      O CNPJ é validado no formato agora, mas o selo “Casa Verificada” só aparece depois da análise cadastral.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-bold text-zinc-300">Nome da Casa / nome fantasia</label>
+                    <input
+                      value={nomeCasa}
+                      onChange={(e) => setNomeCasa(e.target.value)}
+                      type="text"
+                      placeholder="Ex.: Aura Club"
+                      required
+                      className="w-full rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3.5 outline-none transition focus:border-red-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-bold text-zinc-300">Razão social</label>
+                    <input
+                      value={razaoSocial}
+                      onChange={(e) => setRazaoSocial(e.target.value)}
+                      type="text"
+                      placeholder="Nome empresarial do CNPJ"
+                      required
+                      className="w-full rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3.5 outline-none transition focus:border-red-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-bold text-zinc-300">CNPJ</label>
+                    <input
+                      value={cnpj}
+                      onChange={(e) => setCnpj(formatarCnpj(e.target.value))}
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="00.000.000/0000-00"
+                      required
+                      className="w-full rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3.5 outline-none transition focus:border-red-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-bold text-zinc-300">Telefone</label>
+                    <input
+                      value={telefone}
+                      onChange={(e) => setTelefone(formatarTelefone(e.target.value))}
+                      type="tel"
+                      placeholder="(54) 99999-9999"
+                      required
+                      autoComplete="tel"
+                      className="w-full rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3.5 outline-none transition focus:border-red-500"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-[1fr_88px] gap-3">
+                    <div>
+                      <label className="mb-2 block text-sm font-bold text-zinc-300">Cidade</label>
+                      <input
+                        value={cidade}
+                        onChange={(e) => setCidade(e.target.value)}
+                        type="text"
+                        placeholder="Cidade"
+                        required
+                        className="w-full rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3.5 outline-none transition focus:border-red-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-bold text-zinc-300">UF</label>
+                      <input
+                        value={estado}
+                        onChange={(e) => setEstado(e.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2))}
+                        type="text"
+                        placeholder="RS"
+                        maxLength={2}
+                        required
+                        className="w-full rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3.5 uppercase outline-none transition focus:border-red-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="mb-2 block text-sm font-bold text-zinc-300">E-mail</label>
@@ -290,6 +503,10 @@ export default function CadastroPage() {
                 />
               </div>
 
+              <div className={`rounded-2xl border p-3.5 text-xs leading-relaxed ${tipo === "artist" ? "border-purple-500/20 bg-purple-500/[0.05] text-purple-100" : "border-red-500/20 bg-red-500/[0.05] text-red-100"}`}>
+                🔒 Contratações formais no Aura Beat exigem verificação dos dois lados. Documentos e dados sensíveis nunca devem aparecer no perfil público.
+              </div>
+
               <button
                 disabled={carregando}
                 type="submit"
@@ -303,7 +520,7 @@ export default function CadastroPage() {
                   ? "Criando conta..."
                   : tipo === "artist"
                     ? "Criar conta de Artista"
-                    : "Criar conta de Casa"}
+                    : "Criar Casa para verificação"}
               </button>
 
               {mensagem && (
