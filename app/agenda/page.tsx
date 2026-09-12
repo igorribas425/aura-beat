@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useEffectEvent,
   useMemo,
   useState,
 } from "react";
@@ -332,8 +333,12 @@ export default function AgendaPage() {
     setMensagem,
   ] = useState("");
 
+  const carregarAgendaEffect = useEffectEvent(() => {
+    void carregarAgenda();
+  });
+
   useEffect(() => {
-    carregarAgenda();
+    carregarAgendaEffect();
   }, []);
 
   async function carregarAgenda() {

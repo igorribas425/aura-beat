@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 import { PublicLocationControl } from "../../components/public-location-control";
@@ -185,8 +185,12 @@ export default function PerfilCasaPage() {
     setEventosConcluidos,
   ] = useState(0);
 
+  const carregarPerfilEffect = useEffectEvent(() => {
+    void carregarPerfil();
+  });
+
   useEffect(() => {
-    carregarPerfil();
+    carregarPerfilEffect();
   }, []);
 
   async function carregarPerfil() {

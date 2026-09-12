@@ -3,6 +3,7 @@
 import {
   FormEvent,
   useEffect,
+  useEffectEvent,
   useMemo,
   useRef,
   useState,
@@ -194,14 +195,24 @@ export default function ChatPage() {
   const [busca, setBusca] =
     useState("");
 
+  const iniciarEffect = useEffectEvent(() => {
+    void iniciar();
+  });
+
+  const carregarConversasEffect = useEffectEvent(
+    (modoAtual: ModoPerfil) => {
+      void carregarConversas(modoAtual);
+    }
+  );
+
   useEffect(() => {
-    iniciar();
+    iniciarEffect();
   }, []);
 
   useEffect(() => {
     if (!userId) return;
 
-    carregarConversas(modo);
+    carregarConversasEffect(modo);
   }, [modo, userId]);
 
   useEffect(() => {
@@ -301,6 +312,7 @@ export default function ChatPage() {
       const [
         respostaArtista,
         respostaCasa,
+        respostaPerfil,
       ] = await Promise.all([
         supabase
           .from("artist_profiles")
@@ -319,6 +331,12 @@ export default function ChatPage() {
             "owner_user_id",
             user.id
           )
+          .maybeSingle(),
+
+        supabase
+          .from("profiles")
+          .select("default_mode")
+          .eq("id", user.id)
           .maybeSingle(),
       ]);
 
@@ -377,12 +395,22 @@ export default function ChatPage() {
       }
 
       if (!modoInicial) {
-        if (artistaEncontrado) {
+        if (
+          respostaPerfil.data?.default_mode === "venue" &&
+          casaEncontrada
+        ) {
+          modoInicial = "venue";
+        } else if (
+          respostaPerfil.data?.default_mode === "artist" &&
+          artistaEncontrado
+        ) {
           modoInicial = "artist";
         } else if (
           casaEncontrada
         ) {
           modoInicial = "venue";
+        } else if (artistaEncontrado) {
+          modoInicial = "artist";
         }
       }
 
@@ -1101,7 +1129,7 @@ export default function ChatPage() {
     }
   }
 
-  function trocarModo(
+  async function trocarModo(
     novoModo: ModoPerfil
   ) {
     setModo(novoModo);
@@ -1117,6 +1145,18 @@ export default function ChatPage() {
       "",
       `/chat?mode=${novoModo}`
     );
+
+    if (userId) {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ default_mode: novoModo })
+        .eq("id", userId);
+
+      if (error) {
+        console.error(error);
+        setErro("O modo foi alterado no Chat, mas não foi possível salvá-lo como padrão.");
+      }
+    }
   }
 
   const conversaSelecionada =
@@ -1173,7 +1213,7 @@ export default function ChatPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#050507] text-white">
+    <main className="aura-page">
       <header className="border-b border-zinc-900 bg-black/80 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4">
           <div>
@@ -1211,11 +1251,7 @@ export default function ChatPage() {
             <div className="mb-5 inline-flex rounded-2xl border border-zinc-800 bg-zinc-950 p-1">
               <button
                 type="button"
-                onClick={() =>
-                  trocarModo(
-                    "artist"
-                  )
-                }
+                onClick={() => void trocarModo("artist")}
                 className={`rounded-xl px-4 py-2 text-sm font-black ${
                   modo ===
                   "artist"
@@ -1228,11 +1264,7 @@ export default function ChatPage() {
 
               <button
                 type="button"
-                onClick={() =>
-                  trocarModo(
-                    "venue"
-                  )
-                }
+                onClick={() => void trocarModo("venue")}
                 className={`rounded-xl px-4 py-2 text-sm font-black ${
                   modo ===
                   "venue"
@@ -1246,12 +1278,15 @@ export default function ChatPage() {
           )}
 
         {erro && (
-          <div className="mb-5 rounded-2xl border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
-            {erro}
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-900 bg-red-950/30 p-4 text-sm text-red-300" role="alert">
+            <span>{erro}</span>
+            <button type="button" onClick={() => void iniciar()} className="rounded-lg border border-red-700 px-3 py-1.5 font-bold">
+              Tentar novamente
+            </button>
           </div>
         )}
 
-        <section className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950 lg:grid lg:min-h-[720px] lg:grid-cols-[360px_1fr]">
+        <section className="aura-card overflow-hidden rounded-3xl border lg:grid lg:min-h-[720px] lg:grid-cols-[360px_1fr]">
           <aside className="border-b border-zinc-800 lg:border-b-0 lg:border-r">
             <div className="border-b border-zinc-900 p-5">
               <p className="text-xs font-black text-red-500">

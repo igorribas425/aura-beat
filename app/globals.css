@@ -129,6 +129,12 @@ html[data-theme="light"] .aura-shell {
   box-shadow: 0 8px 30px rgba(0,0,0,.08);
 }
 
+/* As páginas antigas ainda trazem uma barra própria. No shell autenticado,
+   a navegação global assume esse papel sem remover nenhum destino. */
+.aura-shell > div > main > header:first-child {
+  display: none;
+}
+
 .aura-nav-link,
 .aura-mobile-link {
   color: var(--muted);

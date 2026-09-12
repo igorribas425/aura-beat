@@ -2,11 +2,13 @@
 
 import {
   useEffect,
+  useEffectEvent,
   useMemo,
   useState,
 } from "react";
 
 import { useRouter } from "next/navigation";
+import { formatBRL } from "../../lib/finance";
 import { supabase } from "../../lib/supabase";
 
 type Artista = {
@@ -83,10 +85,7 @@ type Filtro =
   | "respondidas";
 
 function dinheiro(valor: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(Number(valor || 0));
+  return formatBRL(Number(valor || 0));
 }
 
 function dataEvento(valor: string) {
@@ -252,8 +251,12 @@ export default function OfertasArtistaPage() {
   const [mensagem, setMensagem] =
     useState("");
 
+  const carregarPaginaEffect = useEffectEvent(() => {
+    void carregarPagina();
+  });
+
   useEffect(() => {
-    carregarPagina();
+    carregarPaginaEffect();
   }, []);
 
   async function carregarPagina(

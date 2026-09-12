@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ProfileAvatar } from "../../components/profile-avatar";
+import { formatBRL } from "../../lib/finance";
 import { supabase } from "../../lib/supabase";
 
 type Artista = {
@@ -27,10 +28,7 @@ type Oferta = {
 };
 
 function dinheiro(valor: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(valor || 0);
+  return formatBRL(Number(valor || 0));
 }
 
 function dataEvento(data: string) {
@@ -125,11 +123,19 @@ export default function HomeArtistaPage() {
   const [erro, setErro] =
     useState("");
 
+  const carregarHomeEffect = useEffectEvent(() => {
+    void carregarHome();
+  });
+
+  const pararMonitoramentoEffect = useEffectEvent(() => {
+    pararMonitoramentoGPS();
+  });
+
   useEffect(() => {
-    carregarHome();
+    carregarHomeEffect();
 
     return () => {
-      pararMonitoramentoGPS();
+      pararMonitoramentoEffect();
     };
   }, []);
 

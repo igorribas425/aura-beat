@@ -2,10 +2,12 @@
 
 import {
   useEffect,
+  useEffectEvent,
   useRef,
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
+import { formatBRL } from "../../lib/finance";
 import { supabase } from "../../lib/supabase";
 
 type BookingStatus =
@@ -89,10 +91,7 @@ const FORM_AVALIACAO_VAZIO: FormAvaliacao = {
 };
 
 function dinheiro(valor: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(Number(valor || 0));
+  return formatBRL(Number(valor || 0));
 }
 
 function dataEvento(valor: string) {
@@ -316,12 +315,20 @@ export default function EventosArtistaPage() {
   const [simulando, setSimulando] =
     useState(false);
 
+  const carregarPaginaEffect = useEffectEvent(() => {
+    void carregarPagina();
+  });
+
+  const limparMonitoramentoEffect = useEffectEvent(() => {
+    pararGpsContinuo();
+    pararSimulacao();
+  });
+
   useEffect(() => {
-    carregarPagina();
+    carregarPaginaEffect();
 
     return () => {
-      pararGpsContinuo();
-      pararSimulacao();
+      limparMonitoramentoEffect();
     };
   }, []);
 

@@ -2,9 +2,10 @@
 
 import "leaflet/dist/leaflet.css";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ProfileAvatar } from "../../components/profile-avatar";
+import { formatBRL } from "../../lib/finance";
 import { supabase } from "../../lib/supabase";
 
 type Casa = {
@@ -37,10 +38,7 @@ type Localizacao = {
 };
 
 function dinheiro(valor: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(valor || 0);
+  return formatBRL(Number(valor || 0));
 }
 
 export default function HomeCasaPage() {
@@ -91,8 +89,16 @@ export default function HomeCasaPage() {
     setEventosConcluidos,
   ] = useState(0);
 
+  const carregarCasaEffect = useEffectEvent(() => {
+    void carregarCasa();
+  });
+
+  const montarMapaEffect = useEffectEvent(() => {
+    void montarMapa();
+  });
+
   useEffect(() => {
-    carregarCasa();
+    carregarCasaEffect();
 
     return () => {
       if (mapaRef.current) {
@@ -105,7 +111,7 @@ export default function HomeCasaPage() {
   useEffect(() => {
     if (!localizacao) return;
 
-    montarMapa();
+    montarMapaEffect();
   }, [localizacao, artistas]);
 
   async function carregarCasa() {
@@ -1116,25 +1122,13 @@ export default function HomeCasaPage() {
                         className="rounded-3xl border border-zinc-800 bg-zinc-950 p-5 transition hover:border-red-500/50"
                       >
                         <div className="flex items-start gap-4">
-                          {artista.avatar_url ? (
-                            <img
-                              src={
-                                artista.avatar_url
-                              }
-                              alt={
-                                artista.stage_name
-                              }
-                              className="h-16 w-16 rounded-2xl object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-purple-700 text-2xl font-black">
-                              {artista.stage_name
-                                ?.charAt(
-                                  0
-                                )
-                                ?.toUpperCase()}
-                            </div>
-                          )}
+                          <ProfileAvatar
+                            kind="artist"
+                            name={artista.stage_name}
+                            url={artista.avatar_url}
+                            sizeClassName="h-16 w-16"
+                            className="rounded-2xl"
+                          />
 
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
@@ -1174,7 +1168,7 @@ export default function HomeCasaPage() {
 
                           <div className="rounded-xl bg-zinc-900 p-3">
                             <p className="text-[10px] uppercase text-zinc-600">
-                              Cachê
+                              Cachê por hora
                             </p>
 
                             <p className="mt-1 text-sm font-bold text-green-400">

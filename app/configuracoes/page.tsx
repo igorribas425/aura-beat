@@ -2,11 +2,13 @@
 
 import {
   useEffect,
+  useEffectEvent,
   useMemo,
   useState,
 } from "react";
 
 import { useRouter } from "next/navigation";
+import { formatBRL } from "../../lib/finance";
 import { supabase } from "../../lib/supabase";
 import { setThemePreference, type ThemePreference } from "../../lib/theme";
 
@@ -73,15 +75,7 @@ type Assinatura = {
 };
 
 function dinheiro(valor: number) {
-  return new Intl.NumberFormat(
-    "pt-BR",
-    {
-      style: "currency",
-      currency: "BRL",
-    }
-  ).format(
-    Number(valor || 0)
-  );
+  return formatBRL(Number(valor || 0));
 }
 
 function data(valor: string | null) {
@@ -327,8 +321,12 @@ export default function ConfiguracoesPage() {
     setMensagem,
   ] = useState("");
 
+  const carregarConfiguracoesEffect = useEffectEvent(() => {
+    void carregarConfiguracoes();
+  });
+
   useEffect(() => {
-    carregarConfiguracoes();
+    carregarConfiguracoesEffect();
   }, []);
 
   async function carregarConfiguracoes() {
