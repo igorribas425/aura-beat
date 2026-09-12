@@ -146,6 +146,82 @@ html[data-theme="light"] .aura-shell {
   box-shadow: var(--shadow-soft);
 }
 
+.aura-brand-mark {
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgba(255,255,255,.82);
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ef4444, #a855f7);
+  box-shadow: 0 0 18px rgba(239,68,68,.55), 0 0 28px rgba(168,85,247,.28);
+}
+
+html[data-theme="light"] .aura-brand-mark {
+  border-color: rgba(24,24,27,.12);
+}
+
+.aura-mode-switch:hover,
+.aura-icon-button:hover {
+  background-color: var(--surface-2);
+  border-color: color-mix(in srgb, #a855f7 38%, var(--border));
+}
+
+.aura-page {
+  min-height: 100vh;
+  background: transparent !important;
+  color: var(--foreground) !important;
+}
+
+.aura-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid var(--border) !important;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--surface) 92%, transparent), color-mix(in srgb, var(--surface-2) 88%, transparent)) !important;
+  box-shadow: var(--shadow-card);
+}
+
+.aura-hero::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 260px;
+  height: 260px;
+  right: -90px;
+  top: -150px;
+  border-radius: 999px;
+  background: var(--aura-hero-glow, rgba(168,85,247,.22));
+  filter: blur(8px);
+}
+
+.aura-kicker {
+  color: var(--aura-accent, #a855f7);
+  font-size: .72rem;
+  font-weight: 900;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+
+.aura-card,
+.aura-stat {
+  border-color: var(--border) !important;
+  background: color-mix(in srgb, var(--surface) 96%, transparent) !important;
+  box-shadow: var(--shadow-card);
+}
+
+.aura-stat {
+  position: relative;
+  overflow: hidden;
+}
+
+.aura-stat::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--aura-stat-accent, linear-gradient(#ef4444, #a855f7));
+}
+
 /* Acabamento premium para cards antigos sem precisar reescrever todas as telas agora. */
 main section[class*="rounded-3xl"],
 main article[class*="rounded-2xl"],

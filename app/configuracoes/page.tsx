@@ -8,13 +8,17 @@ import {
 
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
+import { setThemePreference, type ThemePreference } from "../../lib/theme";
 
 type ModoPerfil = "artist" | "venue";
 
-type Tema =
-  | "system"
-  | "dark"
-  | "light";
+type Tema = ThemePreference;
+
+const themeLabels: Record<Tema, string> = {
+  system: "Sistema",
+  dark: "Escuro",
+  light: "Claro",
+};
 
 type PerfilBase = {
   id: string;
@@ -776,6 +780,28 @@ export default function ConfiguracoesPage() {
     }
   }
 
+  async function alterarTema(novoTema: Tema) {
+    setTema(novoTema);
+    setThemePreference(novoTema);
+    setErro("");
+    setMensagem(`Tema ${themeLabels[novoTema]} aplicado.`);
+    setPerfil((atual) => (atual ? { ...atual, theme: novoTema } : atual));
+
+    if (!perfil) return;
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ theme: novoTema })
+      .eq("id", perfil.id);
+
+    if (error) {
+      console.error(error);
+      setErro(
+        "O tema foi aplicado neste aparelho, mas não foi possível salvar a preferência na conta.",
+      );
+    }
+  }
+
   async function sair() {
     await supabase.auth.signOut();
 
@@ -1085,11 +1111,8 @@ export default function ConfiguracoesPage() {
                         item.valor
                       }
                       type="button"
-                      onClick={() =>
-                        setTema(
-                          item.valor
-                        )
-                      }
+                      aria-pressed={tema === item.valor}
+                      onClick={() => void alterarTema(item.valor)}
                       className={`rounded-2xl border p-4 text-left transition ${
                         tema ===
                         item.valor
@@ -1114,7 +1137,7 @@ export default function ConfiguracoesPage() {
               </div>
 
               <p className="mt-3 text-xs text-zinc-600">
-                A preferência fica salva na sua conta. A aplicação global dos temas claro/automático pode ser refinada mais adiante.
+                A mudança é imediata. Em Sistema, o Aura Beat acompanha automaticamente a aparência do aparelho.
               </p>
             </div>
           </div>

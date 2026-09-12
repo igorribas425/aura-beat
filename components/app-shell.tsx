@@ -4,46 +4,45 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import {
+  AURA_THEME_EVENT,
+  applyTheme,
+  getStoredTheme,
+  isThemePreference,
+  setThemePreference,
+  type ThemePreference,
+} from "../lib/theme";
 
 type Mode = "artist" | "venue";
-type ThemePreference = "system" | "dark" | "light";
-type ResolvedTheme = "dark" | "light";
+type NavIcon = "home" | "explore" | "offers" | "events" | "chat" | "alerts" | "calendar";
 
 const publicPaths = new Set(["/", "/login", "/cadastro", "/cadastro/login"]);
-const themeStorageKey = "aura-theme-preference";
 
-function isThemePreference(value: string | null): value is ThemePreference {
-  return value === "system" || value === "dark" || value === "light";
-}
+function NavigationIcon({ name }: { name: NavIcon }) {
+  const paths: Record<NavIcon, React.ReactNode> = {
+    home: <path d="M3 10.8 12 3l9 7.8V21h-6v-6H9v6H3V10.8Z" />,
+    explore: <><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4m-2-8-2 6-6 2 2-6 6-2Z" /></>,
+    offers: <><path d="M4 5h16v14H4z" /><path d="M8 9h8M8 13h5" /></>,
+    events: <><path d="M12 3 4 7v5c0 5 3.4 8.4 8 9 4.6-.6 8-4 8-9V7l-8-4Z" /><path d="m9 12 2 2 4-4" /></>,
+    chat: <path d="M4 5h16v11H9l-5 4V5Z" />,
+    alerts: <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Z" /><path d="M10 21h4" /></>,
+    calendar: <><path d="M4 6h16v15H4zM8 3v6m8-6v6M4 11h16" /></>,
+  };
 
-function resolveTheme(preference: ThemePreference): ResolvedTheme {
-  if (preference === "dark" || preference === "light") return preference;
-
-  if (typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: light)").matches) {
-    return "light";
-  }
-
-  return "dark";
-}
-
-function applyTheme(preference: ThemePreference) {
-  if (typeof document === "undefined") return;
-
-  const resolved = resolveTheme(preference);
-  const root = document.documentElement;
-
-  root.dataset.theme = resolved;
-  root.dataset.themePreference = preference;
-  root.style.colorScheme = resolved;
-
-  let metaTheme = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-  if (!metaTheme) {
-    metaTheme = document.createElement("meta");
-    metaTheme.name = "theme-color";
-    document.head.appendChild(metaTheme);
-  }
-
-  metaTheme.content = resolved === "light" ? "#f5f5f8" : "#050507";
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {paths[name]}
+    </svg>
+  );
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -54,11 +53,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [authenticated, setAuthenticated] = useState(false);
 
   useEffect(() => {
-    const savedTheme = window.localStorage.getItem(themeStorageKey);
-    if (isThemePreference(savedTheme)) {
-      setTheme(savedTheme);
-      applyTheme(savedTheme);
-    }
+    const savedTheme = getStoredTheme();
+    setTheme(savedTheme);
+    applyTheme(savedTheme);
+
+    const onThemeChange = (event: Event) => {
+      const nextTheme = (event as CustomEvent<unknown>).detail;
+      if (isThemePreference(nextTheme)) setTheme(nextTheme);
+    };
+
+    window.addEventListener(AURA_THEME_EVENT, onThemeChange);
+    return () => window.removeEventListener(AURA_THEME_EVENT, onThemeChange);
   }, []);
 
   useEffect(() => {
@@ -72,8 +77,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         setAuthenticated(false);
         setMode(null);
 
-        const savedTheme = window.localStorage.getItem(themeStorageKey);
-        const nextTheme: ThemePreference = isThemePreference(savedTheme) ? savedTheme : "system";
+        const nextTheme = getStoredTheme();
         setTheme(nextTheme);
         applyTheme(nextTheme);
         return;
@@ -97,8 +101,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       setMode(nextMode);
       setTheme(nextTheme);
-      applyTheme(nextTheme);
-      window.localStorage.setItem(themeStorageKey, nextTheme);
+      setThemePreference(nextTheme);
     }
 
     void loadSessionContext();
@@ -119,46 +122,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
     return () => media.removeEventListener("change", onChange);
   }, [theme]);
-
-  useEffect(() => {
-    if (pathname !== "/configuracoes") return;
-
-    const handleThemeClick = (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null;
-      const button = target?.closest("button");
-      if (!button) return;
-
-      const label = (button.textContent || "").replace(/\s+/g, "").toLowerCase();
-      let nextTheme: ThemePreference | null = null;
-
-      if (label.includes("sistema")) nextTheme = "system";
-      if (label.includes("escuro")) nextTheme = "dark";
-      if (label.includes("claro")) nextTheme = "light";
-      if (!nextTheme) return;
-
-      setTheme(nextTheme);
-      applyTheme(nextTheme);
-      window.localStorage.setItem(themeStorageKey, nextTheme);
-
-      void (async () => {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (!user) return;
-
-        const { error } = await supabase
-          .from("profiles")
-          .update({ theme: nextTheme })
-          .eq("id", user.id);
-
-        if (error) console.error("Erro ao salvar tema:", error);
-      })();
-    };
-
-    document.addEventListener("click", handleThemeClick);
-    return () => document.removeEventListener("click", handleThemeClick);
-  }, [pathname]);
 
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
@@ -189,8 +152,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
             if (updated.theme === "light" || updated.theme === "dark" || updated.theme === "system") {
               setTheme(updated.theme);
-              applyTheme(updated.theme);
-              window.localStorage.setItem(themeStorageKey, updated.theme);
+              setThemePreference(updated.theme);
             }
           },
         )
@@ -235,40 +197,46 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const offers = mode === "venue" ? "/ofertas" : "/ofertas-artista";
   const events = mode === "venue" ? "/eventos-casa" : "/eventos-artista";
   const profile = mode === "venue" ? "/perfil-casa" : "/perfil-artista";
-  const items = [
-    [home, "⌂", "Home"],
-    ["/buscar", "⌕", "Explorar"],
-    [offers, "◈", "Ofertas"],
-    [events, "◆", "Eventos"],
-    ["/chat", "●", "Chat"],
-    ["/notificacoes", "♢", "Alertas"],
+  const items: Array<{ href: string; icon: NavIcon; label: string }> = [
+    { href: home, icon: "home", label: "Home" },
+    { href: "/buscar", icon: "explore", label: "Explorar" },
+    { href: offers, icon: "offers", label: "Ofertas" },
+    { href: events, icon: "events", label: "Eventos" },
+    { href: "/chat", icon: "chat", label: "Chat" },
+    { href: "/notificacoes", icon: "alerts", label: "Alertas" },
   ];
 
   return (
     <div className="aura-shell min-h-screen">
       <header className="aura-shell-header sticky top-0 z-50 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-          <Link href={home} className="font-black tracking-tight">
-            AURA <span className="text-red-500">BEAT</span>
+          <Link href={home} className="flex items-center gap-2.5" aria-label="Aura Beat — Home">
+            <span className="aura-brand-mark" aria-hidden="true" />
+            <span className="font-black tracking-tight">
+              AURA <span className="text-red-500">BEAT</span>
+            </span>
           </Link>
 
           <nav className="hidden items-center gap-1 lg:flex" aria-label="Navegação principal">
-            {items.map(([href, , label]) => (
+            {items.map(({ href, icon, label }) => (
               <Link
                 key={href}
                 href={href}
-                className={`rounded-xl px-3 py-2 text-sm transition ${
+                aria-current={pathname === href ? "page" : undefined}
+                className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition ${
                   pathname === href
                     ? "bg-red-500 text-white"
                     : "aura-nav-link"
                 }`}
               >
+                <NavigationIcon name={icon} />
                 {label}
               </Link>
             ))}
 
             {mode === "artist" && (
-              <Link href="/agenda" className="aura-nav-link rounded-xl px-3 py-2 text-sm transition">
+              <Link href="/agenda" className="aura-nav-link flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition">
+                <NavigationIcon name="calendar" />
                 Agenda
               </Link>
             )}
@@ -277,9 +245,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2">
             <button
               onClick={switchMode}
-              className="rounded-xl border border-purple-500/40 bg-purple-500/10 px-3 py-2 text-xs font-semibold text-purple-500"
+              aria-label={`Alternar do modo ${mode === "venue" ? "Casa" : "Artista"}`}
+              className={`aura-mode-switch rounded-xl border px-3 py-2 text-xs font-bold ${
+                mode === "venue"
+                  ? "border-red-500/40 bg-red-500/10 text-red-500"
+                  : "border-purple-500/40 bg-purple-500/10 text-purple-500"
+              }`}
             >
-              Modo {mode === "venue" ? "Casa" : "Artista"} ⇄
+              {mode === "venue" ? "Casa" : "Artista"} <span aria-hidden="true">⇄</span>
             </button>
 
             <Link href={profile} aria-label="Perfil" className="aura-icon-button rounded-xl px-3 py-2">
@@ -303,15 +276,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         className="aura-mobile-nav fixed inset-x-0 bottom-0 z-50 grid grid-cols-6 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
         aria-label="Navegação mobile"
       >
-        {items.map(([href, icon, label]) => (
+        {items.map(({ href, icon, label }) => (
           <Link
             key={href}
             href={href}
-            className={`flex min-h-16 flex-col items-center justify-center text-[10px] ${
+            aria-current={pathname === href ? "page" : undefined}
+            className={`flex min-h-16 flex-col items-center justify-center gap-1 text-[10px] font-semibold ${
               pathname === href ? "text-red-500" : "aura-mobile-link"
             }`}
           >
-            <span className="text-xl">{icon}</span>
+            <NavigationIcon name={icon} />
             {label}
           </Link>
         ))}
