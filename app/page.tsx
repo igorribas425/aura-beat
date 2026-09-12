@@ -1,11 +1,13 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 
 type Perfil = "artist" | "venue";
 
 export default function Home() {
+  const router = useRouter();
   const [modo, setModo] = useState<"entrar" | "cadastrar">("cadastrar");
   const [perfil, setPerfil] = useState<Perfil>("artist");
   const [nome, setNome] = useState("");
@@ -51,7 +53,7 @@ export default function Home() {
           );
         }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password: senha,
         });
@@ -61,7 +63,22 @@ export default function Home() {
           return;
         }
 
-        setMensagem("✅ Login realizado com sucesso!");
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("default_mode")
+          .eq("id", data.user.id)
+          .single();
+
+        if (profileError) {
+          setMensagem("❌ " + profileError.message);
+          return;
+        }
+
+        if (profile.default_mode === "artist") {
+          router.replace("/home-artista");
+        } else if (profile.default_mode === "venue") {
+          router.replace("/home-casa");
+        }
       }
     } finally {
       setCarregando(false);
