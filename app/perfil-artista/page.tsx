@@ -4,6 +4,62 @@ import { FormEvent, useEffect, useState } from "react";
 import { PublicLocationControl } from "../../components/public-location-control";
 import { supabase } from "../../lib/supabase";
 
+type VerificationStatus = "pending" | "verified" | "rejected" | "suspended" | null;
+
+function verificationInfo(status: VerificationStatus) {
+  switch (status) {
+    case "verified":
+      return {
+        title: "Artista Verificado",
+        description:
+          "Sua identidade foi aprovada. O selo de Artista Verificado pode aparecer nas áreas públicas do Aura Beat.",
+        icon: "✓",
+        className:
+          "border-green-500/30 bg-green-500/10 text-green-300",
+      };
+
+    case "pending":
+      return {
+        title: "Verificação pendente",
+        description:
+          "Seu perfil ainda está aguardando análise. Contratações formais só serão liberadas quando os dois lados estiverem verificados.",
+        icon: "⌛",
+        className:
+          "border-amber-500/30 bg-amber-500/10 text-amber-200",
+      };
+
+    case "rejected":
+      return {
+        title: "Verificação recusada",
+        description:
+          "Será necessário revisar os dados de identidade antes de solicitar uma nova análise.",
+        icon: "!",
+        className:
+          "border-red-500/30 bg-red-500/10 text-red-300",
+      };
+
+    case "suspended":
+      return {
+        title: "Verificação suspensa",
+        description:
+          "Este perfil está temporariamente impedido de formalizar novas contratações.",
+        icon: "!",
+        className:
+          "border-red-500/30 bg-red-500/10 text-red-300",
+      };
+
+    default:
+      return {
+        title: "Verificação de identidade necessária",
+        description:
+          "Para proteger Artista e Casa, a identidade precisa ser confirmada antes de uma contratação formal.",
+        icon: "🔒",
+        className:
+          "border-purple-500/30 bg-purple-500/10 text-purple-200",
+      };
+  }
+}
+
 export default function PerfilArtistaPage() {
   const [stageName, setStageName] = useState("");
   const [bio, setBio] = useState("");
@@ -19,6 +75,8 @@ export default function PerfilArtistaPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [profileExists, setProfileExists] = useState(false);
+  const [verificationStatus, setVerificationStatus] =
+    useState<VerificationStatus>(null);
 
   useEffect(() => {
     async function carregarPerfil() {
@@ -49,6 +107,9 @@ export default function PerfilArtistaPage() {
         setFreeRadius(String(data.free_radius_km ?? ""));
         setAvailabilityRadius(String(data.availability_radius_km ?? ""));
         setAcceptedEventTypes((data.accepted_event_types ?? []).join(", "));
+        setVerificationStatus(
+          (data.verification_status ?? null) as VerificationStatus,
+        );
       }
     }
 
@@ -102,6 +163,9 @@ export default function PerfilArtistaPage() {
       }
 
       setProfileExists(true);
+      setVerificationStatus(
+        (artist.verification_status ?? verificationStatus ?? null) as VerificationStatus,
+      );
 
       if (style.trim()) {
         await supabase
@@ -135,8 +199,10 @@ export default function PerfilArtistaPage() {
     }
   }
 
+  const verification = verificationInfo(verificationStatus);
+
   return (
-    <main className="min-h-screen bg-[#07080b] text-white px-4 py-8">
+    <main className="min-h-screen bg-[#07080b] px-4 py-8 text-white">
       <div className="mx-auto max-w-2xl">
         <div className="mb-8">
           <p className="text-sm font-semibold text-red-500">AURA BEAT</p>
@@ -147,6 +213,29 @@ export default function PerfilArtistaPage() {
             Essas informações serão mostradas para Casas e contratantes.
           </p>
         </div>
+
+        <section
+          className={`mb-5 rounded-3xl border p-5 ${verification.className}`}
+        >
+          <div className="flex items-start gap-4">
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-current/20 bg-black/10 text-xl font-black">
+              {verification.icon}
+            </div>
+
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] opacity-80">
+                Segurança da conta
+              </p>
+              <h2 className="mt-1 text-xl font-black">{verification.title}</h2>
+              <p className="mt-2 text-sm leading-6 opacity-90">
+                {verification.description}
+              </p>
+              <p className="mt-3 text-xs opacity-70">
+                Documentos pessoais, CPF e imagens de verificação nunca devem aparecer no perfil público.
+              </p>
+            </div>
+          </div>
+        </section>
 
         <form
           onSubmit={salvar}
