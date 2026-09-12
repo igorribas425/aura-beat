@@ -15,27 +15,86 @@ type ExploreMapProps = {
 
 const DEFAULT_CENTER: [number, number] = [-14.235, -51.9253];
 
-function markerIcon(
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function safeImageUrl(value: string | null) {
+  if (!value) return null;
+
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return null;
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
+function selfLocationIcon(leaflet: typeof import("leaflet")) {
+  return leaflet.divIcon({
+    className: "",
+    html: `
+      <div class="aura-self-location-marker" title="Sua localização">
+        <span></span>
+      </div>
+    `,
+    iconSize: [34, 34],
+    iconAnchor: [17, 17],
+  });
+}
+
+function profileMarkerIcon(
   leaflet: typeof import("leaflet"),
-  kind: ExploreProfile["kind"] | "self",
-  available = false,
+  profile: ExploreProfile,
 ) {
-  const appearance =
-    kind === "self"
-      ? { background: "#22c55e", symbol: "●", label: "Sua localização" }
-      : kind === "artist"
-        ? {
-            background: available ? "#16a34a" : "linear-gradient(135deg,#ef4444,#7e22ce)",
-            symbol: "♫",
-            label: available ? "Artista disponível agora" : "Artista",
-          }
-        : { background: "linear-gradient(135deg,#2563eb,#06b6d4)", symbol: "⌂", label: "Casa" };
+  const imageUrl = safeImageUrl(profile.avatarUrl);
+  const isArtist = profile.kind === "artist";
+  const markerColor = profile.isOwnProfile
+    ? "#ffffff"
+    : isArtist
+      ? "#a855f7"
+      : "#ff244f";
+  const fallback = isArtist ? "♫" : "⌂";
+  const name = escapeHtml(profile.name);
+  const distance =
+    profile.distanceKm === null
+      ? ""
+      : `<span class="aura-profile-marker-distance">${escapeHtml(
+          profile.distanceKm < 1
+            ? `${Math.max(1, Math.round(profile.distanceKm * 1000))} m`
+            : `${profile.distanceKm.toFixed(1)} km`,
+        )}</span>`;
+  const availability =
+    isArtist && profile.availableNow
+      ? '<span class="aura-profile-marker-online" title="Disponível agora"></span>'
+      : "";
+  const ownBadge = profile.isOwnProfile
+    ? '<span class="aura-profile-marker-own">VOCÊ</span>'
+    : "";
+  const media = imageUrl
+    ? `<img src="${escapeHtml(imageUrl)}" alt="" />`
+    : `<span class="aura-profile-marker-fallback">${fallback}</span>`;
 
   return leaflet.divIcon({
     className: "",
-    html: `<div title="${appearance.label}" style="width:42px;height:42px;border-radius:14px;background:${appearance.background};border:3px solid white;display:flex;align-items:center;justify-content:center;color:white;font-size:20px;font-weight:900;box-shadow:0 6px 22px rgba(0,0,0,.48)">${appearance.symbol}</div>`,
-    iconSize: [42, 42],
-    iconAnchor: [21, 21],
+    html: `
+      <div class="aura-profile-marker" title="${name}" style="--aura-marker:${markerColor}">
+        <div class="aura-profile-marker-photo">
+          ${media}
+          ${availability}
+          ${ownBadge}
+        </div>
+        ${distance}
+      </div>
+    `,
+    iconSize: [74, 76],
+    iconAnchor: [37, 30],
   });
 }
 
@@ -54,73 +113,118 @@ export function ExploreMap({ profiles, userLocation, onSelect }: ExploreMapProps
 
     async function renderMap() {
       if (!elementRef.current) return;
+
       const leaflet = await import("leaflet");
       if (cancelled || !elementRef.current) return;
 
       if (!mapRef.current) {
-        mapRef.current = leaflet.map(elementRef.current, { zoomControl: true }).setView(
-          DEFAULT_CENTER,
-          4,
-        );
+        mapRef.current = leaflet
+          .map(elementRef.current, {
+            zoomControl: false,
+            attributionControl: true,
+          })
+          .setView(DEFAULT_CENTER, 4);
+
+        leaflet.control.zoom({ position: "bottomright" }).addTo(mapRef.current);
+
         leaflet
           .tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
             maxZoom: 19,
+            className: "aura-map-tiles",
             attribution:
               '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
           })
           .addTo(mapRef.current);
+
         markersRef.current = leaflet.layerGroup().addTo(mapRef.current);
       }
 
       const map = mapRef.current;
       const layer = markersRef.current;
       if (!map || !layer) return;
+
       layer.clearLayers();
 
       const bounds: Array<[number, number]> = [];
+
       if (userLocation) {
         const point: [number, number] = [userLocation.lat, userLocation.lng];
         bounds.push(point);
-        leaflet
-          .marker(point, { icon: markerIcon(leaflet, "self"), zIndexOffset: 1000 })
-          .bindTooltip("Sua localização", { direction: "top" })
-          .addTo(layer);
+
         leaflet
           .circle(point, {
-            radius: Math.max(userLocation.accuracy, 50),
-            color: "#22c55e",
-            fillColor: "#22c55e",
-            fillOpacity: 0.08,
-            weight: 1,
+            radius: Math.max(userLocation.accuracy, 80),
+            color: "#8b5cf6",
+            fillColor: "#8b5cf6",
+            fillOpacity: 0.12,
+            weight: 1.5,
+          })
+          .addTo(layer);
+
+        leaflet
+          .marker(point, {
+            icon: selfLocationIcon(leaflet),
+            zIndexOffset: 1200,
+          })
+          .bindTooltip("Sua localização", {
+            direction: "top",
+            className: "aura-map-tooltip",
           })
           .addTo(layer);
       }
 
       profiles.forEach((profile) => {
         if (profile.latitude === null || profile.longitude === null) return;
+
         const point: [number, number] = [profile.latitude, profile.longitude];
         bounds.push(point);
-        leaflet
+
+        const marker = leaflet
           .marker(point, {
-            icon: markerIcon(
-              leaflet,
-              profile.isOwnProfile ? "self" : profile.kind,
-              profile.availableNow,
-            ),
+            icon: profileMarkerIcon(leaflet, profile),
+            zIndexOffset: profile.availableNow ? 500 : 100,
           })
           .bindTooltip(
-            profile.isOwnProfile ? `${profile.name} (seu perfil)` : profile.name,
-            { direction: "top" },
+            profile.isOwnProfile ? `${profile.name} · seu perfil` : profile.name,
+            {
+              direction: "top",
+              offset: [0, -24],
+              className: "aura-map-tooltip",
+            },
           )
           .on("click", () => onSelectRef.current(profile))
           .addTo(layer);
+
+        if (profile.kind === "artist" && profile.availableNow) {
+          leaflet
+            .circleMarker(point, {
+              radius: 30,
+              color: "#22c55e",
+              fillColor: "#22c55e",
+              fillOpacity: 0.06,
+              opacity: 0.45,
+              weight: 1.5,
+            })
+            .on("click", () => marker.fire("click"))
+            .addTo(layer);
+        }
       });
 
-      if (bounds.length === 1) map.setView(bounds[0], 12);
-      if (bounds.length > 1) map.fitBounds(bounds, { padding: [48, 48], maxZoom: 13 });
+      if (bounds.length === 1) {
+        map.setView(bounds[0], 12);
+      } else if (bounds.length > 1) {
+        map.fitBounds(bounds, {
+          paddingTopLeft: [42, 80],
+          paddingBottomRight: [42, 110],
+          maxZoom: 13,
+        });
+      }
+
+      window.requestAnimationFrame(() => map.invalidateSize());
     }
 
     void renderMap();
+
     return () => {
       cancelled = true;
     };
@@ -140,15 +244,36 @@ export function ExploreMap({ profiles, userLocation, onSelect }: ExploreMapProps
   );
 
   return (
-    <div>
+    <div className="aura-explore-map relative overflow-hidden bg-[#08080d]">
+      <div className="pointer-events-none absolute left-3 top-3 z-[450] flex flex-wrap gap-2">
+        <span className="rounded-full border border-purple-400/30 bg-black/80 px-3 py-1.5 text-[11px] font-bold text-purple-200 shadow-lg backdrop-blur">
+          <span className="mr-1.5 text-purple-400">●</span>
+          Artistas
+        </span>
+        <span className="rounded-full border border-red-400/30 bg-black/80 px-3 py-1.5 text-[11px] font-bold text-red-200 shadow-lg backdrop-blur">
+          <span className="mr-1.5 text-red-400">●</span>
+          Casas
+        </span>
+        <span className="rounded-full border border-green-400/30 bg-black/80 px-3 py-1.5 text-[11px] font-bold text-green-200 shadow-lg backdrop-blur">
+          <span className="mr-1.5 text-green-400">●</span>
+          Disponível
+        </span>
+      </div>
+
       <div
         ref={elementRef}
-        className="h-[58vh] min-h-[420px] w-full bg-zinc-900"
-        aria-label="Mapa de Artistas e Casas"
+        className="h-[64vh] min-h-[460px] w-full bg-[#08080d]"
+        aria-label="Mapa universal de Artistas e Casas"
       />
+
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[400] h-24 bg-gradient-to-t from-black/55 to-transparent" />
+
       <div className="sr-only" aria-label="Perfis no mapa">
         {mappableProfiles.map((profile) => (
-          <button key={`${profile.kind}-${profile.id}`} onClick={() => onSelect(profile)}>
+          <button
+            key={`${profile.kind}-${profile.id}`}
+            onClick={() => onSelect(profile)}
+          >
             Abrir {profile.name}
           </button>
         ))}
