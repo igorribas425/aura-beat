@@ -194,6 +194,16 @@ html[data-theme="light"] .aura-brand-mark {
   filter: blur(8px);
 }
 
+.aura-artist-hero {
+  --aura-accent: #a855f7;
+  --aura-hero-glow: rgba(168,85,247,.24);
+}
+
+.aura-venue-hero {
+  --aura-accent: #ef4444;
+  --aura-hero-glow: rgba(239,68,68,.22);
+}
+
 .aura-kicker {
   color: var(--aura-accent, #a855f7);
   font-size: .72rem;
@@ -348,6 +358,37 @@ html[data-theme="light"] .bg-purple-600.text-white,
 html[data-theme="light"] .bg-green-500.text-white,
 html[data-theme="light"] .bg-blue-500.text-white {
   color: #fff !important;
+}
+
+html[data-theme="light"] [class~="bg-red-500"],
+html[data-theme="light"] [class~="bg-red-600"],
+html[data-theme="light"] [class~="bg-purple-500"],
+html[data-theme="light"] [class~="bg-purple-600"],
+html[data-theme="light"] [class~="bg-green-500"],
+html[data-theme="light"] [class~="bg-blue-500"] {
+  color: #fff !important;
+}
+
+html[data-theme="light"] [class~="text-purple-200"],
+html[data-theme="light"] [class~="text-purple-300"] {
+  color: #6b21a8 !important;
+}
+
+html[data-theme="light"] [class~="text-red-200"],
+html[data-theme="light"] [class~="text-red-300"],
+html[data-theme="light"] [class~="text-red-400"] {
+  color: #b91c1c !important;
+}
+
+html[data-theme="light"] [class~="text-green-300"],
+html[data-theme="light"] [class~="text-green-400"] {
+  color: #15803d !important;
+}
+
+html[data-theme="light"] [class~="text-blue-300"],
+html[data-theme="light"] [class~="text-blue-400"],
+html[data-theme="light"] [class~="text-cyan-200"] {
+  color: #1d4ed8 !important;
 }
 
 .aura-explore-map .aura-map-tiles {

@@ -4,6 +4,7 @@ import "leaflet/dist/leaflet.css";
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ProfileAvatar } from "../../components/profile-avatar";
 import { supabase } from "../../lib/supabase";
 
 type Casa = {
@@ -12,6 +13,7 @@ type Casa = {
   city: string | null;
   state: string | null;
   verification_status: string;
+  avatar_url: string | null;
 };
 
 type ArtistaProximo = {
@@ -131,7 +133,8 @@ export default function HomeCasaPage() {
           trade_name,
           city,
           state,
-          verification_status
+          verification_status,
+          avatar_url
           `
         )
         .eq("owner_user_id", user.id)
@@ -788,12 +791,6 @@ export default function HomeCasaPage() {
     );
   }
 
-  async function sair() {
-    await supabase.auth.signOut();
-
-    router.replace("/login");
-  }
-
   function statusCasa() {
     if (
       casa?.verification_status ===
@@ -839,7 +836,7 @@ export default function HomeCasaPage() {
 
   if (carregando) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#050507] text-white">
+      <main className="aura-page flex min-h-screen items-center justify-center">
         <div className="text-center">
           <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-zinc-800 border-t-red-500" />
 
@@ -859,76 +856,60 @@ export default function HomeCasaPage() {
     "verified";
 
   return (
-    <main className="min-h-screen bg-[#050507] pb-28 text-white">
-      <header className="border-b border-zinc-900 bg-black/70 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
-          <div>
-            <p className="text-xl font-black">
-              AURA{" "}
-              <span className="text-red-500">
-                BEAT
-              </span>
-            </p>
-
-            <p className="text-xs text-zinc-500">
-              Área da Casa
-            </p>
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              onClick={() =>
-                router.push(
-                  "/perfil-casa"
-                )
-              }
-              className="rounded-xl border border-zinc-800 px-4 py-2 text-sm text-zinc-300 transition hover:bg-zinc-900"
-            >
-              Perfil
-            </button>
-
-            <button
-              onClick={sair}
-              className="rounded-xl border border-zinc-800 px-4 py-2 text-sm text-zinc-300 transition hover:bg-zinc-900"
-            >
-              Sair
-            </button>
-          </div>
-        </div>
-      </header>
-
+    <main className="aura-page pb-8">
       <div className="mx-auto max-w-7xl space-y-6 px-4 py-6">
-        <section className="rounded-3xl border border-zinc-800 bg-gradient-to-br from-zinc-950 via-zinc-950 to-red-950/30 p-6">
+        <section className="aura-hero aura-venue-hero rounded-3xl p-6 sm:p-8">
           <div className="flex flex-col justify-between gap-5 md:flex-row md:items-center">
-            <div>
-              <p className="text-sm font-bold text-red-500">
-                PAINEL DA CASA
-              </p>
-
-              <h1 className="mt-2 text-3xl font-black">
-                {casa?.trade_name}
-              </h1>
-
-              <p className="mt-2 text-zinc-400">
-                {casa?.city ||
-                  "Cidade não informada"}
-
-                {casa?.state
-                  ? ` - ${casa.state}`
-                  : ""}
-              </p>
+            <div className="flex items-center gap-4">
+              <ProfileAvatar
+                kind="venue"
+                name={casa?.trade_name || "Casa"}
+                url={casa?.avatar_url}
+                sizeClassName="h-20 w-20 sm:h-24 sm:w-24"
+                className="rounded-3xl shadow-[0_0_35px_rgba(239,68,68,0.22)]"
+              />
+              <div>
+                <p className="aura-kicker">Painel da Casa</p>
+                <h1 className="mt-2 text-3xl font-black">
+                  {casa?.trade_name}
+                </h1>
+                <p className="mt-2 text-zinc-400">
+                  {casa?.city || "Cidade não informada"}
+                  {casa?.state ? ` — ${casa.state}` : ""}
+                </p>
+              </div>
             </div>
 
-            <div
-              className={`rounded-full border px-4 py-2 text-sm font-bold ${status.classe}`}
-            >
-              {status.texto}
+            <div className="flex flex-col items-start gap-3 md:items-end">
+              <div
+                className={`rounded-full border px-4 py-2 text-sm font-bold ${status.classe}`}
+              >
+                {status.texto}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {casa?.id && (
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/casas/${casa.id}`)}
+                    className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm font-bold text-red-300"
+                  >
+                    Ver perfil público
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => router.push("/ofertas")}
+                  className="rounded-xl bg-red-500 px-4 py-2 text-sm font-black text-white"
+                >
+                  Criar oferta
+                </button>
+              </div>
             </div>
           </div>
         </section>
 
-        <section className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
+        <section className="grid gap-3 sm:grid-cols-2" aria-label="Resumo da Casa">
+          <div className="aura-stat rounded-2xl border p-5">
             <p className="text-sm text-zinc-500">
               Avaliação da Casa
             </p>
@@ -948,7 +929,7 @@ export default function HomeCasaPage() {
             </p>
           </div>
 
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
+          <div className="aura-stat rounded-2xl border p-5">
             <p className="text-sm text-zinc-500">
               Eventos concluídos
             </p>
@@ -1258,65 +1239,6 @@ export default function HomeCasaPage() {
         )}
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 border-t border-zinc-800 bg-black/95 backdrop-blur md:hidden">
-        <div className="mx-auto grid max-w-md grid-cols-4">
-          <button
-            onClick={() =>
-              router.push(
-                "/buscar"
-              )
-            }
-            className="py-3 text-xs text-zinc-400"
-          >
-            <div className="text-xl">
-              ⌕
-            </div>
-            Explorar
-          </button>
-
-          <button
-            onClick={() =>
-              router.push(
-                "/ofertas"
-              )
-            }
-            className="py-3 text-xs text-zinc-400"
-          >
-            <div className="text-xl">
-              📣
-            </div>
-            Ofertas
-          </button>
-
-          <button
-            onClick={() =>
-              router.push(
-                "/chat"
-              )
-            }
-            className="py-3 text-xs text-zinc-400"
-          >
-            <div className="text-xl">
-              💬
-            </div>
-            Chat
-          </button>
-
-          <button
-            onClick={() =>
-              router.push(
-                "/perfil-casa"
-              )
-            }
-            className="py-3 text-xs text-zinc-400"
-          >
-            <div className="text-xl">
-              🏠
-            </div>
-            Perfil
-          </button>
-        </div>
-      </nav>
     </main>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ProfileAvatar } from "../../components/profile-avatar";
 import { supabase } from "../../lib/supabase";
 
 type Artista = {
@@ -11,6 +12,7 @@ type Artista = {
   base_state: string | null;
   fixed_fee: number | null;
   verification_status: string | null;
+  avatar_url: string | null;
 };
 
 type Oferta = {
@@ -334,7 +336,8 @@ export default function HomeArtistaPage() {
           base_city,
           base_state,
           fixed_fee,
-          verification_status
+          verification_status,
+          avatar_url
           `
         )
         .eq("user_id", user.id)
@@ -770,17 +773,9 @@ export default function HomeArtistaPage() {
     }
   }
 
-  async function sair() {
-    pararMonitoramentoGPS();
-
-    await supabase.auth.signOut();
-
-    router.replace("/login");
-  }
-
   if (carregando) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#050507] text-white">
+      <main className="aura-page flex min-h-screen items-center justify-center">
         <div className="text-center">
           <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-zinc-800 border-t-red-500" />
 
@@ -793,32 +788,7 @@ export default function HomeArtistaPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#050507] pb-28 text-white">
-      <header className="border-b border-zinc-900 bg-black/60 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-          <button
-            onClick={() =>
-              router.push(
-                "/home-artista"
-              )
-            }
-            className="text-xl font-black"
-          >
-            AURA{" "}
-            <span className="text-red-500">
-              BEAT
-            </span>
-          </button>
-
-          <button
-            onClick={sair}
-            className="rounded-xl border border-zinc-800 px-4 py-2 text-sm text-zinc-300 transition hover:bg-zinc-900"
-          >
-            Sair
-          </button>
-        </div>
-      </header>
-
+    <main className="aura-page pb-8">
       <div className="mx-auto max-w-6xl space-y-6 px-4 py-6">
         {erro && (
           <div className="rounded-2xl border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
@@ -826,15 +796,17 @@ export default function HomeArtistaPage() {
           </div>
         )}
 
-        <section className="overflow-hidden rounded-3xl border border-zinc-800 bg-gradient-to-br from-zinc-950 via-zinc-950 to-red-950/30 p-6">
+        <section className="aura-hero aura-artist-hero rounded-3xl p-6 sm:p-8">
+          <p className="aura-kicker">Painel do Artista</p>
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-4">
-              <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-red-500 to-purple-700 text-3xl font-black shadow-[0_0_35px_rgba(239,68,68,0.25)]">
-                {artista?.stage_name
-                  ?.charAt(0)
-                  ?.toUpperCase() ||
-                  "A"}
-              </div>
+              <ProfileAvatar
+                kind="artist"
+                name={artista?.stage_name || "Artista"}
+                url={artista?.avatar_url}
+                sizeClassName="h-20 w-20 sm:h-24 sm:w-24"
+                className="rounded-3xl shadow-[0_0_35px_rgba(168,85,247,0.24)]"
+              />
 
               <div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -864,6 +836,25 @@ export default function HomeArtistaPage() {
                 <span className="mt-3 inline-block rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-1 text-xs font-bold text-purple-300">
                   Plano {plano}
                 </span>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {artista?.id && (
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/artistas/${artista.id}`)}
+                      className="rounded-xl border border-purple-500/40 bg-purple-500/10 px-4 py-2 text-sm font-bold text-purple-300"
+                    >
+                      Ver Press Kit
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => router.push("/buscar")}
+                    className="rounded-xl border border-zinc-700 px-4 py-2 text-sm font-bold"
+                  >
+                    Explorar perfis
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1006,8 +997,8 @@ export default function HomeArtistaPage() {
           )}
         </section>
 
-        <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
+        <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Resumo do Artista">
+          <div className="aura-stat rounded-2xl border p-4">
             <p className="text-sm text-zinc-500">
               Avaliação
             </p>
@@ -1025,7 +1016,7 @@ export default function HomeArtistaPage() {
             </p>
           </div>
 
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
+          <div className="aura-stat rounded-2xl border p-4">
             <p className="text-sm text-zinc-500">
               Eventos concluídos
             </p>
@@ -1035,7 +1026,7 @@ export default function HomeArtistaPage() {
             </p>
           </div>
 
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
+          <div className="aura-stat rounded-2xl border p-4">
             <p className="text-sm text-zinc-500">
               Cachês líquidos
             </p>
@@ -1049,7 +1040,7 @@ export default function HomeArtistaPage() {
             </p>
           </div>
 
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
+          <div className="aura-stat rounded-2xl border p-4">
             <p className="text-sm text-zinc-500">
               Cachê por hora
             </p>
@@ -1096,7 +1087,7 @@ export default function HomeArtistaPage() {
             <button
               onClick={() =>
                 router.push(
-                  "/ofertas"
+                  "/ofertas-artista"
                 )
               }
               className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-red-500/50"
@@ -1214,7 +1205,7 @@ export default function HomeArtistaPage() {
             <button
               onClick={() =>
                 router.push(
-                  "/ofertas"
+                  "/ofertas-artista"
                 )
               }
               className="text-sm font-semibold text-red-500"
@@ -1260,7 +1251,7 @@ export default function HomeArtistaPage() {
                       }
                       onClick={() =>
                         router.push(
-                          "/ofertas"
+                          "/ofertas-artista"
                         )
                       }
                       className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-red-500/50"
@@ -1346,77 +1337,6 @@ export default function HomeArtistaPage() {
         </section>
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 border-t border-zinc-800 bg-black/95 backdrop-blur md:hidden">
-        <div className="mx-auto grid max-w-md grid-cols-5">
-          <button
-            onClick={() =>
-              router.push(
-                "/home-artista"
-              )
-            }
-            className="py-3 text-center text-xs text-red-500"
-          >
-            <div className="text-xl">
-              ⌂
-            </div>
-            Home
-          </button>
-
-          <button
-            onClick={() =>
-              router.push(
-                "/ofertas"
-              )
-            }
-            className="py-3 text-center text-xs text-zinc-400"
-          >
-            <div className="text-xl">
-              🔥
-            </div>
-            Ofertas
-          </button>
-
-          <button
-            onClick={() =>
-              router.push(
-                "/agenda"
-              )
-            }
-            className="py-3 text-center text-xs text-zinc-400"
-          >
-            <div className="text-xl">
-              📅
-            </div>
-            Agenda
-          </button>
-
-          <button
-            onClick={() =>
-              router.push("/chat")
-            }
-            className="py-3 text-center text-xs text-zinc-400"
-          >
-            <div className="text-xl">
-              💬
-            </div>
-            Chat
-          </button>
-
-          <button
-            onClick={() =>
-              router.push(
-                "/perfil-artista"
-              )
-            }
-            className="py-3 text-center text-xs text-zinc-400"
-          >
-            <div className="text-xl">
-              👤
-            </div>
-            Perfil
-          </button>
-        </div>
-      </nav>
     </main>
   );
 }
