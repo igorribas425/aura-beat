@@ -609,18 +609,14 @@ export default function ConfiguracoesPage() {
         </section>
 
         <section className="rounded-3xl border border-zinc-800 bg-zinc-950 p-6">
-          <p className="text-xs font-black text-red-500">PERFIS</p>
-          <h2 className="mt-1 text-2xl font-black">Meus perfis</h2>
+          <p className="text-xs font-black text-red-500">PERFIL</p>
+          <h2 className="mt-1 text-2xl font-black">Meu perfil</h2>
           <p className="mt-2 text-sm text-zinc-500">
-            Os perfis pertencem à mesma conta e usam o mesmo login.
+            Mostrando o perfil do modo atual: {modoAtual === "venue" ? "Casa" : "Artista"}.
           </p>
 
-          <div
-            className={`mt-6 grid gap-4 ${
-              possuiDoisPerfis ? "md:grid-cols-2" : "md:grid-cols-1"
-            }`}
-          >
-            {artista && (
+          <div className="mt-6 grid gap-4">
+            {modoAtual === "artist" && artista && (
               <article className="rounded-2xl border border-zinc-800 bg-black/30 p-5">
                 <div className="flex items-center justify-between gap-4">
                   <div>
@@ -632,11 +628,9 @@ export default function ConfiguracoesPage() {
                     </h3>
                   </div>
 
-                  {modoAtual === "artist" && (
-                    <span className="rounded-full border border-red-800 bg-red-950/30 px-3 py-1 text-xs font-black text-red-400">
-                      Atual
-                    </span>
-                  )}
+                  <span className="rounded-full border border-red-800 bg-red-950/30 px-3 py-1 text-xs font-black text-red-400">
+                    Atual
+                  </span>
                 </div>
 
                 <div className="mt-5 grid grid-cols-2 gap-3">
@@ -658,7 +652,7 @@ export default function ConfiguracoesPage() {
               </article>
             )}
 
-            {casa && (
+            {modoAtual === "venue" && casa && (
               <article className="rounded-2xl border border-zinc-800 bg-black/30 p-5">
                 <div className="flex items-center justify-between gap-4">
                   <div>
@@ -673,11 +667,9 @@ export default function ConfiguracoesPage() {
                     </p>
                   </div>
 
-                  {modoAtual === "venue" && (
-                    <span className="rounded-full border border-red-800 bg-red-950/30 px-3 py-1 text-xs font-black text-red-400">
-                      Atual
-                    </span>
-                  )}
+                  <span className="rounded-full border border-red-800 bg-red-950/30 px-3 py-1 text-xs font-black text-red-400">
+                    Atual
+                  </span>
                 </div>
 
                 <div className="mt-5 grid grid-cols-2 gap-3">
