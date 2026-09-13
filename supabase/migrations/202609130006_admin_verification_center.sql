@@ -6,6 +6,16 @@
 
 create extension if not exists pgcrypto;
 
+-- O schema remoto atual de artist_profiles ainda nao aceita "suspended".
+-- A Central Administrativa precisa desse estado para bloquear formalmente um
+-- Artista ja verificado sem apagar o historico da solicitacao aprovada.
+alter table public.artist_profiles
+  drop constraint if exists artist_profiles_verification_status_check;
+
+alter table public.artist_profiles
+  add constraint artist_profiles_verification_status_check
+  check (verification_status in ('unverified','pending','verified','rejected','suspended'));
+
 create table if not exists public.aura_admins (
   user_id uuid primary key references auth.users(id) on delete cascade,
   role text not null default 'reviewer'
