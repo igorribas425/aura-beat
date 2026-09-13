@@ -775,20 +775,36 @@ export default function PerfilCasaPage() {
             <section
               className={`rounded-2xl border p-5 ${status.classe}`}
             >
-              <div className="flex items-start gap-4">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-black/30 text-xl font-black">
-                  {status.icone}
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-black/30 text-xl font-black">
+                    {status.icone}
+                  </div>
+
+                  <div>
+                    <p className="font-black">
+                      {status.texto}
+                    </p>
+
+                    <p className="mt-1 text-sm opacity-80">
+                      {status.descricao}
+                    </p>
+                  </div>
                 </div>
 
-                <div>
-                  <p className="font-black">
-                    {status.texto}
-                  </p>
-
-                  <p className="mt-1 text-sm opacity-80">
-                    {status.descricao}
-                  </p>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => router.push("/verificacao-casa")}
+                  className="shrink-0 rounded-xl border border-current/30 bg-black/20 px-4 py-3 text-sm font-black transition hover:bg-black/35"
+                >
+                  {casa.verification_status === "verified"
+                    ? "Ver verificação"
+                    : casa.verification_status === "rejected"
+                      ? "Corrigir e reenviar"
+                      : casa.verification_status === "suspended"
+                        ? "Ver situação"
+                        : "Acompanhar / iniciar verificação"}
+                </button>
               </div>
             </section>
 
