@@ -119,7 +119,7 @@ begin
     raise exception 'Usuario invalido para verificacao';
   end if;
 
-  select regexp_replace(coalesce(venue.cnpj, ''), '\D', '', 'g')
+  select regexp_replace(coalesce(venue.cnpj, ''), '[^0-9]', '', 'g')
     into current_cnpj
   from public.venue_profiles venue
   where venue.id = new.venue_id
@@ -129,7 +129,7 @@ begin
     raise exception 'Perfil de Casa nao pertence ao usuario';
   end if;
 
-  new.cnpj_snapshot := regexp_replace(coalesce(new.cnpj_snapshot, ''), '\D', '', 'g');
+  new.cnpj_snapshot := regexp_replace(coalesce(new.cnpj_snapshot, ''), '[^0-9]', '', 'g');
 
   if length(new.cnpj_snapshot) <> 14 then
     raise exception 'CNPJ invalido para verificacao';
