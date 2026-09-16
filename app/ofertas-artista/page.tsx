@@ -17,6 +17,7 @@ type Artista = {
   fixed_fee: number | null;
   base_city: string | null;
   base_state: string | null;
+  verification_status: string | null;
 };
 
 type Oferta = {
@@ -288,7 +289,8 @@ export default function OfertasArtistaPage() {
           stage_name,
           fixed_fee,
           base_city,
-          base_state
+          base_state,
+          verification_status
         `)
         .eq("user_id", user.id)
         .maybeSingle();
@@ -622,6 +624,27 @@ export default function OfertasArtistaPage() {
       return;
     }
 
+    if (
+      artista.verification_status !==
+      "verified"
+    ) {
+      setErro(
+        "Seu perfil precisa estar verificado para aceitar uma oferta."
+      );
+      return;
+    }
+
+    const casa = casas[oferta.venue_id];
+    if (
+      casa?.verification_status !==
+      "verified"
+    ) {
+      setErro(
+        "Esta Casa precisa estar verificada para avançar a contratação."
+      );
+      return;
+    }
+
     try {
       setProcessando(
         oferta.id
@@ -652,9 +675,32 @@ export default function OfertasArtistaPage() {
     } catch (error) {
       console.error(error);
 
-      setErro(
-        "Não foi possível aceitar esta oferta."
-      );
+      const texto =
+        error instanceof Error
+          ? error.message
+          : "";
+
+      if (
+        texto.includes(
+          "Artista precisa estar verificado"
+        )
+      ) {
+        setErro(
+          "Seu perfil precisa estar verificado para aceitar esta oferta."
+        );
+      } else if (
+        texto.includes(
+          "Casa precisa estar verificada"
+        )
+      ) {
+        setErro(
+          "A Casa desta oferta precisa estar verificada para avançar a contratação."
+        );
+      } else {
+        setErro(
+          "Não foi possível aceitar esta oferta."
+        );
+      }
     } finally {
       setProcessando(null);
     }
@@ -699,6 +745,27 @@ export default function OfertasArtistaPage() {
   function abrirContraproposta(
     oferta: Oferta
   ) {
+    if (
+      artista?.verification_status !==
+      "verified"
+    ) {
+      setErro(
+        "Seu perfil precisa estar verificado para enviar contraproposta."
+      );
+      return;
+    }
+
+    const casa = casas[oferta.venue_id];
+    if (
+      casa?.verification_status !==
+      "verified"
+    ) {
+      setErro(
+        "Esta Casa precisa estar verificada para negociar."
+      );
+      return;
+    }
+
     const valorInicial =
       respostas[
         oferta.id
@@ -741,6 +808,27 @@ export default function OfertasArtistaPage() {
   async function enviarContraproposta(
     oferta: Oferta
   ) {
+    if (
+      artista?.verification_status !==
+      "verified"
+    ) {
+      setErro(
+        "Seu perfil precisa estar verificado para enviar contraproposta."
+      );
+      return;
+    }
+
+    const casa = casas[oferta.venue_id];
+    if (
+      casa?.verification_status !==
+      "verified"
+    ) {
+      setErro(
+        "Esta Casa precisa estar verificada para negociar."
+      );
+      return;
+    }
+
     const valor = Number(
       valorContraproposta
         .replace(",", ".")
@@ -787,9 +875,32 @@ export default function OfertasArtistaPage() {
     } catch (error) {
       console.error(error);
 
-      setErro(
-        "Não foi possível enviar a contraproposta."
-      );
+      const texto =
+        error instanceof Error
+          ? error.message
+          : "";
+
+      if (
+        texto.includes(
+          "Artista precisa estar verificado"
+        )
+      ) {
+        setErro(
+          "Seu perfil precisa estar verificado para enviar contraproposta."
+        );
+      } else if (
+        texto.includes(
+          "Casa precisa estar verificada"
+        )
+      ) {
+        setErro(
+          "A Casa desta oferta precisa estar verificada para avançar a contratação."
+        );
+      } else {
+        setErro(
+          "Não foi possível enviar a contraproposta."
+        );
+      }
     } finally {
       setProcessando(null);
     }
@@ -894,6 +1005,10 @@ export default function OfertasArtistaPage() {
         )
     ).length;
 
+  const artistaVerificado =
+    artista?.verification_status ===
+    "verified";
+
   if (carregando) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#050507] text-white">
@@ -990,6 +1105,33 @@ export default function OfertasArtistaPage() {
             </div>
           </div>
         </section>
+
+        {!artistaVerificado && (
+          <section className="rounded-3xl border border-amber-500/30 bg-amber-500/10 p-5">
+            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+              <div>
+                <p className="text-sm font-black text-amber-200">
+                  🔒 Verificação necessária para contratar
+                </p>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-amber-100/70">
+                  Você pode visualizar as oportunidades e recusar convites, mas precisa ter o perfil de Artista verificado para aceitar ofertas ou enviar contrapropostas.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  router.push(
+                    "/verificacao-artista"
+                  )
+                }
+                className="rounded-xl bg-amber-300 px-5 py-3 text-sm font-black text-black transition hover:bg-amber-200"
+              >
+                Verificar perfil →
+              </button>
+            </div>
+          </section>
+        )}
 
         {erro && (
           <div className="rounded-2xl border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
@@ -1157,6 +1299,11 @@ export default function OfertasArtistaPage() {
                       ""
                   );
 
+                const podeFormalizar =
+                  artistaVerificado &&
+                  casa?.verification_status ===
+                    "verified";
+
                 return (
                   <article
                     key={oferta.id}
@@ -1219,6 +1366,14 @@ export default function OfertasArtistaPage() {
                               "verified" &&
                               " ✓"}
                           </p>
+
+                          {casa &&
+                            casa.verification_status !==
+                              "verified" && (
+                              <p className="mt-2 text-xs font-bold text-amber-300">
+                                ⚠ Esta Casa não está verificada para contratação formal.
+                              </p>
+                            )}
 
                           {(casa?.city ||
                             casa?.state) && (
@@ -1503,35 +1658,41 @@ export default function OfertasArtistaPage() {
                           type="button"
                           disabled={
                             processando ===
-                            oferta.id
+                              oferta.id ||
+                            !podeFormalizar
                           }
                           onClick={() =>
                             abrirContraproposta(
                               oferta
                             )
                           }
-                          className="rounded-xl border border-purple-800 py-3 font-black text-purple-300 transition hover:bg-purple-950/20 disabled:opacity-50"
+                          className="rounded-xl border border-purple-800 py-3 font-black text-purple-300 transition hover:bg-purple-950/20 disabled:cursor-not-allowed disabled:opacity-40"
                         >
-                          💬 Contraproposta
+                          {podeFormalizar
+                            ? "💬 Contraproposta"
+                            : "🔒 Verificação necessária"}
                         </button>
 
                         <button
                           type="button"
                           disabled={
                             processando ===
-                            oferta.id
+                              oferta.id ||
+                            !podeFormalizar
                           }
                           onClick={() =>
                             aceitarOferta(
                               oferta
                             )
                           }
-                          className="rounded-xl bg-red-500 py-3 font-black transition hover:bg-red-600 disabled:opacity-50"
+                          className="rounded-xl bg-red-500 py-3 font-black transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-40"
                         >
-                          {processando ===
-                          oferta.id
-                            ? "Processando..."
-                            : "✓ Aceitar"}
+                          {!podeFormalizar
+                            ? "🔒 Verificação necessária"
+                            : processando ===
+                                oferta.id
+                              ? "Processando..."
+                              : "✓ Aceitar"}
                         </button>
                       </div>
                     ) : (
@@ -1625,14 +1786,15 @@ export default function OfertasArtistaPage() {
                             type="button"
                             disabled={
                               processando ===
-                              oferta.id
+                                oferta.id ||
+                              !podeFormalizar
                             }
                             onClick={() =>
                               enviarContraproposta(
                                 oferta
                               )
                             }
-                            className="rounded-xl bg-purple-600 py-3 font-black hover:bg-purple-700 disabled:opacity-50"
+                            className="rounded-xl bg-purple-600 py-3 font-black hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             Enviar
                             contraproposta
