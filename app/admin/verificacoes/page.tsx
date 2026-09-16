@@ -3,6 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
+import {
+  formatCnpj,
+  getCnpjLocalStatus,
+  normalizeCnpj,
+} from "../../../lib/cnpj";
 
 type AdminRole = "reviewer" | "admin" | "owner";
 type Kind = "artist" | "venue";
@@ -10,6 +15,7 @@ type RequestStatus = "pending" | "verified" | "rejected";
 type ProfileStatus = RequestStatus | "suspended" | null;
 type FilterStatus = "all" | "pending" | "verified" | "rejected" | "suspended";
 type Action = "verified" | "rejected" | "suspended";
+type CnpjRisk = "ok" | "attention" | "critical";
 
 type ArtistRequest = {
   id: string;
@@ -53,6 +59,8 @@ type ArtistProfile = {
 type VenueProfile = {
   id: string;
   trade_name: string | null;
+  legal_name: string | null;
+  cnpj: string;
   verification_status: ProfileStatus;
 };
 
@@ -78,6 +86,8 @@ type ReviewItem = {
   submittedAt: string;
   reviewedAt: string | null;
   documents: Array<{ label: string; path: string | null }>;
+  cnpjRisk?: CnpjRisk;
+  cnpjSignals?: string[];
 };
 
 function formatDate(value: string | null) {
@@ -93,15 +103,6 @@ function formatDate(value: string | null) {
   } catch {
     return "—";
   }
-}
-
-function maskCnpj(value: string) {
-  const digits = value.replace(/\D/g, "").slice(0, 14);
-  if (digits.length !== 14) return value || "CNPJ não informado";
-  return digits.replace(
-    /^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,
-    "$1.$2.$3/$4-$5",
-  );
 }
 
 function statusLabel(status: ProfileStatus) {
@@ -134,6 +135,70 @@ function actionLabel(action: Action) {
   if (action === "verified") return "Aprovado";
   if (action === "rejected") return "Recusado";
   return "Suspenso";
+}
+
+function cnpjRiskLabel(risk: CnpjRisk) {
+  if (risk === "critical") return "CNPJ: revisar agora";
+  if (risk === "attention") return "CNPJ: atenção";
+  return "CNPJ: checagem local OK";
+}
+
+function cnpjRiskClass(risk: CnpjRisk) {
+  if (risk === "critical") {
+    return "border-red-500/30 bg-red-500/10 text-red-200";
+  }
+  if (risk === "attention") {
+    return "border-amber-500/30 bg-amber-500/10 text-amber-100";
+  }
+  return "border-emerald-500/30 bg-emerald-500/10 text-emerald-200";
+}
+
+function getVenueCnpjRisk(
+  profile: VenueProfile | undefined,
+  request: VenueRequest,
+): { risk: CnpjRisk; signals: string[]; displayCnpj: string } {
+  const profileCnpj = profile?.cnpj || request.cnpj_snapshot;
+  const normalizedProfile = normalizeCnpj(profileCnpj);
+  const normalizedRequest = normalizeCnpj(request.cnpj_snapshot);
+  const localStatus = getCnpjLocalStatus(profileCnpj);
+  const signals: string[] = [];
+  let risk: CnpjRisk = "ok";
+
+  if (localStatus === "numeric-invalid") {
+    signals.push("CNPJ numérico não passou nos dígitos verificadores.");
+    risk = "critical";
+  } else if (localStatus === "invalid-format") {
+    signals.push("Formato do CNPJ não possui 14 caracteres normalizados.");
+    risk = "critical";
+  } else if (localStatus === "alphanumeric-review") {
+    signals.push(
+      "CNPJ alfanumérico: precisa de revisão manual; a checagem matemática numérica não se aplica.",
+    );
+    risk = "attention";
+  } else {
+    signals.push("CNPJ numérico passou na validação matemática local.");
+  }
+
+  if (normalizedProfile !== normalizedRequest) {
+    signals.push("CNPJ da solicitação difere do CNPJ atual do perfil da Casa.");
+    risk = "critical";
+  }
+
+  const legalName = profile?.legal_name?.trim() || request.legal_name_snapshot?.trim();
+  if (!legalName) {
+    signals.push("Razão social não informada; conferir documento da empresa.");
+    if (risk === "ok") risk = "attention";
+  }
+
+  signals.push(
+    "A checagem local não consulta a Receita Federal e não substitui a análise dos documentos.",
+  );
+
+  return {
+    risk,
+    signals,
+    displayCnpj: formatCnpj(profileCnpj),
+  };
 }
 
 export default function AdminVerificacoesPage() {
@@ -243,7 +308,7 @@ export default function AdminVerificacoesPage() {
         venueIds.length > 0
           ? supabase
               .from("venue_profiles")
-              .select("id,trade_name,verification_status")
+              .select("id,trade_name,legal_name,cnpj,verification_status")
               .in("id", venueIds)
           : Promise.resolve({ data: [] as VenueProfile[], error: null }),
       ]);
@@ -287,17 +352,23 @@ export default function AdminVerificacoesPage() {
 
       const venueItems: ReviewItem[] = venueRequests.map((request) => {
         const profile = venueProfiles.get(request.venue_id);
+        const cnpjCheck = getVenueCnpjRisk(profile, request);
+        const legalName =
+          profile?.legal_name || request.legal_name_snapshot || "Razão social não informada";
+
         return {
           kind: "venue",
           requestId: request.id,
           profileId: request.venue_id,
           title: profile?.trade_name || request.trade_name_snapshot || "Casa sem nome",
-          subtitle: `${maskCnpj(request.cnpj_snapshot)} · ${request.legal_name_snapshot || "Razão social não informada"}`,
+          subtitle: `${cnpjCheck.displayCnpj} · ${legalName}`,
           requestStatus: request.status,
           profileStatus: profile?.verification_status ?? request.status,
           rejectionReason: request.rejection_reason,
           submittedAt: request.submitted_at,
           reviewedAt: request.reviewed_at,
+          cnpjRisk: cnpjCheck.risk,
+          cnpjSignals: cnpjCheck.signals,
           documents: [
             { label: "Documento da empresa", path: request.business_document_path },
             {
@@ -360,6 +431,20 @@ export default function AdminVerificacoesPage() {
     return result;
   }, [items]);
 
+  const cnpjCounters = useMemo(
+    () => ({
+      critical: items.filter(
+        (item) => item.kind === "venue" && item.cnpjRisk === "critical",
+      ).length,
+      attention: items.filter(
+        (item) => item.kind === "venue" && item.cnpjRisk === "attention",
+      ).length,
+      ok: items.filter((item) => item.kind === "venue" && item.cnpjRisk === "ok")
+        .length,
+    }),
+    [items],
+  );
+
   async function openDocument(path: string | null) {
     if (!path) return;
 
@@ -386,6 +471,17 @@ export default function AdminVerificacoesPage() {
   async function review(item: ReviewItem, action: Action) {
     setError("");
     setMessage("");
+
+    if (
+      action === "verified" &&
+      item.kind === "venue" &&
+      item.cnpjRisk === "critical"
+    ) {
+      setError(
+        `${item.title}: existe um alerta crítico de CNPJ. Corrija o CNPJ antes de aprovar a Casa.`,
+      );
+      return;
+    }
 
     let reason: string | null = null;
 
@@ -499,14 +595,23 @@ export default function AdminVerificacoesPage() {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => void loadData(false)}
-            disabled={refreshing}
-            className="rounded-xl border border-zinc-700 px-4 py-2 text-sm font-black text-zinc-200 transition hover:bg-zinc-900 disabled:opacity-50"
-          >
-            {refreshing ? "Atualizando..." : "↻ Atualizar"}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => router.push("/admin/cnpj")}
+              className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm font-black text-amber-100 transition hover:bg-amber-500/20"
+            >
+              CNPJ · análise completa
+            </button>
+            <button
+              type="button"
+              onClick={() => void loadData(false)}
+              disabled={refreshing}
+              className="rounded-xl border border-zinc-700 px-4 py-2 text-sm font-black text-zinc-200 transition hover:bg-zinc-900 disabled:opacity-50"
+            >
+              {refreshing ? "Atualizando..." : "↻ Atualizar"}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -538,6 +643,30 @@ export default function AdminVerificacoesPage() {
                 <p className="text-2xl font-black text-orange-300">{counters.suspended}</p>
                 <p className="text-xs text-zinc-500">Suspensos</p>
               </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-3xl border border-zinc-800 bg-zinc-950 p-5">
+          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-300">
+                Segurança gratuita de CNPJ
+              </p>
+              <p className="mt-1 text-sm text-zinc-400">
+                Alertas locais das Casas que já possuem solicitação de verificação.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 text-xs font-black">
+              <span className="rounded-full border border-red-500/30 bg-red-500/10 px-3 py-2 text-red-200">
+                Revisar agora: {cnpjCounters.critical}
+              </span>
+              <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-100">
+                Atenção: {cnpjCounters.attention}
+              </span>
+              <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-emerald-200">
+                OK local: {cnpjCounters.ok}
+              </span>
             </div>
           </div>
         </section>
@@ -592,6 +721,8 @@ export default function AdminVerificacoesPage() {
                 item.profileStatus === "suspended" ? "suspended" : item.requestStatus;
               const isPending = item.requestStatus === "pending";
               const isVerified = item.requestStatus === "verified";
+              const hasCriticalCnpj =
+                item.kind === "venue" && item.cnpjRisk === "critical";
 
               return (
                 <article
@@ -609,6 +740,13 @@ export default function AdminVerificacoesPage() {
                         >
                           {statusLabel(effectiveStatus)}
                         </span>
+                        {item.kind === "venue" && item.cnpjRisk && (
+                          <span
+                            className={`rounded-full border px-3 py-1 text-xs font-black ${cnpjRiskClass(item.cnpjRisk)}`}
+                          >
+                            {cnpjRiskLabel(item.cnpjRisk)}
+                          </span>
+                        )}
                       </div>
 
                       <h3 className="mt-4 text-2xl font-black">{item.title}</h3>
@@ -616,6 +754,29 @@ export default function AdminVerificacoesPage() {
                       <p className="mt-3 text-xs text-zinc-600">
                         Enviado em {formatDate(item.submittedAt)} · Solicitação {item.requestId}
                       </p>
+
+                      {item.kind === "venue" && item.cnpjSignals && (
+                        <div
+                          className={`mt-4 rounded-2xl border p-4 ${
+                            item.cnpjRisk === "critical"
+                              ? "border-red-500/25 bg-red-500/5"
+                              : item.cnpjRisk === "attention"
+                                ? "border-amber-500/25 bg-amber-500/5"
+                                : "border-emerald-500/20 bg-emerald-500/5"
+                          }`}
+                        >
+                          <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-400">
+                            Checagem gratuita de CNPJ
+                          </p>
+                          <div className="mt-3 space-y-2">
+                            {item.cnpjSignals.map((signal) => (
+                              <p key={signal} className="text-sm text-zinc-300">
+                                • {signal}
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       {item.rejectionReason && (
                         <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-200">
@@ -629,13 +790,15 @@ export default function AdminVerificacoesPage() {
                         <>
                           <button
                             type="button"
-                            disabled={actingId !== null}
+                            disabled={actingId !== null || hasCriticalCnpj}
                             onClick={() => void review(item, "verified")}
-                            className="rounded-xl bg-emerald-500 px-4 py-3 text-sm font-black text-black transition hover:bg-emerald-400 disabled:opacity-50"
+                            className="rounded-xl bg-emerald-500 px-4 py-3 text-sm font-black text-black transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-40"
                           >
-                            {actingId === `${item.kind}:${item.requestId}:verified`
-                              ? "Aprovando..."
-                              : "✓ Aprovar"}
+                            {hasCriticalCnpj
+                              ? "⚠ Corrigir CNPJ antes de aprovar"
+                              : actingId === `${item.kind}:${item.requestId}:verified`
+                                ? "Aprovando..."
+                                : "✓ Aprovar"}
                           </button>
                           <button
                             type="button"
