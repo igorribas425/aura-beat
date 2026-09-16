@@ -449,7 +449,6 @@ export default function AdminVerificacoesPage() {
     if (!path) return;
 
     setError("");
-    const popup = window.open("", "_blank", "noopener,noreferrer");
 
     try {
       const { data, error: signedUrlError } = await supabase.storage
@@ -459,10 +458,8 @@ export default function AdminVerificacoesPage() {
       if (signedUrlError) throw signedUrlError;
       if (!data?.signedUrl) throw new Error("URL assinada não gerada");
 
-      if (popup) popup.location.href = data.signedUrl;
-      else window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+      window.location.assign(data.signedUrl);
     } catch (err) {
-      popup?.close();
       console.error(err);
       setError("Não foi possível abrir este documento privado.");
     }
@@ -862,7 +859,7 @@ export default function AdminVerificacoesPage() {
                       )}
                     </div>
                     <p className="mt-3 text-xs text-zinc-600">
-                      Os links expiram em 90 segundos e o bucket continua privado.
+                      Os links expiram em 90 segundos e o bucket continua privado. O documento abre nesta aba; use Voltar do navegador para retornar à análise.
                     </p>
                   </div>
                 </article>
