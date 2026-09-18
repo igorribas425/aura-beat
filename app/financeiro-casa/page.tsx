@@ -18,6 +18,7 @@ type FinanceRow = {
   toll_amount: number;
   lodging_amount: number;
   platform_fee_venue: number;
+  provider_fee: number;
   gross_amount: number;
   paid_at: string | null;
   created_at: string;
@@ -176,7 +177,9 @@ export default function FinanceiroCasaPage() {
 
       if (linha.payment_status === "paid") {
         totalPago += total;
-        taxas += Number(linha.platform_fee_venue || 0);
+        taxas +=
+          Number(linha.platform_fee_venue || 0) +
+          Number(linha.provider_fee || 0);
         extras += adicionais;
       }
 
@@ -388,7 +391,10 @@ export default function FinanceiroCasaPage() {
                     <div className="mt-3 flex justify-between text-sm text-zinc-400">
                       <span>Taxa Aura Beat</span>
                       <span>
-                        + {dinheiro(linha.platform_fee_venue)}
+                        + {dinheiro(
+                          Number(linha.platform_fee_venue || 0) +
+                            Number(linha.provider_fee || 0)
+                        )}
                       </span>
                     </div>
 
@@ -429,8 +435,7 @@ export default function FinanceiroCasaPage() {
                   </div>
 
                   <div className="mt-4 text-xs text-zinc-600">
-                    Método: {linha.payment_method || "—"} ·
-                    Provedor: {linha.provider || "—"}
+                    Método: {linha.payment_method || "—"}
                   </div>
                 </article>
               );
