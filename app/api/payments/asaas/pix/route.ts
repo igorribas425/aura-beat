@@ -89,7 +89,7 @@ function getServerConfig() {
 
 async function authorizeVenue(
   admin: ReturnType<
-    typeof createClient
+    typeof createClient<any>
   >,
   userId: string,
   venueId: string
