@@ -73,7 +73,9 @@ function dinheiro(valor: number) {
       style: "currency",
       currency: "BRL",
     }
-  ).format(Number(valor || 0));
+  ).format(
+    Number(valor || 0)
+  );
 }
 
 function dataHora(valor: string) {
@@ -86,7 +88,9 @@ function dataHora(valor: string) {
       hour: "2-digit",
       minute: "2-digit",
     }
-  ).format(new Date(valor));
+  ).format(
+    new Date(valor)
+  );
 }
 
 function statusEvento(status: string) {
@@ -171,17 +175,25 @@ function statusRepasse(
 export default function FinanceiroArtistaPage() {
   const router = useRouter();
 
-  const [nomeArtista, setNomeArtista] =
-    useState("");
+  const [
+    nomeArtista,
+    setNomeArtista,
+  ] = useState("");
 
-  const [dados, setDados] =
-    useState<FinanceRow[]>([]);
+  const [
+    dados,
+    setDados,
+  ] = useState<FinanceRow[]>([]);
 
-  const [carregando, setCarregando] =
-    useState(true);
+  const [
+    carregando,
+    setCarregando,
+  ] = useState(true);
 
-  const [erro, setErro] =
-    useState("");
+  const [
+    erro,
+    setErro,
+  ] = useState("");
 
   useEffect(() => {
     void carregarFinanceiro();
@@ -195,7 +207,8 @@ export default function FinanceiroArtistaPage() {
       const {
         data: authData,
         error: authError,
-      } = await supabase.auth.getUser();
+      } =
+        await supabase.auth.getUser();
 
       if (
         authError ||
@@ -248,7 +261,8 @@ export default function FinanceiroArtistaPage() {
       }
 
       setDados(
-        (data || []) as FinanceRow[]
+        (data ||
+          []) as FinanceRow[]
       );
     } catch (error) {
       console.error(error);
@@ -269,7 +283,9 @@ export default function FinanceiroArtistaPage() {
       let disponivel = 0;
       let pago = 0;
 
-      for (const linha of dados) {
+      for (
+        const linha of dados
+      ) {
         const valor =
           Number(
             linha.release_amount ||
@@ -313,7 +329,9 @@ export default function FinanceiroArtistaPage() {
           BookingFinance
         >();
 
-      for (const linha of dados) {
+      for (
+        const linha of dados
+      ) {
         const existente =
           mapa.get(
             linha.booking_id
@@ -381,7 +399,9 @@ export default function FinanceiroArtistaPage() {
                   0
               ),
 
-            releases: [linha],
+            releases: [
+              linha,
+            ],
           }
         );
       }
@@ -431,6 +451,7 @@ export default function FinanceiroArtistaPage() {
         <div className="mb-8 grid gap-4 md:grid-cols-3">
 
           <div className="rounded-2xl border border-yellow-900/60 bg-yellow-950/10 p-5">
+
             <div className="text-sm text-yellow-300">
               A receber
             </div>
@@ -442,11 +463,13 @@ export default function FinanceiroArtistaPage() {
             </div>
 
             <p className="mt-2 text-xs text-zinc-500">
-              Eventos ainda não finalizados.
+              Pagamentos confirmados aguardando conclusão do evento.
             </p>
+
           </div>
 
           <div className="rounded-2xl border border-green-900/60 bg-green-950/10 p-5">
+
             <div className="text-sm text-green-300">
               Disponível para repasse
             </div>
@@ -458,11 +481,13 @@ export default function FinanceiroArtistaPage() {
             </div>
 
             <p className="mt-2 text-xs text-zinc-500">
-              Eventos finalizados e liberados.
+              Eventos finalizados e valores liberados.
             </p>
+
           </div>
 
           <div className="rounded-2xl border border-blue-900/60 bg-blue-950/10 p-5">
+
             <div className="text-sm text-blue-300">
               Já pago
             </div>
@@ -476,6 +501,7 @@ export default function FinanceiroArtistaPage() {
             <p className="mt-2 text-xs text-zinc-500">
               Repasses efetivamente concluídos.
             </p>
+
           </div>
 
         </div>
@@ -483,6 +509,7 @@ export default function FinanceiroArtistaPage() {
         <div className="mb-5 flex items-center justify-between">
 
           <div>
+
             <h2 className="text-xl font-bold">
               Histórico
             </h2>
@@ -490,9 +517,11 @@ export default function FinanceiroArtistaPage() {
             <p className="text-sm text-zinc-500">
               Detalhes das suas contratações.
             </p>
+
           </div>
 
           <button
+            type="button"
             onClick={() =>
               void carregarFinanceiro()
             }
@@ -503,11 +532,15 @@ export default function FinanceiroArtistaPage() {
 
         </div>
 
-        {bookings.length === 0 ? (
+        {bookings.length ===
+        0 ? (
+
           <div className="rounded-2xl border border-dashed border-zinc-800 p-12 text-center text-zinc-500">
             Nenhuma movimentação financeira ainda.
           </div>
+
         ) : (
+
           <div className="space-y-5">
 
             {bookings.map(
@@ -531,6 +564,20 @@ export default function FinanceiroArtistaPage() {
                   booking.travel_amount +
                   booking.toll_amount +
                   booking.lodging_amount;
+
+                const pagamentoConfirmado =
+                  booking.payment_status ===
+                  "paid";
+
+                const tituloValor =
+                  pagamentoConfirmado
+                    ? "líquido do artista"
+                    : "valor previsto";
+
+                const tituloTotal =
+                  pagamentoConfirmado
+                    ? "Total líquido"
+                    : "Valor previsto";
 
                 return (
                   <article
@@ -578,23 +625,38 @@ export default function FinanceiroArtistaPage() {
 
                       <div className="text-left md:text-right">
 
-                        <div className="text-2xl font-bold text-green-400">
+                        <div
+                          className={`text-2xl font-bold ${
+                            pagamentoConfirmado
+                              ? "text-green-400"
+                              : "text-zinc-300"
+                          }`}
+                        >
                           {dinheiro(
                             booking.artist_total
                           )}
                         </div>
 
                         <div className="text-xs text-zinc-500">
-                          líquido do artista
+                          {
+                            tituloValor
+                          }
                         </div>
 
                       </div>
 
                     </div>
 
+                    {!pagamentoConfirmado && (
+                      <div className="mt-5 rounded-xl border border-yellow-900/60 bg-yellow-950/20 p-4 text-sm text-yellow-300">
+                        ⏳ Este valor é uma previsão. O pagamento da Casa ainda não foi confirmado.
+                      </div>
+                    )}
+
                     <div className="mt-5 rounded-xl border border-zinc-800 bg-black p-4">
 
                       <div className="flex justify-between text-sm text-zinc-400">
+
                         <span>
                           Cachê
                         </span>
@@ -604,10 +666,12 @@ export default function FinanceiroArtistaPage() {
                             booking.agreed_fee
                           )}
                         </span>
+
                       </div>
 
                       {booking.platform_fee_artist >
                         0 && (
+
                         <div className="mt-2 flex justify-between text-sm text-zinc-400">
 
                           <span>
@@ -622,10 +686,12 @@ export default function FinanceiroArtistaPage() {
                           </span>
 
                         </div>
+
                       )}
 
                       {booking.travel_amount >
                         0 && (
+
                         <div className="mt-2 flex justify-between text-sm text-zinc-400">
 
                           <span>
@@ -640,10 +706,12 @@ export default function FinanceiroArtistaPage() {
                           </span>
 
                         </div>
+
                       )}
 
                       {booking.toll_amount >
                         0 && (
+
                         <div className="mt-2 flex justify-between text-sm text-zinc-400">
 
                           <span>
@@ -658,10 +726,12 @@ export default function FinanceiroArtistaPage() {
                           </span>
 
                         </div>
+
                       )}
 
                       {booking.lodging_amount >
                         0 && (
+
                         <div className="mt-2 flex justify-between text-sm text-zinc-400">
 
                           <span>
@@ -676,15 +746,24 @@ export default function FinanceiroArtistaPage() {
                           </span>
 
                         </div>
+
                       )}
 
                       <div className="mt-3 flex justify-between border-t border-zinc-800 pt-3 font-bold">
 
                         <span>
-                          Total líquido
+                          {
+                            tituloTotal
+                          }
                         </span>
 
-                        <span className="text-green-400">
+                        <span
+                          className={
+                            pagamentoConfirmado
+                              ? "text-green-400"
+                              : "text-zinc-300"
+                          }
+                        >
                           {dinheiro(
                             booking.artist_total
                           )}
@@ -694,64 +773,68 @@ export default function FinanceiroArtistaPage() {
 
                     </div>
 
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {pagamentoConfirmado && (
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
 
-                      {booking.releases.map(
-                        (
-                          release,
-                          index
-                        ) => {
-                          if (
-                            !release.release_kind
-                          ) {
-                            return null;
-                          }
+                        {booking.releases.map(
+                          (
+                            release,
+                            index
+                          ) => {
+                            if (
+                              !release.release_kind
+                            ) {
+                              return null;
+                            }
 
-                          const releaseStatus =
-                            statusRepasse(
-                              release.release_status
-                            );
+                            const releaseStatus =
+                              statusRepasse(
+                                release.release_status
+                              );
 
-                          return (
-                            <div
-                              key={`${booking.booking_id}-${release.release_kind}-${index}`}
-                              className="rounded-xl bg-black p-4"
-                            >
+                            return (
+                              <div
+                                key={`${booking.booking_id}-${release.release_kind}-${index}`}
+                                className="rounded-xl bg-black p-4"
+                              >
 
-                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center justify-between gap-3">
 
-                                <div>
-                                  <div className="text-sm font-semibold">
-                                    {release.release_kind ===
-                                    "performance"
-                                      ? "Cachê"
-                                      : "Extras"}
+                                  <div>
+
+                                    <div className="text-sm font-semibold">
+                                      {release.release_kind ===
+                                      "performance"
+                                        ? "Cachê"
+                                        : "Extras"}
+                                    </div>
+
+                                    <div className="mt-1 text-xs text-zinc-500">
+                                      {
+                                        releaseStatus.texto
+                                      }
+                                    </div>
+
                                   </div>
 
-                                  <div className="mt-1 text-xs text-zinc-500">
-                                    {
-                                      releaseStatus.texto
-                                    }
+                                  <div className="font-semibold">
+                                    {dinheiro(
+                                      Number(
+                                        release.release_amount ||
+                                          0
+                                      )
+                                    )}
                                   </div>
-                                </div>
 
-                                <div className="font-semibold">
-                                  {dinheiro(
-                                    Number(
-                                      release.release_amount ||
-                                        0
-                                    )
-                                  )}
                                 </div>
 
                               </div>
+                            );
+                          }
+                        )}
 
-                            </div>
-                          );
-                        }
-                      )}
-
-                    </div>
+                      </div>
+                    )}
 
                     {extras === 0 && (
                       <p className="mt-4 text-xs text-zinc-600">
@@ -760,14 +843,17 @@ export default function FinanceiroArtistaPage() {
                       </p>
                     )}
 
-                    {principal?.release_status ===
-                      "eligible" && (
+                    {pagamentoConfirmado &&
+                      principal?.release_status ===
+                        "eligible" && (
+
                       <div className="mt-5 rounded-xl border border-green-900/60 bg-green-950/20 p-4 text-sm text-green-300">
                         ✓ Este valor está liberado para repasse.
                         Ele só será marcado como pago quando a
                         transferência financeira for realmente
                         confirmada.
                       </div>
+
                     )}
 
                   </article>
