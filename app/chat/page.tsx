@@ -1846,6 +1846,21 @@ export default function ChatPage() {
                   }
                   className="border-t border-zinc-900 bg-zinc-950 p-4"
                 >
+                  <div className="mb-2 h-5 text-xs">
+                    {outroDigitando ? (
+                      <span className="inline-flex items-center gap-2 font-semibold text-sky-400">
+                        <span>Digitando</span>
+                        <span className="inline-flex gap-1" aria-hidden="true">
+                          <span className="animate-pulse">•</span>
+                          <span className="animate-pulse [animation-delay:150ms]">•</span>
+                          <span className="animate-pulse [animation-delay:300ms]">•</span>
+                        </span>
+                      </span>
+                    ) : (
+                      <span className="text-transparent">.</span>
+                    )}
+                  </div>
+
                   <div className="flex gap-3">
                     <textarea
                       rows={1}
