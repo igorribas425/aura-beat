@@ -1,5 +1,4 @@
 import {
-  createHmac,
   timingSafeEqual,
 } from "node:crypto";
 
@@ -8,36 +7,32 @@ import {
   NextResponse,
 } from "next/server";
 
-import { createClient } from "@supabase/supabase-js";
+import {
+  createClient,
+} from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 
-function validSignature(
-  body: string,
+type AsaasWebhookEvent = {
+  event?: string;
+  payment?: {
+    id?: string;
+    status?: string;
+    value?: number;
+    externalReference?: string | null;
+  };
+};
+
+function safeEqual(
   received: string | null,
-  secret: string
+  expected: string
 ) {
   if (!received) {
     return false;
   }
 
-  const expected = createHmac(
-    "sha256",
-    secret
-  )
-    .update(body)
-    .digest("hex");
-
-  const assinaturaRecebida =
-    received.replace(
-      /^sha256=/,
-      ""
-    );
-
-  const a = Buffer.from(expected);
-  const b = Buffer.from(
-    assinaturaRecebida
-  );
+  const a = Buffer.from(received);
+  const b = Buffer.from(expected);
 
   return (
     a.length === b.length &&
@@ -45,29 +40,70 @@ function validSignature(
   );
 }
 
+function mapEventToStatus(
+  event: string
+):
+  | "paid"
+  | "refunded"
+  | "cancelled"
+  | "failed"
+  | null {
+  switch (event) {
+    case "PAYMENT_RECEIVED":
+    case "PAYMENT_CONFIRMED":
+      return "paid";
+
+    case "PAYMENT_REFUNDED":
+      return "refunded";
+
+    case "PAYMENT_DELETED":
+      return "cancelled";
+
+    case "PAYMENT_OVERDUE":
+      return "failed";
+
+    default:
+      return null;
+  }
+}
+
+function money(
+  value: number
+) {
+  return (
+    Math.round(
+      Number(value || 0) * 100
+    ) / 100
+  );
+}
+
 export async function POST(
   request: NextRequest
 ) {
-  const secret =
-    process.env.PAYMENT_WEBHOOK_SECRET;
+  const webhookToken =
+    process.env
+      .ASAAS_WEBHOOK_TOKEN
+      ?.trim();
 
   const serviceKey =
     process.env
-      .SUPABASE_SERVICE_ROLE_KEY;
+      .SUPABASE_SERVICE_ROLE_KEY
+      ?.trim();
 
   const supabaseUrl =
     process.env
-      .NEXT_PUBLIC_SUPABASE_URL;
+      .NEXT_PUBLIC_SUPABASE_URL
+      ?.trim();
 
   if (
-    !secret ||
+    !webhookToken ||
     !serviceKey ||
     !supabaseUrl
   ) {
     return NextResponse.json(
       {
         error:
-          "Payment backend is not configured",
+          "Webhook backend is not configured",
       },
       {
         status: 503,
@@ -75,25 +111,21 @@ export async function POST(
     );
   }
 
-  const body =
-    await request.text();
-
-  const assinatura =
+  const receivedToken =
     request.headers.get(
-      "x-aura-signature"
+      "asaas-access-token"
     );
 
   if (
-    !validSignature(
-      body,
-      assinatura,
-      secret
+    !safeEqual(
+      receivedToken,
+      webhookToken
     )
   ) {
     return NextResponse.json(
       {
         error:
-          "Invalid signature",
+          "Invalid webhook token",
       },
       {
         status: 401,
@@ -101,13 +133,12 @@ export async function POST(
     );
   }
 
-  let event: {
-    id?: string;
-    status?: string;
-  };
+  let event: AsaasWebhookEvent;
 
   try {
-    event = JSON.parse(body);
+    event =
+      (await request.json()) as
+        AsaasWebhookEvent;
   } catch {
     return NextResponse.json(
       {
@@ -119,14 +150,20 @@ export async function POST(
     );
   }
 
+  const eventName =
+    event.event?.trim();
+
+  const providerPaymentId =
+    event.payment?.id?.trim();
+
   if (
-    !event.id ||
-    !event.status
+    !eventName ||
+    !providerPaymentId
   ) {
     return NextResponse.json(
       {
         error:
-          "Missing event fields",
+          "Missing Asaas event fields",
       },
       {
         status: 400,
@@ -134,79 +171,168 @@ export async function POST(
     );
   }
 
-  const allowed: Record<
-    string,
-    string
-  > = {
-    pending: "pending",
-    processing: "processing",
-    paid: "paid",
-    failed: "failed",
-    refunded: "refunded",
-    cancelled: "cancelled",
-  };
-
   const status =
-    allowed[event.status];
+    mapEventToStatus(
+      eventName
+    );
 
   if (!status) {
-    return NextResponse.json(
+    return NextResponse.json({
+      received: true,
+      ignored: true,
+      event: eventName,
+    });
+  }
+
+  const admin =
+    createClient(
+      supabaseUrl,
+      serviceKey,
       {
-        error: "Unknown status",
-      },
-      {
-        status: 422,
+        auth: {
+          persistSession: false,
+          autoRefreshToken:
+            false,
+        },
       }
     );
-  }
-
-  const admin = createClient(
-    supabaseUrl,
-    serviceKey,
-    {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      },
-    }
-  );
-
-  const agora =
-    new Date().toISOString();
-
-  const updateData: {
-    status: string;
-    updated_at: string;
-    paid_at?: string;
-  } = {
-    status,
-    updated_at: agora,
-  };
-
-  if (status === "paid") {
-    updateData.paid_at = agora;
-  }
 
   const {
-    error,
+    data: payment,
+    error: paymentError,
   } = await admin
     .from("payments")
-    .update(updateData)
+    .select(
+      "id,booking_id,status,gross_amount"
+    )
+    .eq(
+      "provider",
+      "asaas"
+    )
     .eq(
       "provider_payment_id",
-      event.id
-    );
+      providerPaymentId
+    )
+    .maybeSingle();
 
-  if (error) {
+  if (paymentError) {
     console.error(
-      "Erro ao atualizar pagamento:",
-      error
+      "Erro ao localizar pagamento do webhook Asaas:",
+      paymentError
     );
 
     return NextResponse.json(
       {
         error:
-          "Persistence failed",
+          "Persistence lookup failed",
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+
+  if (!payment) {
+    return NextResponse.json({
+      received: true,
+      ignored: true,
+      reason:
+        "Payment not managed by Aura Beat",
+    });
+  }
+
+  const externalReference =
+    event.payment
+      ?.externalReference
+      ?.trim();
+
+  if (
+    externalReference &&
+    externalReference !==
+      payment.booking_id
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "External reference mismatch",
+      },
+      {
+        status: 409,
+      }
+    );
+  }
+
+  if (
+    (status === "paid" ||
+      status === "refunded") &&
+    typeof event.payment?.value ===
+      "number" &&
+    Math.abs(
+      money(
+        event.payment.value
+      ) -
+        money(
+          payment.gross_amount
+        )
+    ) > 0.01
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Payment amount mismatch",
+      },
+      {
+        status: 409,
+      }
+    );
+  }
+
+  const now =
+    new Date().toISOString();
+
+  const updateData: {
+    status:
+      | "paid"
+      | "refunded"
+      | "cancelled"
+      | "failed";
+    updated_at: string;
+    paid_at?: string;
+    refunded_at?: string;
+  } = {
+    status,
+    updated_at: now,
+  };
+
+  if (status === "paid") {
+    updateData.paid_at = now;
+  }
+
+  if (status === "refunded") {
+    updateData.refunded_at =
+      now;
+  }
+
+  const {
+    error: updateError,
+  } = await admin
+    .from("payments")
+    .update(updateData)
+    .eq(
+      "id",
+      payment.id
+    );
+
+  if (updateError) {
+    console.error(
+      "Erro ao atualizar pagamento pelo webhook Asaas:",
+      updateError
+    );
+
+    return NextResponse.json(
+      {
+        error:
+          "Persistence update failed",
       },
       {
         status: 500,
@@ -216,5 +342,7 @@ export async function POST(
 
   return NextResponse.json({
     received: true,
+    event: eventName,
+    status,
   });
 }
