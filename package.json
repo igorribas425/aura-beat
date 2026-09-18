@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "test": "node tests/agenda-access.test.mjs",
+    "test": "node tests/run.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

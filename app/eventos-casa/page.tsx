@@ -10,6 +10,10 @@ import {
 } from "react";
 
 import { useRouter } from "next/navigation";
+import {
+  createLeafletLifecycle,
+  createTrackingRealtimeLifecycle,
+} from "../../lib/eventos-casa-lifecycle.mjs";
 import { formatBRL } from "../../lib/finance";
 import { supabase } from "../../lib/supabase";
 
@@ -311,10 +315,39 @@ export default function EventosCasaPage() {
       null
     );
 
-  const realtimeRef =
-    useRef<ReturnType<
-      typeof supabase.channel
-    > | null>(null);
+  const [mapaLifecycle] = useState(() =>
+    createLeafletLifecycle({
+      getCurrentMap: () => mapaRef.current,
+      getCurrentContainer: () =>
+        mapaElementoRef.current,
+      schedule: (
+        callback,
+        delay
+      ): ReturnType<typeof setTimeout> =>
+        setTimeout(callback, delay),
+      cancel: (
+        timer: ReturnType<
+          typeof setTimeout
+        >
+      ) =>
+        clearTimeout(timer),
+    })
+  );
+
+  const [realtimeLifecycle] = useState(() =>
+    createTrackingRealtimeLifecycle({
+      createChannel: (topic) =>
+        supabase.channel(topic),
+      removeChannel: (channel) =>
+        supabase.removeChannel(channel),
+      onRemoveError: (error) => {
+        console.error(
+          "Não foi possível remover o canal Realtime:",
+          error
+        );
+      },
+    })
+  );
 
   const [casa, setCasa] =
     useState<Casa | null>(null);
@@ -786,44 +819,20 @@ export default function EventosCasaPage() {
   }
 
   function limparRealtime() {
-    if (realtimeRef.current) {
-      supabase.removeChannel(
-        realtimeRef.current
-      );
-
-      realtimeRef.current =
-        null;
-    }
+    realtimeLifecycle.clear();
   }
 
   function ligarRealtime(
     bookingId: string
   ) {
-    limparRealtime();
-
-    const canal = supabase
-      .channel(
-        `tracking-${bookingId}`
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table:
-            "booking_tracking",
-          filter: `booking_id=eq.${bookingId}`,
-        },
-        async () => {
-          await atualizarTracking(
-            bookingId
-          );
-        }
-      )
-      .subscribe();
-
-    realtimeRef.current =
-      canal;
+    realtimeLifecycle.subscribe(
+      bookingId,
+      async () => {
+        await atualizarTracking(
+          bookingId
+        );
+      }
+    );
   }
 
   async function selecionarBooking(
@@ -843,17 +852,19 @@ export default function EventosCasaPage() {
   }
 
   function limparMapa() {
-    if (mapaRef.current) {
-      mapaRef.current.remove();
+    mapaLifecycle.reset();
 
-      mapaRef.current = null;
-    }
+    const mapa = mapaRef.current;
+
+    mapaRef.current = null;
 
     camadaRef.current =
       null;
 
     rotaRef.current =
       null;
+
+    mapa?.remove();
   }
 
   async function buscarRota(
@@ -930,18 +941,39 @@ export default function EventosCasaPage() {
   async function montarMapa(
     booking: Booking
   ) {
-    if (
-      !mapaElementoRef.current
-    ) {
+    const elementoMapa =
+      mapaElementoRef.current;
+
+    if (!elementoMapa?.isConnected) {
       return;
     }
+
+    if (
+      mapaRef.current &&
+      mapaRef.current.getContainer() !==
+        elementoMapa
+    ) {
+      limparMapa();
+    }
+
+    const renderId =
+      mapaLifecycle.begin();
 
     const L =
       await import("leaflet");
 
+    if (
+      !mapaLifecycle.isCurrentContainer(
+        renderId,
+        elementoMapa
+      )
+    ) {
+      return;
+    }
+
     if (!mapaRef.current) {
       mapaRef.current = L.map(
-        mapaElementoRef.current,
+        elementoMapa,
         {
           zoomControl: true,
         }
@@ -969,7 +1001,15 @@ export default function EventosCasaPage() {
     const camada =
       camadaRef.current;
 
-    if (!camada) {
+    if (
+      !mapa ||
+      !camada ||
+      !mapaLifecycle.isCurrentMap(
+        renderId,
+        mapa,
+        elementoMapa
+      )
+    ) {
       return;
     }
 
@@ -1147,6 +1187,16 @@ export default function EventosCasaPage() {
           );
 
         if (
+          !mapaLifecycle.isCurrentMap(
+            renderId,
+            mapa,
+            elementoMapa
+          )
+        ) {
+          return;
+        }
+
+        if (
           resultado &&
           resultado.pontos.length >
             0
@@ -1216,9 +1266,12 @@ export default function EventosCasaPage() {
       );
     }
 
-    setTimeout(() => {
-      mapa.invalidateSize();
-    }, 100);
+    mapaLifecycle.scheduleInvalidate(
+      renderId,
+      mapa,
+      elementoMapa,
+      100
+    );
   }
 
   function formularioAvaliacao(
