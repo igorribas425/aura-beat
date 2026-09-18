@@ -315,6 +315,12 @@ export default function EventosCasaPage() {
       null
     );
 
+  const mapaBookingRef =
+    useRef<string | null>(null);
+
+  const mapaGpsEnquadradoRef =
+    useRef<string | null>(null);
+
   const [mapaLifecycle] = useState(() =>
     createLeafletLifecycle({
       getCurrentMap: () => mapaRef.current,
@@ -904,6 +910,12 @@ export default function EventosCasaPage() {
     rotaRef.current =
       null;
 
+    mapaBookingRef.current =
+      null;
+
+    mapaGpsEnquadradoRef.current =
+      null;
+
     mapa?.remove();
   }
 
@@ -981,6 +993,18 @@ export default function EventosCasaPage() {
   async function montarMapa(
     booking: Booking
   ) {
+    const bookingMudou =
+      mapaBookingRef.current !==
+      booking.id;
+
+    if (bookingMudou) {
+      mapaBookingRef.current =
+        booking.id;
+
+      mapaGpsEnquadradoRef.current =
+        null;
+    }
+
     const elementoMapa =
       mapaElementoRef.current;
 
@@ -1276,11 +1300,131 @@ export default function EventosCasaPage() {
       }
     }
 
+    const deveEnquadrarPrimeiroGps =
+      Boolean(ultimo) &&
+      mapaGpsEnquadradoRef.current !==
+        booking.id;
+
     if (
-      pontosMapa.length >= 2
+      deveEnquadrarPrimeiroGps
     ) {
+      if (
+        pontosMapa.length >= 2
+      ) {
+        mapa.fitBounds(
+          pontosMapa,
+          {
+            padding: [
+              50,
+              50,
+            ],
+            maxZoom: 14,
+          }
+        );
+      } else if (
+        pontosMapa.length === 1
+      ) {
+        mapa.setView(
+          pontosMapa[0],
+          14
+        );
+      }
+
+      mapaGpsEnquadradoRef.current =
+        booking.id;
+    } else if (
+      bookingMudou &&
+      !ultimo
+    ) {
+      if (
+        pontosMapa.length === 1
+      ) {
+        mapa.setView(
+          pontosMapa[0],
+          14
+        );
+      } else if (
+        pontosMapa.length === 0
+      ) {
+        mapa.setView(
+          [
+            -28.2834,
+            -52.7864,
+          ],
+          11
+        );
+      }
+    }
+
+    mapaLifecycle.scheduleInvalidate(
+      renderId,
+      mapa,
+      elementoMapa,
+      100
+    );
+  }
+
+  function recentrarMapa(
+    booking: Booking
+  ) {
+    const mapa =
+      mapaRef.current;
+
+    if (!mapa) {
+      return;
+    }
+
+    const listaTracking =
+      trackings[
+        booking.id
+      ] || [];
+
+    const ultimo =
+      [...listaTracking]
+        .reverse()
+        .find(
+          (tracking) =>
+            tracking.latitude !==
+              null &&
+            tracking.longitude !==
+              null
+        );
+
+    const pontos: [
+      number,
+      number
+    ][] = [];
+
+    if (
+      booking.event_latitude !==
+        null &&
+      booking.event_longitude !==
+        null
+    ) {
+      pontos.push([
+        Number(
+          booking.event_latitude
+        ),
+        Number(
+          booking.event_longitude
+        ),
+      ]);
+    }
+
+    if (ultimo) {
+      pontos.push([
+        Number(
+          ultimo.latitude
+        ),
+        Number(
+          ultimo.longitude
+        ),
+      ]);
+    }
+
+    if (pontos.length >= 2) {
       mapa.fitBounds(
-        pontosMapa,
+        pontos,
         {
           padding: [
             50,
@@ -1290,28 +1434,18 @@ export default function EventosCasaPage() {
         }
       );
     } else if (
-      pontosMapa.length === 1
+      pontos.length === 1
     ) {
       mapa.setView(
-        pontosMapa[0],
+        pontos[0],
         14
-      );
-    } else {
-      mapa.setView(
-        [
-          -28.2834,
-          -52.7864,
-        ],
-        11
       );
     }
 
-    mapaLifecycle.scheduleInvalidate(
-      renderId,
-      mapa,
-      elementoMapa,
-      100
-    );
+    if (ultimo) {
+      mapaGpsEnquadradoRef.current =
+        booking.id;
+    }
   }
 
   function formularioAvaliacao(
@@ -1710,7 +1844,20 @@ export default function EventosCasaPage() {
                       className="h-[420px] w-full"
                     />
 
-                    <div className="grid gap-3 border-t border-zinc-900 p-5 sm:grid-cols-2">
+                    <div className="grid gap-3 border-t border-zinc-900 p-5 sm:grid-cols-3">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          recentrarMapa(
+                            selecionado
+                          )
+                        }
+                        disabled={!ultimoGps}
+                        className="rounded-xl border border-zinc-700 py-3 text-sm font-bold hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        🎯 Recentrar no DJ
+                      </button>
+
                       <button
                         type="button"
                         onClick={() =>
