@@ -169,14 +169,6 @@ export default function HomeArtistaPage() {
     const precisao =
       posicao.coords.accuracy;
 
-    /*
-      IMPORTANTE:
-      PostGIS utiliza longitude primeiro
-      e latitude depois.
-
-      POINT(longitude latitude)
-    */
-
     const ponto =
       `POINT(${longitude} ${latitude})`;
 
@@ -232,12 +224,6 @@ export default function HomeArtistaPage() {
         async (posicao) => {
           try {
             const agora = Date.now();
-
-            /*
-              Para não fazer gravações demais
-              no Supabase, atualizamos
-              aproximadamente a cada 15 segundos.
-            */
 
             if (
               agora -
@@ -363,10 +349,6 @@ export default function HomeArtistaPage() {
 
       setArtista(perfil);
 
-      /*
-        DISPONIBILIDADE
-      */
-
       const {
         data: disponibilidade,
       } = await supabase
@@ -409,14 +391,6 @@ export default function HomeArtistaPage() {
           );
         }
 
-        /*
-          Se o usuário já concedeu
-          permissão anteriormente,
-          tentamos reiniciar o GPS
-          automaticamente sem pedir
-          novamente.
-        */
-
         try {
           if (
             navigator.permissions
@@ -438,14 +412,9 @@ export default function HomeArtistaPage() {
             }
           }
         } catch {
-          // Alguns navegadores não suportam
-          // consulta de permissão.
+          // navegador sem suporte
         }
       }
-
-      /*
-        AVALIAÇÕES
-      */
 
       const { data: reviews } =
         await supabase
@@ -485,10 +454,6 @@ export default function HomeArtistaPage() {
           total / reviews.length
         );
       }
-
-      /*
-        EVENTOS E GANHOS
-      */
 
       const { data: bookings } =
         await supabase
@@ -543,10 +508,6 @@ export default function HomeArtistaPage() {
         setGanhos(totalGanhos);
       }
 
-      /*
-        PLANO
-      */
-
       const {
         data: assinatura,
       } = await supabase
@@ -588,10 +549,6 @@ export default function HomeArtistaPage() {
           );
         }
       }
-
-      /*
-        OFERTAS
-      */
 
       const {
         data: ofertasAbertas,
@@ -645,12 +602,6 @@ export default function HomeArtistaPage() {
 
       setErro("");
 
-      /*
-        SE ESTIVER DISPONÍVEL,
-        DESLIGA O GPS E REMOVE
-        A LOCALIZAÇÃO.
-      */
-
       if (disponivel) {
         pararMonitoramentoGPS();
 
@@ -686,10 +637,6 @@ export default function HomeArtistaPage() {
         return;
       }
 
-      /*
-        ATIVANDO DISPONIBILIDADE
-      */
-
       if (
         !navigator.geolocation
       ) {
@@ -700,18 +647,8 @@ export default function HomeArtistaPage() {
         return;
       }
 
-      /*
-        Aqui o navegador pede
-        autorização de localização.
-      */
-
       const posicao =
         await obterLocalizacaoAtual();
-
-      /*
-        Salva a primeira localização
-        antes de ligar o status.
-      */
 
       await salvarLocalizacao(
         artista.id,
@@ -720,11 +657,6 @@ export default function HomeArtistaPage() {
       );
 
       setDisponivel(true);
-
-      /*
-        Depois inicia monitoramento
-        da localização.
-      */
 
       iniciarMonitoramentoGPS(
         artista.id
@@ -803,19 +735,31 @@ export default function HomeArtistaPage() {
         )}
 
         <section className="aura-hero aura-artist-hero rounded-3xl p-6 sm:p-8">
-          <p className="aura-kicker">Painel do Artista</p>
+          <p className="aura-kicker">
+            Painel do Artista
+          </p>
+
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+
             <div className="flex items-center gap-4">
+
               <ProfileAvatar
                 kind="artist"
-                name={artista?.stage_name || "Artista"}
-                url={artista?.avatar_url}
+                name={
+                  artista?.stage_name ||
+                  "Artista"
+                }
+                url={
+                  artista?.avatar_url
+                }
                 sizeClassName="h-20 w-20 sm:h-24 sm:w-24"
                 className="rounded-3xl shadow-[0_0_35px_rgba(168,85,247,0.24)]"
               />
 
               <div>
+
                 <div className="flex flex-wrap items-center gap-2">
+
                   <h1 className="text-2xl font-black">
                     {
                       artista?.stage_name
@@ -828,15 +772,18 @@ export default function HomeArtistaPage() {
                       ✓ Verificado
                     </span>
                   )}
+
                 </div>
 
                 <p className="mt-1 text-sm text-zinc-400">
+
                   {artista?.base_city ||
                     "Cidade não informada"}
 
                   {artista?.base_state
                     ? ` - ${artista.base_state}`
                     : ""}
+
                 </p>
 
                 <span className="mt-3 inline-block rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-1 text-xs font-bold text-purple-300">
@@ -844,34 +791,51 @@ export default function HomeArtistaPage() {
                 </span>
 
                 <div className="mt-4 flex flex-wrap gap-2">
+
                   {artista?.id && (
                     <button
                       type="button"
-                      onClick={() => router.push(`/artistas/${artista.id}`)}
+                      onClick={() =>
+                        router.push(
+                          `/artistas/${artista.id}`
+                        )
+                      }
                       className="rounded-xl border border-purple-500/40 bg-purple-500/10 px-4 py-2 text-sm font-bold text-purple-300"
                     >
                       Ver Press Kit
                     </button>
                   )}
+
                   <button
                     type="button"
-                    onClick={() => router.push("/buscar")}
+                    onClick={() =>
+                      router.push(
+                        "/buscar"
+                      )
+                    }
                     className="rounded-xl border border-zinc-700 px-4 py-2 text-sm font-bold"
                   >
                     Explorar perfis
                   </button>
+
                 </div>
+
               </div>
+
             </div>
 
             <div className="rounded-2xl border border-zinc-800 bg-black/40 p-4 md:min-w-[320px]">
+
               <div className="flex items-center justify-between gap-4">
+
                 <div>
+
                   <p className="text-xs uppercase tracking-wider text-zinc-500">
                     Status
                   </p>
 
                   <div className="mt-1 flex items-center gap-2">
+
                     <span
                       className={`h-3 w-3 rounded-full ${
                         disponivel
@@ -885,7 +849,9 @@ export default function HomeArtistaPage() {
                         ? "Disponível para eventos"
                         : "Indisponível"}
                     </p>
+
                   </div>
+
                 </div>
 
                 <button
@@ -910,6 +876,7 @@ export default function HomeArtistaPage() {
                     }`}
                   />
                 </button>
+
               </div>
 
               {salvandoDisponibilidade && (
@@ -920,7 +887,9 @@ export default function HomeArtistaPage() {
 
               {disponivel && (
                 <div className="mt-4 border-t border-zinc-800 pt-4">
+
                   <div className="flex items-center gap-2">
+
                     <span
                       className={`h-2 w-2 rounded-full ${
                         gpsAtivo
@@ -934,6 +903,7 @@ export default function HomeArtistaPage() {
                         ? "GPS em tempo real"
                         : "GPS aguardando atualização"}
                     </p>
+
                   </div>
 
                   {precisaoGps !==
@@ -974,37 +944,51 @@ export default function HomeArtistaPage() {
                       Atualizar GPS
                     </button>
                   )}
+
                 </div>
               )}
+
             </div>
+
           </div>
 
           {disponivel && (
             <div className="mt-5 rounded-2xl border border-green-900/40 bg-green-950/20 p-4">
+
               <div className="flex gap-3">
-                <span>📍</span>
+
+                <span>
+                  📍
+                </span>
 
                 <div>
+
                   <p className="text-sm font-semibold text-green-300">
                     Localização compartilhada
                   </p>
 
                   <p className="mt-1 text-xs leading-5 text-zinc-400">
-                    Sua localização é
-                    compartilhada enquanto
-                    você estiver disponível.
-                    Ao desligar a
-                    disponibilidade, a
-                    localização é removida.
+                    Sua localização é compartilhada enquanto
+                    você estiver disponível. Ao desligar a
+                    disponibilidade, a localização é removida.
                   </p>
+
                 </div>
+
               </div>
+
             </div>
           )}
+
         </section>
 
-        <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Resumo do Artista">
+        <section
+          className="grid grid-cols-2 gap-3 lg:grid-cols-4"
+          aria-label="Resumo do Artista"
+        >
+
           <div className="aura-stat rounded-2xl border p-4">
+
             <p className="text-sm text-zinc-500">
               Avaliação
             </p>
@@ -1017,12 +1001,13 @@ export default function HomeArtistaPage() {
             </p>
 
             <p className="mt-1 text-xs text-zinc-600">
-              {quantidadeAvaliacoes}{" "}
-              avaliações
+              {quantidadeAvaliacoes} avaliações
             </p>
+
           </div>
 
           <div className="aura-stat rounded-2xl border p-4">
+
             <p className="text-sm text-zinc-500">
               Eventos concluídos
             </p>
@@ -1030,9 +1015,11 @@ export default function HomeArtistaPage() {
             <p className="mt-2 text-2xl font-black">
               {eventosConcluidos}
             </p>
+
           </div>
 
           <div className="aura-stat rounded-2xl border p-4">
+
             <p className="text-sm text-zinc-500">
               Cachês líquidos
             </p>
@@ -1044,9 +1031,11 @@ export default function HomeArtistaPage() {
             <p className="mt-1 text-xs text-zinc-600">
               eventos concluídos
             </p>
+
           </div>
 
           <div className="aura-stat rounded-2xl border p-4">
+
             <p className="text-sm text-zinc-500">
               Cachê por hora
             </p>
@@ -1060,15 +1049,19 @@ export default function HomeArtistaPage() {
               )}
               /h
             </p>
+
           </div>
+
         </section>
 
         <section>
+
           <h2 className="mb-3 text-lg font-black">
             Acesso rápido
           </h2>
 
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+
             <button
               onClick={() =>
                 router.push(
@@ -1114,6 +1107,69 @@ export default function HomeArtistaPage() {
             <button
               onClick={() =>
                 router.push(
+                  "/disponibilidade-artista"
+                )
+              }
+              className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-amber-500/50"
+            >
+              <div className="text-2xl">
+                ⚡
+              </div>
+
+              <p className="mt-3 font-bold">
+                Publicar disponibilidade
+              </p>
+
+              <p className="mt-1 text-xs text-zinc-500">
+                Procurar show urgente
+              </p>
+            </button>
+
+            <button
+              onClick={() =>
+                router.push(
+                  "/solicitacoes-artista"
+                )
+              }
+              className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-green-500/50"
+            >
+              <div className="text-2xl">
+                📩
+              </div>
+
+              <p className="mt-3 font-bold">
+                Solicitações
+              </p>
+
+              <p className="mt-1 text-xs text-zinc-500">
+                Casas interessadas
+              </p>
+            </button>
+
+            <button
+              onClick={() =>
+                router.push(
+                  "/financeiro-artista"
+                )
+              }
+              className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-green-500/50"
+            >
+              <div className="text-2xl">
+                💰
+              </div>
+
+              <p className="mt-3 font-bold">
+                Financeiro
+              </p>
+
+              <p className="mt-1 text-xs text-zinc-500">
+                Cachês e repasses
+              </p>
+            </button>
+
+            <button
+              onClick={() =>
+                router.push(
                   "/agenda"
                 )
               }
@@ -1134,7 +1190,9 @@ export default function HomeArtistaPage() {
 
             <button
               onClick={() =>
-                router.push("/chat")
+                router.push(
+                  "/chat"
+                )
               }
               className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-red-500/50"
             >
@@ -1192,20 +1250,25 @@ export default function HomeArtistaPage() {
                 Conta e preferências
               </p>
             </button>
+
           </div>
+
         </section>
 
         <section>
+
           <div className="mb-3 flex items-center justify-between">
+
             <div>
+
               <h2 className="text-lg font-black">
                 Ofertas disponíveis
               </h2>
 
               <p className="text-sm text-zinc-500">
-                Novas oportunidades
-                para artistas
+                Novas oportunidades para artistas
               </p>
+
             </div>
 
             <button
@@ -1218,28 +1281,34 @@ export default function HomeArtistaPage() {
             >
               Ver todas
             </button>
+
           </div>
 
           {ofertas.length === 0 ? (
+
             <div className="rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/50 p-8 text-center">
+
               <div className="text-4xl">
                 🎶
               </div>
 
               <p className="mt-4 font-bold">
-                Nenhuma oferta aberta
-                no momento
+                Nenhuma oferta aberta no momento
               </p>
 
               <p className="mt-2 text-sm text-zinc-500">
-                Novas oportunidades
-                aparecerão aqui.
+                Novas oportunidades aparecerão aqui.
               </p>
+
             </div>
+
           ) : (
+
             <div className="grid gap-3">
+
               {ofertas.map(
                 (oferta) => {
+
                   const horas =
                     oferta.duration_minutes /
                     60;
@@ -1262,9 +1331,13 @@ export default function HomeArtistaPage() {
                       }
                       className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-red-500/50"
                     >
+
                       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+
                         <div>
+
                           <div className="flex flex-wrap items-center gap-2">
+
                             <h3 className="font-bold">
                               {
                                 oferta.title
@@ -1276,6 +1349,7 @@ export default function HomeArtistaPage() {
                                 URGENTE
                               </span>
                             )}
+
                           </div>
 
                           <p className="mt-2 text-sm text-zinc-500">
@@ -1306,12 +1380,13 @@ export default function HomeArtistaPage() {
                               }
                             </p>
                           )}
+
                         </div>
 
                         <div className="sm:text-right">
+
                           <p className="text-xs text-zinc-500">
-                            Orçamento da
-                            Casa
+                            Orçamento da Casa
                           </p>
 
                           <p className="text-xl font-black text-green-400">
@@ -1323,8 +1398,7 @@ export default function HomeArtistaPage() {
                           </p>
 
                           <p className="mt-2 text-xs text-zinc-500">
-                            Seu cachê
-                            calculado
+                            Seu cachê calculado
                           </p>
 
                           <p className="font-bold text-red-400">
@@ -1332,17 +1406,22 @@ export default function HomeArtistaPage() {
                               cacheEstimado
                             )}
                           </p>
+
                         </div>
+
                       </div>
+
                     </button>
                   );
                 }
               )}
+
             </div>
           )}
-        </section>
-      </div>
 
+        </section>
+
+      </div>
     </main>
   );
 }
