@@ -2217,6 +2217,39 @@ export default function EventosCasaPage() {
                 </section>
 
                 {selecionado.status ===
+                  "awaiting_payment" && (
+                  <section className="rounded-3xl border border-green-900/60 bg-green-950/10 p-6">
+                    <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+                      <div>
+                        <p className="text-sm font-black uppercase tracking-wider text-green-400">
+                          Pagamento pendente
+                        </p>
+
+                        <h2 className="mt-2 text-xl font-black">
+                          Finalize a contratação com Pix
+                        </h2>
+
+                        <p className="mt-2 text-sm text-zinc-400">
+                          O valor final, incluindo a Taxa Aura Beat, aparece antes de gerar o QR Code.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          router.push(
+                            `/pagamento/${selecionado.id}`
+                          )
+                        }
+                        className="rounded-2xl bg-green-600 px-6 py-3 font-black text-white transition hover:bg-green-500"
+                      >
+                        Pagar com Pix
+                      </button>
+                    </div>
+                  </section>
+                )}
+
+                {selecionado.status ===
                   "completed" && (
                   <section className="rounded-3xl border border-zinc-800 bg-zinc-950 p-6">
                     {avaliacoes[
