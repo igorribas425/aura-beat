@@ -69,6 +69,7 @@ type Mensagem = {
   body: string | null;
   attachment_path: string | null;
   metadata: MetadataMensagem | null;
+  read_at: string | null;
   created_at: string;
 };
 
@@ -195,6 +196,35 @@ export default function ChatPage() {
   const [busca, setBusca] =
     useState("");
 
+  const [
+    outroDigitando,
+    setOutroDigitando,
+  ] = useState(false);
+
+  const canalDigitandoRef =
+    useRef<
+      ReturnType<
+        typeof supabase.channel
+      > | null
+    >(null);
+
+  const pararDigitandoRef =
+    useRef<
+      ReturnType<
+        typeof setTimeout
+      > | null
+    >(null);
+
+  const ocultarDigitandoRef =
+    useRef<
+      ReturnType<
+        typeof setTimeout
+      > | null
+    >(null);
+
+  const ultimoAvisoDigitandoRef =
+    useRef(0);
+
   const iniciarEffect = useEffectEvent(() => {
     void iniciar();
   });
@@ -237,16 +267,26 @@ export default function ChatPage() {
   useEffect(() => {
     if (!conversaSelecionadaId) {
       setMensagens([]);
+      setOutroDigitando(false);
+      canalDigitandoRef.current =
+        null;
       return;
     }
 
-    carregarMensagens(
+    void carregarMensagens(
       conversaSelecionadaId
     );
 
     const canal = supabase
       .channel(
-        `chat-${conversaSelecionadaId}`
+        `chat-${conversaSelecionadaId}`,
+        {
+          config: {
+            broadcast: {
+              self: false,
+            },
+          },
+        }
       )
       .on(
         "postgres_changes",
@@ -294,14 +334,133 @@ export default function ChatPage() {
                     : conversa
               )
           );
+
+          if (
+            nova.sender_user_id !==
+            userId
+          ) {
+            void marcarConversaComoLida(
+              conversaSelecionadaId
+            );
+          }
         }
       )
-      .subscribe();
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "messages",
+          filter: `conversation_id=eq.${conversaSelecionadaId}`,
+        },
+        (payload) => {
+          const atualizada =
+            payload.new as Mensagem;
+
+          setMensagens(
+            (anteriores) =>
+              anteriores.map(
+                (mensagem) =>
+                  mensagem.id ===
+                  atualizada.id
+                    ? atualizada
+                    : mensagem
+              )
+          );
+
+          setConversas(
+            (anteriores) =>
+              anteriores.map(
+                (conversa) =>
+                  conversa.id ===
+                    conversaSelecionadaId &&
+                  conversa
+                    .ultimaMensagem
+                    ?.id ===
+                    atualizada.id
+                    ? {
+                        ...conversa,
+                        ultimaMensagem:
+                          atualizada,
+                      }
+                    : conversa
+              )
+          );
+        }
+      )
+      .on(
+        "broadcast",
+        {
+          event: "typing",
+        },
+        ({ payload }) => {
+          const status =
+            payload as {
+              user_id?: string;
+              typing?: boolean;
+            };
+
+          if (
+            !status.user_id ||
+            status.user_id === userId
+          ) {
+            return;
+          }
+
+          if (
+            ocultarDigitandoRef.current
+          ) {
+            clearTimeout(
+              ocultarDigitandoRef.current
+            );
+          }
+
+          setOutroDigitando(
+            Boolean(status.typing)
+          );
+
+          if (status.typing) {
+            ocultarDigitandoRef.current =
+              setTimeout(() => {
+                setOutroDigitando(false);
+              }, 2600);
+          }
+        }
+      );
+
+    canalDigitandoRef.current =
+      canal;
+
+    canal.subscribe();
 
     return () => {
-      supabase.removeChannel(canal);
+      if (
+        pararDigitandoRef.current
+      ) {
+        clearTimeout(
+          pararDigitandoRef.current
+        );
+      }
+
+      if (
+        ocultarDigitandoRef.current
+      ) {
+        clearTimeout(
+          ocultarDigitandoRef.current
+        );
+      }
+
+      canalDigitandoRef.current =
+        null;
+      setOutroDigitando(false);
+      void supabase.removeChannel(
+        canal
+      );
     };
-  }, [conversaSelecionadaId]);
+  }, [
+    conversaSelecionadaId,
+    userId,
+  ]);
 
   useEffect(() => {
     fimMensagensRef.current?.scrollIntoView(
@@ -809,6 +968,7 @@ export default function ChatPage() {
                   body,
                   attachment_path,
                   metadata,
+                  read_at,
                   created_at
                 `)
                 .eq(
@@ -936,6 +1096,7 @@ export default function ChatPage() {
           body,
           attachment_path,
           metadata,
+          read_at,
           created_at
         `)
         .eq(
@@ -957,6 +1118,10 @@ export default function ChatPage() {
         (data ||
           []) as Mensagem[]
       );
+
+      void marcarConversaComoLida(
+        conversaId
+      );
     } catch (error) {
       console.error(error);
 
@@ -968,6 +1133,84 @@ export default function ChatPage() {
         false
       );
     }
+  }
+
+  async function marcarConversaComoLida(
+    conversaId: string
+  ) {
+    if (!userId) return;
+
+    const { error } =
+      await supabase.rpc(
+        "mark_conversation_read",
+        {
+          p_conversation_id:
+            conversaId,
+        }
+      );
+
+    if (error) {
+      console.error(
+        "Não foi possível marcar mensagens como visualizadas:",
+        error
+      );
+    }
+  }
+
+  function enviarStatusDigitando(
+    digitando: boolean
+  ) {
+    if (
+      !userId ||
+      !canalDigitandoRef.current
+    ) {
+      return;
+    }
+
+    void canalDigitandoRef.current.send(
+      {
+        type: "broadcast",
+        event: "typing",
+        payload: {
+          user_id: userId,
+          typing: digitando,
+        },
+      }
+    );
+  }
+
+  function avisarDigitando(
+    valor: string
+  ) {
+    if (
+      pararDigitandoRef.current
+    ) {
+      clearTimeout(
+        pararDigitandoRef.current
+      );
+    }
+
+    if (!valor.trim()) {
+      enviarStatusDigitando(false);
+      return;
+    }
+
+    const agora = Date.now();
+
+    if (
+      agora -
+        ultimoAvisoDigitandoRef.current >
+      700
+    ) {
+      ultimoAvisoDigitandoRef.current =
+        agora;
+      enviarStatusDigitando(true);
+    }
+
+    pararDigitandoRef.current =
+      setTimeout(() => {
+        enviarStatusDigitando(false);
+      }, 1400);
   }
 
   function descobrirPapelMensagem(
@@ -1090,6 +1333,7 @@ export default function ChatPage() {
           body,
           attachment_path,
           metadata,
+          read_at,
           created_at
         `)
         .single();
@@ -1137,6 +1381,7 @@ export default function ChatPage() {
       );
 
       setTexto("");
+      enviarStatusDigitando(false);
     } catch (error) {
       console.error(error);
 
@@ -1413,15 +1658,21 @@ export default function ChatPage() {
                         }
                       </p>
 
-                      {conversaSelecionada.booking && (
-                        <p className="mt-1 text-xs text-green-500">
-                          ●{" "}
-                          {statusBooking(
-                            conversaSelecionada
-                              .booking
-                              .status
-                          )}
+                      {outroDigitando ? (
+                        <p className="mt-1 text-xs font-semibold text-sky-400">
+                          Digitando...
                         </p>
+                      ) : (
+                        conversaSelecionada.booking && (
+                          <p className="mt-1 text-xs text-green-500">
+                            ●{" "}
+                            {statusBooking(
+                              conversaSelecionada
+                                .booking
+                                .status
+                            )}
+                          </p>
+                        )
                       )}
                     </div>
 
@@ -1543,17 +1794,38 @@ export default function ChatPage() {
                                   "Mensagem"}
                               </p>
 
-                              <p
-                                className={`mt-1 text-right text-[10px] ${
+                              <div
+                                className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${
                                   minha
                                     ? "text-red-100"
                                     : "text-zinc-600"
                                 }`}
                               >
-                                {somenteHora(
-                                  mensagem.created_at
+                                <span>
+                                  {somenteHora(
+                                    mensagem.created_at
+                                  )}
+                                </span>
+
+                                {minha && (
+                                  <span
+                                    className={
+                                      mensagem.read_at
+                                        ? "font-black text-sky-300"
+                                        : "font-black text-red-100/70"
+                                    }
+                                    title={
+                                      mensagem.read_at
+                                        ? "Visualizada"
+                                        : "Enviada"
+                                    }
+                                  >
+                                    {mensagem.read_at
+                                      ? "✓✓"
+                                      : "✓"}
+                                  </span>
                                 )}
-                              </p>
+                              </div>
                             </div>
                           </div>
                         );
@@ -1578,11 +1850,15 @@ export default function ChatPage() {
                     <textarea
                       rows={1}
                       value={texto}
-                      onChange={(event) =>
-                        setTexto(
-                          event.target.value
-                        )
-                      }
+                      onChange={(event) => {
+                        const valor =
+                          event.target.value;
+
+                        setTexto(valor);
+                        avisarDigitando(
+                          valor
+                        );
+                      }}
                       onKeyDown={(event) => {
                         if (
                           event.key ===
