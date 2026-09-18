@@ -212,8 +212,27 @@ export default function ChatPage() {
   useEffect(() => {
     if (!userId) return;
 
+    if (
+      modo === "artist" &&
+      !artista?.id
+    ) {
+      return;
+    }
+
+    if (
+      modo === "venue" &&
+      !casa?.id
+    ) {
+      return;
+    }
+
     carregarConversasEffect(modo);
-  }, [modo, userId]);
+  }, [
+    modo,
+    userId,
+    artista?.id,
+    casa?.id,
+  ]);
 
   useEffect(() => {
     if (!conversaSelecionadaId) {
