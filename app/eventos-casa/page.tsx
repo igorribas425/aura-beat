@@ -818,6 +818,41 @@ export default function EventosCasaPage() {
     );
   }
 
+  async function atualizarStatusBooking(
+    bookingId: string
+  ) {
+    const { data, error } =
+      await supabase
+        .from("bookings")
+        .select("id, status")
+        .eq("id", bookingId)
+        .maybeSingle();
+
+    if (error) {
+      console.error(
+        "Erro ao atualizar status do evento:",
+        error
+      );
+      return;
+    }
+
+    if (!data) {
+      return;
+    }
+
+    setBookings((anteriores) =>
+      anteriores.map((booking) =>
+        booking.id === data.id
+          ? {
+              ...booking,
+              status:
+                data.status as BookingStatus,
+            }
+          : booking
+      )
+    );
+  }
+
   function limparRealtime() {
     realtimeLifecycle.clear();
   }
@@ -828,9 +863,14 @@ export default function EventosCasaPage() {
     realtimeLifecycle.subscribe(
       bookingId,
       async () => {
-        await atualizarTracking(
-          bookingId
-        );
+        await Promise.all([
+          atualizarTracking(
+            bookingId
+          ),
+          atualizarStatusBooking(
+            bookingId
+          ),
+        ]);
       }
     );
   }
