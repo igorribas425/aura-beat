@@ -2,7 +2,13 @@
 
 import "leaflet/dist/leaflet.css";
 
-import { useEffect, useEffectEvent, useRef, useState } from "react";
+import {
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+} from "react";
+
 import { useRouter } from "next/navigation";
 import { ProfileAvatar } from "../../components/profile-avatar";
 import { formatBRL } from "../../lib/finance";
@@ -38,33 +44,52 @@ type Localizacao = {
 };
 
 function dinheiro(valor: number) {
-  return formatBRL(Number(valor || 0));
+  return formatBRL(
+    Number(valor || 0)
+  );
 }
 
 export default function HomeCasaPage() {
   const router = useRouter();
 
-  const mapaElementoRef = useRef<HTMLDivElement | null>(null);
+  const mapaElementoRef =
+    useRef<HTMLDivElement | null>(
+      null
+    );
 
   const mapaRef =
-    useRef<import("leaflet").Map | null>(null);
+    useRef<
+      import("leaflet").Map | null
+    >(null);
 
   const camadaMarcadoresRef =
-    useRef<import("leaflet").LayerGroup | null>(null);
+    useRef<
+      import("leaflet").LayerGroup | null
+    >(null);
 
   const [casa, setCasa] =
     useState<Casa | null>(null);
 
-  const [localizacao, setLocalizacao] =
-    useState<Localizacao | null>(null);
+  const [
+    localizacao,
+    setLocalizacao,
+  ] =
+    useState<Localizacao | null>(
+      null
+    );
 
   const [artistas, setArtistas] =
-    useState<ArtistaProximo[]>([]);
+    useState<ArtistaProximo[]>(
+      []
+    );
 
   const [raio, setRaio] =
     useState(50);
 
-  const [carregando, setCarregando] =
+  const [
+    carregando,
+    setCarregando,
+  ] =
     useState(true);
 
   const [buscando, setBuscando] =
@@ -76,7 +101,10 @@ export default function HomeCasaPage() {
   const [mensagem, setMensagem] =
     useState("");
 
-  const [avaliacaoCasa, setAvaliacaoCasa] =
+  const [
+    avaliacaoCasa,
+    setAvaliacaoCasa,
+  ] =
     useState(0);
 
   const [
@@ -89,13 +117,15 @@ export default function HomeCasaPage() {
     setEventosConcluidos,
   ] = useState(0);
 
-  const carregarCasaEffect = useEffectEvent(() => {
-    void carregarCasa();
-  });
+  const carregarCasaEffect =
+    useEffectEvent(() => {
+      void carregarCasa();
+    });
 
-  const montarMapaEffect = useEffectEvent(() => {
-    void montarMapa();
-  });
+  const montarMapaEffect =
+    useEffectEvent(() => {
+      void montarMapa();
+    });
 
   useEffect(() => {
     carregarCasaEffect();
@@ -112,7 +142,10 @@ export default function HomeCasaPage() {
     if (!localizacao) return;
 
     montarMapaEffect();
-  }, [localizacao, artistas]);
+  }, [
+    localizacao,
+    artistas,
+  ]);
 
   async function carregarCasa() {
     try {
@@ -121,10 +154,14 @@ export default function HomeCasaPage() {
 
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+      } =
+        await supabase.auth.getUser();
 
       if (!user) {
-        router.replace("/login");
+        router.replace(
+          "/login"
+        );
+
         return;
       }
 
@@ -133,17 +170,18 @@ export default function HomeCasaPage() {
         error: erroPerfil,
       } = await supabase
         .from("venue_profiles")
-        .select(
-          `
+        .select(`
           id,
           trade_name,
           city,
           state,
           verification_status,
           avatar_url
-          `
+        `)
+        .eq(
+          "owner_user_id",
+          user.id
         )
-        .eq("owner_user_id", user.id)
         .maybeSingle();
 
       if (erroPerfil) {
@@ -151,7 +189,10 @@ export default function HomeCasaPage() {
       }
 
       if (!perfil) {
-        router.replace("/perfil-casa");
+        router.replace(
+          "/perfil-casa"
+        );
+
         return;
       }
 
@@ -187,7 +228,9 @@ export default function HomeCasaPage() {
         error: erroAvaliacoes,
       } = await supabase
         .from("reviews")
-        .select("overall_rating")
+        .select(
+          "overall_rating"
+        )
         .eq(
           "reviewee_type",
           "venue"
@@ -217,10 +260,14 @@ export default function HomeCasaPage() {
       const media =
         notas.length > 0
           ? notas.reduce(
-              (soma, nota) =>
+              (
+                soma,
+                nota
+              ) =>
                 soma + nota,
               0
-            ) / notas.length
+            ) /
+            notas.length
           : 0;
 
       setAvaliacaoCasa(
@@ -266,7 +313,11 @@ export default function HomeCasaPage() {
       );
 
       setAvaliacaoCasa(0);
-      setQuantidadeAvaliacoesCasa(0);
+
+      setQuantidadeAvaliacoesCasa(
+        0
+      );
+
       setEventosConcluidos(0);
     }
   }
@@ -293,7 +344,9 @@ export default function HomeCasaPage() {
     setErro("");
     setMensagem("");
 
-    if (!navigator.geolocation) {
+    if (
+      !navigator.geolocation
+    ) {
       setErro(
         "Seu navegador não possui suporte à localização."
       );
@@ -302,14 +355,24 @@ export default function HomeCasaPage() {
     }
 
     navigator.geolocation.getCurrentPosition(
-      async (posicao) => {
-        const novaLocalizacao = {
-          lat: posicao.coords.latitude,
-          lng: posicao.coords.longitude,
-          accuracy: posicao.coords.accuracy,
-        };
+      async (
+        posicao
+      ) => {
+        const novaLocalizacao =
+          {
+            lat:
+              posicao.coords.latitude,
 
-        setLocalizacao(novaLocalizacao);
+            lng:
+              posicao.coords.longitude,
+
+            accuracy:
+              posicao.coords.accuracy,
+          };
+
+        setLocalizacao(
+          novaLocalizacao
+        );
 
         await buscarArtistas(
           novaLocalizacao,
@@ -318,10 +381,14 @@ export default function HomeCasaPage() {
       },
 
       (error) => {
-        console.error(error);
+        console.error(
+          error
+        );
 
         setErro(
-          mensagemErroGps(error)
+          mensagemErroGps(
+            error
+          )
         );
       },
 
@@ -367,9 +434,14 @@ export default function HomeCasaPage() {
       } = await supabase.rpc(
         "find_available_artists",
         {
-          p_lat: coordenadas.lat,
-          p_lng: coordenadas.lng,
-          p_radius_km: raioBusca,
+          p_lat:
+            coordenadas.lat,
+
+          p_lng:
+            coordenadas.lng,
+
+          p_radius_km:
+            raioBusca,
         }
       );
 
@@ -378,9 +450,13 @@ export default function HomeCasaPage() {
       }
 
       const encontrados =
-        (data || []) as ArtistaProximo[];
+        (data ||
+          []) as ArtistaProximo[];
 
-      if (encontrados.length === 0) {
+      if (
+        encontrados.length ===
+        0
+      ) {
         setArtistas([]);
 
         setMensagem(
@@ -390,10 +466,11 @@ export default function HomeCasaPage() {
         return;
       }
 
-      const ids = encontrados.map(
-        (artista) =>
-          artista.artist_id
-      );
+      const ids =
+        encontrados.map(
+          (artista) =>
+            artista.artist_id
+        );
 
       const {
         data: avaliacoes,
@@ -406,14 +483,24 @@ export default function HomeCasaPage() {
           "reviewee_type",
           "artist"
         )
-        .in("artist_id", ids);
+        .in(
+          "artist_id",
+          ids
+        );
 
       const artistasComAvaliacao =
         encontrados.map(
-          (artista) => {
+          (
+            artista
+          ) => {
             const reviewsArtista =
-              (avaliacoes || []).filter(
-                (review) =>
+              (
+                avaliacoes ||
+                []
+              ).filter(
+                (
+                  review
+                ) =>
                   review.artist_id ===
                   artista.artist_id
               );
@@ -421,11 +508,15 @@ export default function HomeCasaPage() {
             let media = 0;
 
             if (
-              reviewsArtista.length > 0
+              reviewsArtista.length >
+              0
             ) {
               const total =
                 reviewsArtista.reduce(
-                  (soma, review) =>
+                  (
+                    soma,
+                    review
+                  ) =>
                     soma +
                     Number(
                       review.overall_rating ||
@@ -441,7 +532,10 @@ export default function HomeCasaPage() {
 
             return {
               ...artista,
-              rating: media,
+
+              rating:
+                media,
+
               reviews:
                 reviewsArtista.length,
             };
@@ -455,14 +549,19 @@ export default function HomeCasaPage() {
       setMensagem(
         `${artistasComAvaliacao.length} artista(s) disponível(is) encontrado(s).`
       );
-    } catch (error: unknown) {
-      console.error(error);
+    } catch (
+      error: unknown
+    ) {
+      console.error(
+        error
+      );
 
       let texto =
         "Não foi possível buscar artistas.";
 
       if (
-        typeof error === "object" &&
+        typeof error ===
+          "object" &&
         error !== null &&
         "message" in error
       ) {
@@ -472,7 +571,8 @@ export default function HomeCasaPage() {
               error as {
                 message?: string;
               }
-            ).message || ""
+            ).message ||
+              ""
           );
 
         if (
@@ -487,7 +587,9 @@ export default function HomeCasaPage() {
 
       setErro(texto);
     } finally {
-      setBuscando(false);
+      setBuscando(
+        false
+      );
     }
   }
 
@@ -500,26 +602,30 @@ export default function HomeCasaPage() {
     }
 
     const L =
-      await import("leaflet");
+      await import(
+        "leaflet"
+      );
 
     if (!mapaRef.current) {
-      mapaRef.current = L.map(
-        mapaElementoRef.current,
-        {
-          zoomControl: true,
-        }
-      ).setView(
-        [
-          localizacao.lat,
-          localizacao.lng,
-        ],
-        12
-      );
+      mapaRef.current =
+        L.map(
+          mapaElementoRef.current,
+          {
+            zoomControl: true,
+          }
+        ).setView(
+          [
+            localizacao.lat,
+            localizacao.lng,
+          ],
+          12
+        );
 
       L.tileLayer(
         "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
         {
           maxZoom: 19,
+
           attribution:
             '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         }
@@ -533,9 +639,12 @@ export default function HomeCasaPage() {
         );
     }
 
-    const mapa = mapaRef.current;
+    const mapa =
+      mapaRef.current;
 
-    if (!mapa) return;
+    if (!mapa) {
+      return;
+    }
 
     mapa.setView(
       [
@@ -554,11 +663,14 @@ export default function HomeCasaPage() {
     const camada =
       camadaMarcadoresRef.current;
 
-    if (!camada) return;
+    if (!camada) {
+      return;
+    }
 
     const iconeCasa =
       L.divIcon({
         className: "",
+
         html: `
           <div style="
             width:42px;
@@ -576,8 +688,16 @@ export default function HomeCasaPage() {
             🏠
           </div>
         `,
-        iconSize: [42, 42],
-        iconAnchor: [21, 21],
+
+        iconSize: [
+          42,
+          42,
+        ],
+
+        iconAnchor: [
+          21,
+          21,
+        ],
       });
 
     L.marker(
@@ -586,10 +706,13 @@ export default function HomeCasaPage() {
         localizacao.lng,
       ],
       {
-        icon: iconeCasa,
+        icon:
+          iconeCasa,
       }
     )
-      .addTo(camada)
+      .addTo(
+        camada
+      )
       .bindPopup(`
         <div style="min-width:160px">
           <strong>
@@ -598,16 +721,22 @@ export default function HomeCasaPage() {
               "Sua Casa"
             }
           </strong>
+
           <br />
+
           Sua localização
         </div>
       `);
 
     artistas.forEach(
-      (artista) => {
+      (
+        artista
+      ) => {
         if (
-          artista.lat === null ||
-          artista.lng === null
+          artista.lat ===
+            null ||
+          artista.lng ===
+            null
         ) {
           return;
         }
@@ -621,6 +750,7 @@ export default function HomeCasaPage() {
         const iconeDj =
           L.divIcon({
             className: "",
+
             html: `
               <div style="
                 width:46px;
@@ -639,8 +769,16 @@ export default function HomeCasaPage() {
                 ${inicial}
               </div>
             `,
-            iconSize: [46, 46],
-            iconAnchor: [23, 23],
+
+            iconSize: [
+              46,
+              46,
+            ],
+
+            iconAnchor: [
+              23,
+              23,
+            ],
           });
 
         const marker =
@@ -649,17 +787,21 @@ export default function HomeCasaPage() {
               Number(
                 artista.lat
               ),
+
               Number(
                 artista.lng
               ),
             ],
             {
-              icon: iconeDj,
+              icon:
+                iconeDj,
             }
           );
 
         marker
-          .addTo(camada)
+          .addTo(
+            camada
+          )
           .bindPopup(`
             <div style="
               min-width:210px;
@@ -696,7 +838,8 @@ export default function HomeCasaPage() {
 
               ⭐ ${
                 artista.rating &&
-                artista.rating > 0
+                artista.rating >
+                  0
                   ? artista.rating.toFixed(
                       1
                     )
@@ -708,11 +851,12 @@ export default function HomeCasaPage() {
     );
 
     if (
-      artistas.length > 0
+      artistas.length >
+      0
     ) {
       const pontos: [
         number,
-        number
+        number,
       ][] = [
         [
           localizacao.lat,
@@ -721,15 +865,20 @@ export default function HomeCasaPage() {
       ];
 
       artistas.forEach(
-        (artista) => {
+        (
+          artista
+        ) => {
           if (
-            artista.lat !== null &&
-            artista.lng !== null
+            artista.lat !==
+              null &&
+            artista.lng !==
+              null
           ) {
             pontos.push([
               Number(
                 artista.lat
               ),
+
               Number(
                 artista.lng
               ),
@@ -741,7 +890,11 @@ export default function HomeCasaPage() {
       mapa.fitBounds(
         pontos,
         {
-          padding: [40, 40],
+          padding: [
+            40,
+            40,
+          ],
+
           maxZoom: 13,
         }
       );
@@ -751,9 +904,13 @@ export default function HomeCasaPage() {
   async function alterarRaio(
     novoRaio: number
   ) {
-    setRaio(novoRaio);
+    setRaio(
+      novoRaio
+    );
 
-    if (localizacao) {
+    if (
+      localizacao
+    ) {
       await buscarArtistas(
         localizacao,
         novoRaio
@@ -766,16 +923,23 @@ export default function HomeCasaPage() {
   ) {
     if (
       !mapaRef.current ||
-      artista.lat === null ||
-      artista.lng === null
+      artista.lat ===
+        null ||
+      artista.lng ===
+        null
     ) {
       return;
     }
 
     mapaRef.current.setView(
       [
-        Number(artista.lat),
-        Number(artista.lng),
+        Number(
+          artista.lat
+        ),
+
+        Number(
+          artista.lng
+        ),
       ],
       15,
       {
@@ -785,7 +949,8 @@ export default function HomeCasaPage() {
 
     window.scrollTo({
       top: 0,
-      behavior: "smooth",
+      behavior:
+        "smooth",
     });
   }
 
@@ -803,7 +968,9 @@ export default function HomeCasaPage() {
       "verified"
     ) {
       return {
-        texto: "Casa Verificada",
+        texto:
+          "Casa Verificada",
+
         classe:
           "bg-green-500/10 border-green-800 text-green-400",
       };
@@ -816,6 +983,7 @@ export default function HomeCasaPage() {
       return {
         texto:
           "Verificação recusada",
+
         classe:
           "bg-red-500/10 border-red-800 text-red-400",
       };
@@ -826,7 +994,9 @@ export default function HomeCasaPage() {
       "suspended"
     ) {
       return {
-        texto: "Casa suspensa",
+        texto:
+          "Casa suspensa",
+
         classe:
           "bg-red-500/10 border-red-800 text-red-400",
       };
@@ -835,21 +1005,28 @@ export default function HomeCasaPage() {
     return {
       texto:
         "Verificação pendente",
+
       classe:
         "bg-yellow-500/10 border-yellow-800 text-yellow-400",
     };
   }
 
-  if (carregando) {
+  if (
+    carregando
+  ) {
     return (
       <main className="aura-page flex min-h-screen items-center justify-center">
+
         <div className="text-center">
+
           <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-zinc-800 border-t-red-500" />
 
           <p className="text-zinc-400">
             Carregando Aura Beat...
           </p>
+
         </div>
+
       </main>
     );
   }
@@ -863,59 +1040,108 @@ export default function HomeCasaPage() {
 
   return (
     <main className="aura-page pb-8">
+
       <div className="mx-auto max-w-7xl space-y-6 px-4 py-6">
+
         <section className="aura-hero aura-venue-hero rounded-3xl p-6 sm:p-8">
+
           <div className="flex flex-col justify-between gap-5 md:flex-row md:items-center">
+
             <div className="flex items-center gap-4">
+
               <ProfileAvatar
                 kind="venue"
-                name={casa?.trade_name || "Casa"}
-                url={casa?.avatar_url}
+                name={
+                  casa?.trade_name ||
+                  "Casa"
+                }
+                url={
+                  casa?.avatar_url
+                }
                 sizeClassName="h-20 w-20 sm:h-24 sm:w-24"
                 className="rounded-3xl shadow-[0_0_35px_rgba(239,68,68,0.22)]"
               />
+
               <div>
-                <p className="aura-kicker">Painel da Casa</p>
-                <h1 className="mt-2 text-3xl font-black">
-                  {casa?.trade_name}
-                </h1>
-                <p className="mt-2 text-zinc-400">
-                  {casa?.city || "Cidade não informada"}
-                  {casa?.state ? ` — ${casa.state}` : ""}
+
+                <p className="aura-kicker">
+                  Painel da Casa
                 </p>
+
+                <h1 className="mt-2 text-3xl font-black">
+                  {
+                    casa?.trade_name
+                  }
+                </h1>
+
+                <p className="mt-2 text-zinc-400">
+
+                  {casa?.city ||
+                    "Cidade não informada"}
+
+                  {casa?.state
+                    ? ` — ${casa.state}`
+                    : ""}
+
+                </p>
+
               </div>
+
             </div>
 
             <div className="flex flex-col items-start gap-3 md:items-end">
+
               <div
                 className={`rounded-full border px-4 py-2 text-sm font-bold ${status.classe}`}
               >
-                {status.texto}
+                {
+                  status.texto
+                }
               </div>
+
               <div className="flex flex-wrap gap-2">
+
                 {casa?.id && (
                   <button
                     type="button"
-                    onClick={() => router.push(`/casas/${casa.id}`)}
+                    onClick={() =>
+                      router.push(
+                        `/casas/${casa.id}`
+                      )
+                    }
                     className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm font-bold text-red-300"
                   >
                     Ver perfil público
                   </button>
                 )}
+
                 <button
                   type="button"
-                  onClick={() => router.push("/ofertas")}
+                  onClick={() =>
+                    router.push(
+                      "/ofertas"
+                    )
+                  }
                   className="rounded-xl bg-red-500 px-4 py-2 text-sm font-black text-white"
                 >
                   Criar oferta
                 </button>
+
               </div>
+
             </div>
+
           </div>
+
         </section>
 
-        <section className="grid gap-3 sm:grid-cols-2" aria-label="Resumo da Casa">
+        <section
+          className="grid gap-3 sm:grid-cols-2"
+          aria-label="Resumo da Casa"
+        >
+
           <div className="aura-stat rounded-2xl border p-5">
+
             <p className="text-sm text-zinc-500">
               Avaliação da Casa
             </p>
@@ -923,31 +1149,195 @@ export default function HomeCasaPage() {
             <p className="mt-2 text-2xl font-black">
               ⭐{" "}
               {avaliacaoCasa > 0
-                ? avaliacaoCasa.toFixed(1)
+                ? avaliacaoCasa.toFixed(
+                    1
+                  )
                 : "--"}
             </p>
 
             <p className="mt-1 text-xs text-zinc-600">
-              {quantidadeAvaliacoesCasa}{" "}
-              {quantidadeAvaliacoesCasa === 1
+
+              {
+                quantidadeAvaliacoesCasa
+              }{" "}
+
+              {quantidadeAvaliacoesCasa ===
+              1
                 ? "avaliação"
                 : "avaliações"}
+
             </p>
+
           </div>
 
           <div className="aura-stat rounded-2xl border p-5">
+
             <p className="text-sm text-zinc-500">
               Eventos concluídos
             </p>
 
             <p className="mt-2 text-2xl font-black">
-              {eventosConcluidos}
+              {
+                eventosConcluidos
+              }
             </p>
 
             <p className="mt-1 text-xs text-zinc-600">
               Contratações finalizadas
             </p>
+
           </div>
+
+        </section>
+
+        <section>
+
+          <h2 className="mb-3 text-lg font-black">
+            Acesso rápido
+          </h2>
+
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+
+            <button
+              onClick={() =>
+                router.push(
+                  "/disponibilidades-casa"
+                )
+              }
+              className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-amber-500/50"
+            >
+
+              <div className="text-2xl">
+                ⚡
+              </div>
+
+              <p className="mt-3 font-bold">
+                DJs disponíveis
+              </p>
+
+              <p className="mt-1 text-xs text-zinc-500">
+                Ofertas urgentes dos DJs
+              </p>
+
+            </button>
+
+            <button
+              onClick={() =>
+                router.push(
+                  "/ofertas"
+                )
+              }
+              className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-red-500/50"
+            >
+
+              <div className="text-2xl">
+                🔥
+              </div>
+
+              <p className="mt-3 font-bold">
+                Ofertas
+              </p>
+
+              <p className="mt-1 text-xs text-zinc-500">
+                Criar e acompanhar
+              </p>
+
+            </button>
+
+            <button
+              onClick={() =>
+                router.push(
+                  "/eventos-casa"
+                )
+              }
+              className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-green-500/50"
+            >
+
+              <div className="text-2xl">
+                🎟️
+              </div>
+
+              <p className="mt-3 font-bold">
+                Eventos
+              </p>
+
+              <p className="mt-1 text-xs text-zinc-500">
+                Contratações da Casa
+              </p>
+
+            </button>
+
+            <button
+              onClick={() =>
+                router.push(
+                  "/chat"
+                )
+              }
+              className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-purple-500/50"
+            >
+
+              <div className="text-2xl">
+                💬
+              </div>
+
+              <p className="mt-3 font-bold">
+                Chat
+              </p>
+
+              <p className="mt-1 text-xs text-zinc-500">
+                Conversas com artistas
+              </p>
+
+            </button>
+
+            <button
+              onClick={() =>
+                router.push(
+                  "/perfil-casa"
+                )
+              }
+              className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-red-500/50"
+            >
+
+              <div className="text-2xl">
+                🏠
+              </div>
+
+              <p className="mt-3 font-bold">
+                Meu perfil
+              </p>
+
+              <p className="mt-1 text-xs text-zinc-500">
+                Editar informações
+              </p>
+
+            </button>
+
+            <button
+              onClick={() =>
+                router.push(
+                  "/configuracoes"
+                )
+              }
+              className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-red-500/50"
+            >
+
+              <div className="text-2xl">
+                ⚙️
+              </div>
+
+              <p className="mt-3 font-bold">
+                Configurações
+              </p>
+
+              <p className="mt-1 text-xs text-zinc-500">
+                Conta e preferências
+              </p>
+
+            </button>
+
+          </div>
+
         </section>
 
         {erro && (
@@ -963,7 +1353,9 @@ export default function HomeCasaPage() {
         )}
 
         {!casaVerificada ? (
+
           <section className="rounded-3xl border border-yellow-900/50 bg-yellow-950/10 p-8 text-center">
+
             <div className="text-5xl">
               🔐
             </div>
@@ -973,11 +1365,9 @@ export default function HomeCasaPage() {
             </h2>
 
             <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-zinc-400">
-              Para proteger a
-              localização dos artistas,
-              somente Casas verificadas
-              podem visualizar DJs
-              disponíveis no mapa.
+              Para proteger a localização dos artistas,
+              somente Casas verificadas podem visualizar
+              DJs disponíveis no mapa.
             </p>
 
             <button
@@ -990,32 +1380,46 @@ export default function HomeCasaPage() {
             >
               Ver perfil da Casa
             </button>
+
           </section>
+
         ) : (
           <>
+
             <section className="grid gap-4 lg:grid-cols-[1fr_300px]">
+
               <div className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950">
+
                 <div
                   ref={
                     mapaElementoRef
                   }
                   className="h-[480px] w-full"
                 />
+
               </div>
 
               <div className="rounded-3xl border border-zinc-800 bg-zinc-950 p-5">
+
                 <h2 className="text-lg font-black">
                   Buscar DJs
                 </h2>
 
                 <p className="mt-1 text-sm text-zinc-500">
-                  Defina o raio da
-                  procura.
+                  Defina o raio da procura.
                 </p>
 
                 <div className="mt-5 grid grid-cols-2 gap-2">
-                  {[10, 25, 50, 100].map(
-                    (valor) => (
+
+                  {[
+                    10,
+                    25,
+                    50,
+                    100,
+                  ].map(
+                    (
+                      valor
+                    ) => (
                       <button
                         key={
                           valor
@@ -1036,6 +1440,7 @@ export default function HomeCasaPage() {
                       </button>
                     )
                   )}
+
                 </div>
 
                 <button
@@ -1054,6 +1459,7 @@ export default function HomeCasaPage() {
 
                 {localizacao && (
                   <div className="mt-5 rounded-xl bg-zinc-900 p-4">
+
                     <p className="text-xs text-zinc-500">
                       GPS da Casa
                     </p>
@@ -1063,75 +1469,94 @@ export default function HomeCasaPage() {
                     </p>
 
                     <p className="mt-2 text-xs text-zinc-500">
-                      Precisão aproximada:
-                      ±
+                      Precisão aproximada: ±
                       {localizacao.accuracy.toFixed(
                         0
                       )}{" "}
                       metros
                     </p>
+
                   </div>
                 )}
+
               </div>
+
             </section>
 
             <section>
+
               <div className="mb-4 flex items-end justify-between">
+
                 <div>
+
                   <h2 className="text-xl font-black">
                     DJs disponíveis
                   </h2>
 
                   <p className="mt-1 text-sm text-zinc-500">
-                    Até {raio} km da
-                    sua localização
+                    Até {raio} km da sua localização
                   </p>
+
                 </div>
 
                 <span className="rounded-full bg-zinc-900 px-3 py-1 text-sm font-bold text-zinc-400">
                   {artistas.length} DJ(s)
                 </span>
+
               </div>
 
               {artistas.length ===
               0 ? (
+
                 <div className="rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/50 p-10 text-center">
+
                   <div className="text-5xl">
                     🎧
                   </div>
 
                   <p className="mt-4 font-bold">
-                    Nenhum DJ disponível
-                    nesse raio
+                    Nenhum DJ disponível nesse raio
                   </p>
 
                   <p className="mt-2 text-sm text-zinc-500">
-                    Tente aumentar a
-                    distância ou
-                    atualizar a busca.
+                    Tente aumentar a distância ou atualizar a busca.
                   </p>
+
                 </div>
+
               ) : (
+
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+
                   {artistas.map(
-                    (artista) => (
+                    (
+                      artista
+                    ) => (
                       <article
                         key={
                           artista.artist_id
                         }
                         className="rounded-3xl border border-zinc-800 bg-zinc-950 p-5 transition hover:border-red-500/50"
                       >
+
                         <div className="flex items-start gap-4">
+
                           <ProfileAvatar
                             kind="artist"
-                            name={artista.stage_name}
-                            url={artista.avatar_url}
+                            name={
+                              artista.stage_name
+                            }
+                            url={
+                              artista.avatar_url
+                            }
                             sizeClassName="h-16 w-16"
                             className="rounded-2xl"
                           />
 
                           <div className="min-w-0 flex-1">
+
                             <div className="flex flex-wrap items-center gap-2">
+
                               <h3 className="truncate text-lg font-black">
                                 {
                                   artista.stage_name
@@ -1144,17 +1569,22 @@ export default function HomeCasaPage() {
                                   ✓ Verificado
                                 </span>
                               )}
+
                             </div>
 
                             <p className="mt-1 text-sm text-zinc-500">
                               {artista.primary_style ||
                                 "Estilo não informado"}
                             </p>
+
                           </div>
+
                         </div>
 
                         <div className="mt-5 grid grid-cols-3 gap-2">
+
                           <div className="rounded-xl bg-zinc-900 p-3">
+
                             <p className="text-[10px] uppercase text-zinc-600">
                               Distância
                             </p>
@@ -1164,9 +1594,11 @@ export default function HomeCasaPage() {
                                 "--"}{" "}
                               km
                             </p>
+
                           </div>
 
                           <div className="rounded-xl bg-zinc-900 p-3">
+
                             <p className="text-[10px] uppercase text-zinc-600">
                               Cachê por hora
                             </p>
@@ -1180,9 +1612,11 @@ export default function HomeCasaPage() {
                               )}
                               /h
                             </p>
+
                           </div>
 
                           <div className="rounded-xl bg-zinc-900 p-3">
+
                             <p className="text-[10px] uppercase text-zinc-600">
                               Avaliação
                             </p>
@@ -1197,10 +1631,13 @@ export default function HomeCasaPage() {
                                   )
                                 : "Novo"}
                             </p>
+
                           </div>
+
                         </div>
 
                         <div className="mt-4 grid grid-cols-2 gap-2">
+
                           <button
                             onClick={() =>
                               focarArtista(
@@ -1222,15 +1659,21 @@ export default function HomeCasaPage() {
                           >
                             Enviar oferta
                           </button>
+
                         </div>
+
                       </article>
                     )
                   )}
+
                 </div>
               )}
+
             </section>
+
           </>
         )}
+
       </div>
 
     </main>
