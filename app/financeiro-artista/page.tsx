@@ -553,21 +553,30 @@ export default function FinanceiroArtistaPage() {
                   ) ||
                   booking.releases[0];
 
+                const pagamentoConfirmado =
+                  booking.payment_status ===
+                  "paid";
+
                 const status =
-                  statusRepasse(
-                    principal
-                      ?.release_status ||
-                      null
-                  );
+                  pagamentoConfirmado &&
+                  principal?.release_status ===
+                    "pending"
+                    ? {
+                        texto:
+                          "Pagamento garantido",
+                        classe:
+                          "border-green-800 bg-green-950/30 text-green-300",
+                      }
+                    : statusRepasse(
+                        principal
+                          ?.release_status ||
+                          null
+                      );
 
                 const extras =
                   booking.travel_amount +
                   booking.toll_amount +
                   booking.lodging_amount;
-
-                const pagamentoConfirmado =
-                  booking.payment_status ===
-                  "paid";
 
                 const tituloValor =
                   pagamentoConfirmado
@@ -810,9 +819,18 @@ export default function FinanceiroArtistaPage() {
                             }
 
                             const releaseStatus =
-                              statusRepasse(
-                                release.release_status
-                              );
+                              pagamentoConfirmado &&
+                              release.release_status ===
+                                "pending"
+                                ? {
+                                    texto:
+                                      "Pagamento garantido",
+                                    classe:
+                                      "border-green-800 bg-green-950/30 text-green-300",
+                                  }
+                                : statusRepasse(
+                                    release.release_status
+                                  );
 
                             return (
                               <div
@@ -863,6 +881,23 @@ export default function FinanceiroArtistaPage() {
                         Nenhum valor adicional de deslocamento,
                         pedágio ou hospedagem nesta contratação.
                       </p>
+                    )}
+
+                    {pagamentoConfirmado &&
+                      principal?.release_status ===
+                        "pending" && (
+
+                      <div className="mt-5 rounded-xl border border-green-900/60 bg-green-950/20 p-4 text-sm text-green-300">
+                        ✓ Pagamento garantido. A Casa já realizou
+                        o pagamento. Você receberá{" "}
+                        <strong>
+                          {dinheiro(
+                            booking.artist_total
+                          )}
+                        </strong>{" "}
+                        após a conclusão do evento.
+                      </div>
+
                     )}
 
                     {pagamentoConfirmado &&
