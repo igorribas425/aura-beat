@@ -8,6 +8,9 @@ import {
 } from "react";
 
 import { useRouter } from "next/navigation";
+import {
+  resolveAgendaAccess,
+} from "../../lib/agenda-access.mjs";
 import { supabase } from "../../lib/supabase";
 
 type Artista = {
@@ -359,37 +362,71 @@ export default function AgendaPage() {
         return;
       }
 
-      const {
-        data: perfil,
-        error: erroPerfil,
-      } = await supabase
-        .from(
-          "artist_profiles"
-        )
-        .select(
-          "id, stage_name"
-        )
-        .eq(
-          "user_id",
-          user.id
-        )
-        .maybeSingle();
+      const acesso =
+        await resolveAgendaAccess({
+          loadActiveMode:
+            async () => {
+              const {
+                data: perfil,
+                error: erroPerfil,
+              } = await supabase
+                .from("profiles")
+                .select(
+                  "default_mode"
+                )
+                .eq(
+                  "id",
+                  user.id
+                )
+                .maybeSingle();
 
-      if (erroPerfil) {
-        throw erroPerfil;
-      }
+              if (erroPerfil) {
+                throw erroPerfil;
+              }
 
-      if (!perfil) {
+              return perfil?.default_mode;
+            },
+          loadArtist:
+            async () => {
+              const {
+                data: perfil,
+                error: erroPerfil,
+              } = await supabase
+                .from(
+                  "artist_profiles"
+                )
+                .select(
+                  "id, stage_name"
+                )
+                .eq(
+                  "user_id",
+                  user.id
+                )
+                .maybeSingle();
+
+              if (erroPerfil) {
+                throw erroPerfil;
+              }
+
+              return perfil as Artista | null;
+            },
+        });
+
+      if (
+        acesso.kind ===
+        "redirect"
+      ) {
         router.replace(
-          "/perfil-artista"
+          acesso.href
         );
 
         return;
       }
 
-      setArtista(
-        perfil as Artista
-      );
+      const perfil =
+        acesso.artist;
+
+      setArtista(perfil);
 
       const [
         respostaAgenda,
