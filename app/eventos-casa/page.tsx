@@ -2256,6 +2256,15 @@ export default function EventosCasaPage() {
                       </div>
                     ) : (
                       <>
+                        <div className="mb-5 rounded-2xl border border-yellow-800 bg-yellow-950/20 p-4">
+                          <p className="font-black text-yellow-300">
+                            ⭐ Evento finalizado!
+                          </p>
+                          <p className="mt-1 text-sm text-yellow-100/80">
+                            Lembre-se de avaliar o Artista. A avaliação dos dois lados ajuda a manter a confiança e a qualidade na Aura Beat.
+                          </p>
+                        </div>
+
                         <p className="text-sm font-black text-red-500">
                           AVALIAR ARTISTA
                         </p>
