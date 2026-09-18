@@ -313,11 +313,7 @@ export default function HomeCasaPage() {
       );
 
       setAvaliacaoCasa(0);
-
-      setQuantidadeAvaliacoesCasa(
-        0
-      );
-
+      setQuantidadeAvaliacoesCasa(0);
       setEventosConcluidos(0);
     }
   }
@@ -344,9 +340,7 @@ export default function HomeCasaPage() {
     setErro("");
     setMensagem("");
 
-    if (
-      !navigator.geolocation
-    ) {
+    if (!navigator.geolocation) {
       setErro(
         "Seu navegador não possui suporte à localização."
       );
@@ -355,20 +349,17 @@ export default function HomeCasaPage() {
     }
 
     navigator.geolocation.getCurrentPosition(
-      async (
-        posicao
-      ) => {
-        const novaLocalizacao =
-          {
-            lat:
-              posicao.coords.latitude,
+      async (posicao) => {
+        const novaLocalizacao = {
+          lat:
+            posicao.coords.latitude,
 
-            lng:
-              posicao.coords.longitude,
+          lng:
+            posicao.coords.longitude,
 
-            accuracy:
-              posicao.coords.accuracy,
-          };
+          accuracy:
+            posicao.coords.accuracy,
+        };
 
         setLocalizacao(
           novaLocalizacao
@@ -490,17 +481,13 @@ export default function HomeCasaPage() {
 
       const artistasComAvaliacao =
         encontrados.map(
-          (
-            artista
-          ) => {
+          (artista) => {
             const reviewsArtista =
               (
                 avaliacoes ||
                 []
               ).filter(
-                (
-                  review
-                ) =>
+                (review) =>
                   review.artist_id ===
                   artista.artist_id
               );
@@ -729,9 +716,7 @@ export default function HomeCasaPage() {
       `);
 
     artistas.forEach(
-      (
-        artista
-      ) => {
+      (artista) => {
         if (
           artista.lat ===
             null ||
@@ -865,9 +850,7 @@ export default function HomeCasaPage() {
       ];
 
       artistas.forEach(
-        (
-          artista
-        ) => {
+        (artista) => {
           if (
             artista.lat !==
               null &&
@@ -1196,7 +1179,7 @@ export default function HomeCasaPage() {
             Acesso rápido
           </h2>
 
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-7">
 
             <button
               onClick={() =>
@@ -1263,6 +1246,29 @@ export default function HomeCasaPage() {
 
               <p className="mt-1 text-xs text-zinc-500">
                 Contratações da Casa
+              </p>
+
+            </button>
+
+            <button
+              onClick={() =>
+                router.push(
+                  "/financeiro-casa"
+                )
+              }
+              className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-green-500/50"
+            >
+
+              <div className="text-2xl">
+                💰
+              </div>
+
+              <p className="mt-3 font-bold">
+                Financeiro
+              </p>
+
+              <p className="mt-1 text-xs text-zinc-500">
+                Pagamentos e taxas
               </p>
 
             </button>
@@ -1417,9 +1423,7 @@ export default function HomeCasaPage() {
                     50,
                     100,
                   ].map(
-                    (
-                      valor
-                    ) => (
+                    (valor) => (
                       <button
                         key={
                           valor
@@ -1529,9 +1533,7 @@ export default function HomeCasaPage() {
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
 
                   {artistas.map(
-                    (
-                      artista
-                    ) => (
+                    (artista) => (
                       <article
                         key={
                           artista.artist_id
