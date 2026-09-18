@@ -18,6 +18,27 @@ import {
 
 export const runtime = "nodejs";
 
+function errorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof (error as { message?: unknown }).message === "string"
+  ) {
+    return (error as { message: string }).message;
+  }
+
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return "Erro desconhecido.";
+  }
+}
+
 function money(
   value: number
 ) {
@@ -689,10 +710,7 @@ export async function POST(
             asaas_customer_id:
               customer.id,
             creation_error:
-              error instanceof
-              Error
-                ? error.message
-                : "erro desconhecido",
+              errorMessage(error),
           },
         })
         .eq(
@@ -711,9 +729,7 @@ export async function POST(
     return NextResponse.json(
       {
         error:
-          error instanceof Error
-            ? error.message
-            : "Nao foi possivel criar a cobranca Pix.",
+          errorMessage(error),
       },
       {
         status: 500,
