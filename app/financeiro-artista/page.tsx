@@ -579,6 +579,25 @@ export default function FinanceiroArtistaPage() {
                     ? "Total líquido"
                     : "Valor previsto";
 
+                const releasesVisiveis =
+                  booking.releases.filter(
+                    (release) => {
+                      if (
+                        release.release_kind ===
+                        "performance"
+                      ) {
+                        return true;
+                      }
+
+                      return (
+                        Number(
+                          release.release_amount ||
+                            0
+                        ) > 0
+                      );
+                    }
+                  );
+
                 return (
                   <article
                     key={
@@ -773,10 +792,13 @@ export default function FinanceiroArtistaPage() {
 
                     </div>
 
-                    {pagamentoConfirmado && (
+                    {pagamentoConfirmado &&
+                      releasesVisiveis.length >
+                        0 && (
+
                       <div className="mt-4 grid gap-3 sm:grid-cols-2">
 
-                        {booking.releases.map(
+                        {releasesVisiveis.map(
                           (
                             release,
                             index
