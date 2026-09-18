@@ -580,6 +580,14 @@ export default function OfertasCasaPage() {
       return "A Casa precisa estar verificada para contratar artistas.";
     }
 
+    if (
+      artistaAlvo &&
+      artistaAlvo.verification_status !==
+        "verified"
+    ) {
+      return "O artista precisa estar verificado para receber um convite de contratação.";
+    }
+
     if (!form.title.trim()) {
       return "Informe o nome da oferta.";
     }
@@ -891,6 +899,20 @@ export default function OfertasCasaPage() {
           );
 
         if (
+          mensagemErro.includes(
+            "Casa precisa estar verificada"
+          )
+        ) {
+          texto =
+            "A Casa precisa estar verificada para publicar uma contratação.";
+        } else if (
+          mensagemErro.includes(
+            "Artista precisa estar verificado"
+          )
+        ) {
+          texto =
+            "O artista precisa estar verificado para receber ou avançar uma contratação.";
+        } else if (
           mensagemErro.includes(
             "row-level security"
           )
@@ -1507,7 +1529,12 @@ export default function OfertasCasaPage() {
           disabled={
             publicando ||
             casa?.verification_status !==
-              "verified"
+              "verified" ||
+            Boolean(
+              artistaAlvo &&
+                artistaAlvo.verification_status !==
+                  "verified"
+            )
           }
           onClick={
             publicarOferta
@@ -1516,9 +1543,13 @@ export default function OfertasCasaPage() {
         >
           {publicando
             ? "Publicando..."
-            : artistaAlvo
-              ? `🎧 Enviar convite para ${artistaAlvo.stage_name}`
-              : "🔥 Publicar oferta"}
+            : artistaAlvo &&
+                artistaAlvo.verification_status !==
+                  "verified"
+              ? "⚠ Artista precisa estar verificado"
+              : artistaAlvo
+                ? `🎧 Enviar convite para ${artistaAlvo.stage_name}`
+                : "🔥 Publicar oferta"}
         </button>
 
         <section className="rounded-3xl border border-zinc-800 bg-zinc-950 p-6">
