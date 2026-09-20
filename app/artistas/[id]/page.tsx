@@ -223,7 +223,7 @@ export default function PublicArtistPage() {
                     Conversar
                   </Link>
                 )}
-                {canSendOffer && <Link href={`/ofertas?artist=${artist.id}`} className="rounded-xl bg-red-500 px-6 py-3 font-black text-white hover:bg-red-600">Enviar oferta</Link>}
+                {canSendOffer && <Link href={`/oferta-direta/${artist.id}`} className="rounded-xl bg-red-500 px-6 py-3 font-black text-white hover:bg-red-600">Enviar oferta</Link>}
                 {instagram && <a href={instagram.url} target="_blank" rel="noreferrer" className="rounded-xl border border-purple-500/40 bg-purple-500/10 px-6 py-3 font-bold text-purple-300">Instagram {instagram.username}</a>}
               </div>
             </div>
