@@ -40,6 +40,7 @@ export default function PublicArtistPage() {
   const [reviewCount, setReviewCount] = useState(0);
   const [completedEvents, setCompletedEvents] = useState(0);
   const [canSendOffer, setCanSendOffer] = useState(false);
+  const [canViewFee, setCanViewFee] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -93,11 +94,17 @@ export default function PublicArtistPage() {
 
       const user = userResult.data.user;
       if (user) {
-        const [profileResult, venueResult] = await Promise.all([
+        const [profileResult, venueResult, ownArtistResult] = await Promise.all([
           supabase.from("profiles").select("default_mode").eq("id", user.id).maybeSingle(),
           supabase.from("venue_profiles").select("id").eq("owner_user_id", user.id).maybeSingle(),
+          supabase.from("artist_profiles").select("id").eq("user_id", user.id).maybeSingle(),
         ]);
-        if (active) setCanSendOffer(profileResult.data?.default_mode === "venue" && Boolean(venueResult.data));
+        if (active) {
+          const isVenue =
+            profileResult.data?.default_mode === "venue" && Boolean(venueResult.data);
+          setCanSendOffer(isVenue);
+          setCanViewFee(isVenue || ownArtistResult.data?.id === id);
+        }
       }
 
       if (active) setLoading(false);
@@ -150,7 +157,16 @@ export default function PublicArtistPage() {
         </section>
 
         <section className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Indicadores profissionais">
-          <div className="aura-stat rounded-2xl border p-4"><p className="text-xs text-zinc-500">Cachê por hora</p><p className="mt-2 text-xl font-black text-red-400">{artist.fixed_fee === null ? "Sob consulta" : `${formatBRL(Number(artist.fixed_fee))}/h`}</p></div>
+          <div className="aura-stat rounded-2xl border p-4">
+            <p className="text-xs text-zinc-500">{canViewFee ? "Cachê por hora" : "Contratação"}</p>
+            <p className={`mt-2 text-xl font-black ${canViewFee ? "text-red-400" : ""}`}>
+              {canViewFee
+                ? artist.fixed_fee === null
+                  ? "Sob consulta"
+                  : `${formatBRL(Number(artist.fixed_fee))}/h`
+                : "Valor visível para Casas"}
+            </p>
+          </div>
           <div className="aura-stat rounded-2xl border p-4"><p className="text-xs text-zinc-500">Avaliação</p><p className="mt-2 text-xl font-black">{rating > 0 ? `★ ${rating.toFixed(1)}` : "Perfil novo"}</p><p className="mt-1 text-xs text-zinc-500">{reviewCount} avaliação(ões)</p></div>
           <div className="aura-stat rounded-2xl border p-4"><p className="text-xs text-zinc-500">Histórico</p><p className="mt-2 text-xl font-black">{completedEvents}</p><p className="mt-1 text-xs text-zinc-500">eventos concluídos</p></div>
           <div className="aura-stat rounded-2xl border p-4"><p className="text-xs text-zinc-500">Raio disponível</p><p className="mt-2 text-xl font-black">{artist.free_radius_km === null ? "Não informado" : `${artist.free_radius_km} km`}</p></div>
