@@ -560,6 +560,76 @@ export default function DirectChatPage() {
     };
   }, [conversations, mobileChatOpen, selectedId, userId]);
 
+  useEffect(() => {
+    if (!userId) return;
+
+    const channel = supabase
+      .channel(`direct-profile-visuals-${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "artist_profiles" },
+        (payload) => {
+          const row = payload.new as {
+            user_id?: string;
+            stage_name?: string;
+            avatar_url?: string | null;
+          };
+
+          if (!row.user_id) return;
+
+          setConversations((current) =>
+            current.map((conversation) =>
+              conversation.otherKind === "artist" &&
+              conversation.otherUserId === row.user_id
+                ? {
+                    ...conversation,
+                    otherName: row.stage_name ?? conversation.otherName,
+                    otherAvatar:
+                      row.avatar_url === undefined
+                        ? conversation.otherAvatar
+                        : row.avatar_url,
+                  }
+                : conversation,
+            ),
+          );
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "venue_profiles" },
+        (payload) => {
+          const row = payload.new as {
+            owner_user_id?: string;
+            trade_name?: string;
+            avatar_url?: string | null;
+          };
+
+          if (!row.owner_user_id) return;
+
+          setConversations((current) =>
+            current.map((conversation) =>
+              conversation.otherKind === "venue" &&
+              conversation.otherUserId === row.owner_user_id
+                ? {
+                    ...conversation,
+                    otherName: row.trade_name ?? conversation.otherName,
+                    otherAvatar:
+                      row.avatar_url === undefined
+                        ? conversation.otherAvatar
+                        : row.avatar_url,
+                  }
+                : conversation,
+            ),
+          );
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [userId]);
+
   const selected = useMemo(
     () => conversations.find((item) => item.id === selectedId) ?? null,
     [conversations, selectedId],
