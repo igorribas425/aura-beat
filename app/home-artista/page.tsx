@@ -1191,7 +1191,7 @@ export default function HomeArtistaPage() {
             <button
               onClick={() =>
                 router.push(
-                  "/chat"
+                  "/chat-direto"
                 )
               }
               className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-red-500/50"
