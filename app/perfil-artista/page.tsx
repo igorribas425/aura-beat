@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
+import { ArtistMediaManager } from "../../components/artist-media-manager";
 import { ProfileAvatar } from "../../components/profile-avatar";
 import { PublicLocationControl } from "../../components/public-location-control";
 import { supabase } from "../../lib/supabase";
@@ -78,6 +79,7 @@ export default function PerfilArtistaPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [profileExists, setProfileExists] = useState(false);
+  const [artistId, setArtistId] = useState("");
   const [verificationStatus, setVerificationStatus] =
     useState<VerificationStatus>(null);
 
@@ -100,6 +102,7 @@ export default function PerfilArtistaPage() {
 
       if (data) {
         setProfileExists(true);
+        setArtistId(data.id);
         setStageName(data.stage_name ?? "");
         setBio(data.bio ?? "");
         setCity(data.base_city ?? "");
@@ -168,6 +171,7 @@ export default function PerfilArtistaPage() {
       }
 
       setProfileExists(true);
+      setArtistId(artist.id);
       setVerificationStatus(
         (artist.verification_status ?? verificationStatus ?? null) as VerificationStatus,
       );
@@ -441,6 +445,8 @@ export default function PerfilArtistaPage() {
             <div className="rounded-xl bg-zinc-900 p-4 text-sm">{message}</div>
           )}
         </form>
+
+        {profileExists && artistId && <ArtistMediaManager artistId={artistId} />}
       </div>
     </main>
   );

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { ArtistMediaGallery, type ArtistMediaItem } from "../../../components/artist-media-gallery";
 import { ProfileAvatar } from "../../../components/profile-avatar";
 import { formatBRL } from "../../../lib/finance";
 import { supabase } from "../../../lib/supabase";
@@ -33,6 +34,7 @@ export default function PublicArtistPage() {
   const [artist, setArtist] = useState<ArtistPublic | null>(null);
   const [styles, setStyles] = useState<string[]>([]);
   const [eventTypes, setEventTypes] = useState<string[]>([]);
+  const [media, setMedia] = useState<ArtistMediaItem[]>([]);
   const [available, setAvailable] = useState(false);
   const [rating, setRating] = useState(0);
   const [reviewCount, setReviewCount] = useState(0);
@@ -61,12 +63,13 @@ export default function PublicArtistPage() {
         return;
       }
 
-      const [stylesResult, reviewsResult, availabilityResult, preferencesResult, bookingsResult, userResult] = await Promise.all([
+      const [stylesResult, reviewsResult, availabilityResult, preferencesResult, bookingsResult, mediaResult, userResult] = await Promise.all([
         supabase.from("artist_styles").select("style_name").eq("artist_id", id),
         supabase.from("reviews").select("overall_rating").eq("reviewee_type", "artist").eq("artist_id", id),
         supabase.from("artist_availability").select("is_available,last_seen_at").eq("artist_id", id).maybeSingle(),
         supabase.from("artist_profiles").select("accepted_event_types").eq("id", id).maybeSingle(),
         supabase.from("bookings").select("id", { count: "exact", head: true }).eq("artist_id", id).eq("status", "completed"),
+        supabase.from("artist_media").select("id,media_type,public_url,caption,sort_order,is_cover").eq("artist_id", id).order("is_cover", { ascending: false }).order("sort_order", { ascending: true }),
         supabase.auth.getUser(),
       ]);
 
@@ -75,6 +78,7 @@ export default function PublicArtistPage() {
       setStyles((stylesResult.data ?? []).map((item) => item.style_name).filter(Boolean));
       if (!preferencesResult.error) setEventTypes(preferencesResult.data?.accepted_event_types ?? []);
       if (!bookingsResult.error) setCompletedEvents(bookingsResult.count ?? 0);
+      if (!mediaResult.error) setMedia((mediaResult.data ?? []) as ArtistMediaItem[]);
 
       const ratings = (reviewsResult.data ?? [])
         .map((review) => Number(review.overall_rating ?? 0))
@@ -164,19 +168,24 @@ export default function PublicArtistPage() {
         </div>
 
         <section className="aura-card mt-6 rounded-3xl border p-6 sm:p-8">
-          <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="aura-kicker">Portfólio</p><h2 className="mt-2 text-2xl font-black">Galeria profissional</h2></div><span className="text-xs text-zinc-500">Conteúdo público</span></div>
-          {artist.avatar_url ? (
-            <div className="mt-5 grid gap-4 sm:grid-cols-3">
-              <ProfileAvatar kind="artist" name={artist.stage_name} url={artist.avatar_url} sizeClassName="h-64 w-full" className="rounded-3xl" />
-              <div className="col-span-2 grid min-h-64 place-items-center rounded-3xl border border-dashed border-zinc-700 p-8 text-center text-sm text-zinc-500">Mais fotos profissionais ainda não foram publicadas.</div>
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="aura-kicker">Portfólio</p>
+              <h2 className="mt-2 text-2xl font-black">Galeria profissional</h2>
+              <p className="mt-2 text-sm text-zinc-500">Fotos, flyers e vídeos publicados pelo Artista.</p>
             </div>
-          ) : <div className="mt-5 grid min-h-52 place-items-center rounded-3xl border border-dashed border-zinc-700 p-8 text-center text-sm text-zinc-500">Galeria ainda não publicada.</div>}
+            <span className="text-xs text-zinc-500">{media.length} mídia(s)</span>
+          </div>
+          <ArtistMediaGallery items={media} />
         </section>
 
-        <div className="mt-6 grid gap-6 md:grid-cols-2">
-          <section className="aura-card rounded-3xl border p-6"><p className="aura-kicker">Apresentação</p><h2 className="mt-2 text-xl font-black">Vídeos</h2><p className="mt-4 rounded-2xl border border-dashed border-zinc-700 p-6 text-sm text-zinc-500">Nenhum vídeo público adicionado ao perfil.</p></section>
-          <section className="aura-card rounded-3xl border p-6"><p className="aura-kicker">Produção</p><h2 className="mt-2 text-xl font-black">Rider técnico</h2><p className="mt-4 text-sm leading-6 text-zinc-400">Informações técnicas e documentos do rider são compartilhados com a Casa no fluxo protegido de contratação.</p></section>
-        </div>
+        <section className="aura-card mt-6 rounded-3xl border p-6">
+          <p className="aura-kicker">Produção</p>
+          <h2 className="mt-2 text-xl font-black">Rider técnico</h2>
+          <p className="mt-4 text-sm leading-6 text-zinc-400">
+            Informações técnicas e documentos do rider são compartilhados com a Casa no fluxo protegido de contratação.
+          </p>
+        </section>
 
         {eventTypes.length > 0 && <section className="aura-card mt-6 rounded-3xl border p-6"><p className="aura-kicker">Experiência</p><h2 className="mt-2 text-xl font-black">Tipos de evento</h2><div className="mt-4 flex flex-wrap gap-2">{eventTypes.map((eventType) => <span key={eventType} className="rounded-full border border-purple-500/25 bg-purple-500/10 px-3 py-1.5 text-sm text-purple-200">{eventType}</span>)}</div></section>}
 
