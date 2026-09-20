@@ -53,7 +53,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [authenticated, setAuthenticated] = useState(false);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [unreadAlertCount, setUnreadAlertCount] = useState(0);
-  const [financeAdmin, setFinanceAdmin] = useState(false);
 
   useEffect(() => {
     const savedTheme = getStoredTheme();
@@ -79,7 +78,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       if (!data.user) {
         setAuthenticated(false);
         setMode(null);
-        setFinanceAdmin(false);
 
         const nextTheme = getStoredTheme();
         setTheme(nextTheme);
@@ -89,27 +87,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       setAuthenticated(true);
 
-      const [{ data: profile }, { data: adminData }] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("default_mode,theme")
-          .eq("id", data.user.id)
-          .maybeSingle(),
-        supabase
-          .from("aura_admins")
-          .select("role,is_active")
-          .eq("user_id", data.user.id)
-          .maybeSingle(),
-      ]);
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("default_mode,theme")
+        .eq("id", data.user.id)
+        .maybeSingle();
 
       if (!alive) return;
-
-      setFinanceAdmin(
-        Boolean(
-          adminData?.is_active &&
-            (adminData.role === "admin" || adminData.role === "owner"),
-        ),
-      );
 
       const nextMode: Mode = profile?.default_mode === "venue" ? "venue" : "artist";
       const nextTheme: ThemePreference =
@@ -397,16 +381,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {mode === "venue" ? "Casa" : "Artista"} <span aria-hidden="true">⇄</span>
             </button>
 
-
-            {financeAdmin && (
-              <Link
-                href="/admin/financeiro"
-                aria-label="Financeiro administrativo"
-                className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-black text-amber-300 transition hover:bg-amber-500/20"
-              >
-                ADM
-              </Link>
-            )}
 
             <Link
               href="/configuracoes"
