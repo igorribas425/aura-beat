@@ -291,7 +291,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const home = mode === "venue" ? "/home-casa" : "/home-artista";
   const offers = mode === "venue" ? "/ofertas" : "/ofertas-artista";
   const events = mode === "venue" ? "/eventos-casa" : "/eventos-artista";
-  const profile = mode === "venue" ? "/perfil-casa" : "/perfil-artista";
   const items: Array<{ href: string; icon: NavIcon; label: string }> = [
     { href: home, icon: "home", label: "Home" },
     { href: "/buscar", icon: "explore", label: "Explorar" },
@@ -305,11 +304,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="aura-shell min-h-screen">
       <header className="aura-shell-header sticky top-0 z-50 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-          <Link href={home} className="flex items-center gap-2.5" aria-label="Aura Beat — Home">
-            <span className="aura-brand-mark" aria-hidden="true" />
-            <span className="font-black tracking-tight">
-              AURA <span className="text-red-500">BEAT</span>
-            </span>
+          <Link
+            href={home}
+            className="flex items-center"
+            aria-label="Aura Beat — Home"
+            title="Aura Beat"
+          >
+            <img
+              src="/aura-beat-logo.webp"
+              alt="Aura Beat"
+              className="h-12 w-16 object-contain sm:h-14 sm:w-20"
+            />
           </Link>
 
           <nav className="hidden items-center gap-1 lg:flex" aria-label="Navegação principal">
@@ -368,9 +373,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {mode === "venue" ? "Casa" : "Artista"} <span aria-hidden="true">⇄</span>
             </button>
 
-            <Link href={profile} aria-label="Perfil" className="aura-icon-button rounded-xl px-3 py-2">
-              ◉
-            </Link>
 
             <Link
               href="/configuracoes"
