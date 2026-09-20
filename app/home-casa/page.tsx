@@ -153,8 +153,8 @@ export default function HomeCasaPage() {
   const atalhos = [
     {
       icon: "⚡",
-      label: "DJs disponíveis",
-      detail: "Ofertas urgentes dos DJs",
+      label: "Disponibilidade urgente",
+      detail: "Veja tudo que os DJs publicaram",
       href: "/disponibilidades-casa",
       hover: "hover:border-amber-500/50",
     },
