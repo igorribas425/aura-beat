@@ -50,6 +50,13 @@ type Oferta = {
   address_text: string | null;
 
   expires_at: string | null;
+  offer_kind: "public" | "direct";
+  target_artist_id: string | null;
+  direct_conversation_id: string | null;
+  transport_mode: string | null;
+  transport_type: string | null;
+  ticket_amount: number | null;
+  local_transport_amount: number | null;
 };
 
 type Casa = {
@@ -384,9 +391,17 @@ export default function OfertasArtistaPage() {
           expected_audience,
           structure_details,
           address_text,
-          expires_at
+          expires_at,
+          offer_kind,
+          target_artist_id,
+          direct_conversation_id,
+          transport_mode,
+          transport_type,
+          ticket_amount,
+          local_transport_amount
         `)
         .eq("status", "open")
+        .or(`offer_kind.eq.public,target_artist_id.eq.${perfilArtista.id}`)
         .order("is_urgent", {
           ascending: false,
         })
@@ -448,7 +463,14 @@ export default function OfertasArtistaPage() {
             expected_audience,
             structure_details,
             address_text,
-            expires_at
+            expires_at,
+            offer_kind,
+            target_artist_id,
+            direct_conversation_id,
+            transport_mode,
+            transport_type,
+            ticket_amount,
+            local_transport_amount
           `)
           .in(
             "id",
@@ -1320,6 +1342,12 @@ export default function OfertasArtistaPage() {
                             {oferta.is_urgent && (
                               <span className="rounded-full border border-red-700 bg-red-950/40 px-3 py-1 text-xs font-black text-red-400">
                                 🔥 URGENTE
+                              </span>
+                            )}
+
+                            {oferta.offer_kind === "direct" && (
+                              <span className="rounded-full border border-purple-700 bg-purple-950/30 px-3 py-1 text-xs font-black text-purple-300">
+                                🎯 CONVITE DIRETO
                               </span>
                             )}
 
