@@ -3,7 +3,12 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { ExploreMap } from "../../components/explore-map";
-import { ExploreProfileCard, MiniPressKit } from "../../components/explore-profile-card";
+import {
+  ExploreProfileCard,
+  MiniPressKit,
+  type MiniPressKitMedia,
+  type MiniPressKitTravelQuote,
+} from "../../components/explore-profile-card";
 import {
   EXPLORE_PAGE_SIZE,
   ExploreFilters,
@@ -273,6 +278,11 @@ export default function ExplorePage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>("list");
   const [selectedProfile, setSelectedProfile] = useState<ExploreProfile | null>(null);
+  const [selectedMedia, setSelectedMedia] = useState<MiniPressKitMedia[]>([]);
+  const [selectedMediaLoading, setSelectedMediaLoading] = useState(false);
+  const [selectedTravelQuote, setSelectedTravelQuote] =
+    useState<MiniPressKitTravelQuote | null>(null);
+  const [selectedTravelQuoteLoading, setSelectedTravelQuoteLoading] = useState(false);
   const [location, setLocation] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
   const [locationMessage, setLocationMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -339,6 +349,88 @@ export default function ExplorePage() {
       active = false;
     };
   }, [router]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadSelectedProfileExtras() {
+      setSelectedMedia([]);
+      setSelectedTravelQuote(null);
+
+      if (!selectedProfile || selectedProfile.kind !== "artist") {
+        setSelectedMediaLoading(false);
+        setSelectedTravelQuoteLoading(false);
+        return;
+      }
+
+      setSelectedMediaLoading(true);
+
+      const mediaResult = await supabase
+        .from("artist_media")
+        .select("id,media_type,public_url,caption,sort_order,is_cover")
+        .eq("artist_id", selectedProfile.id)
+        .eq("is_public", true)
+        .order("is_cover", { ascending: false })
+        .order("sort_order", { ascending: true });
+
+      if (!active) return;
+
+      if (!mediaResult.error) {
+        setSelectedMedia(
+          ((mediaResult.data ?? []) as MiniPressKitMedia[]).filter(
+            (item) => Boolean(item.public_url),
+          ),
+        );
+      }
+
+      setSelectedMediaLoading(false);
+
+      if (!canSendOffer || !location || selectedProfile.isOwnProfile) {
+        setSelectedTravelQuoteLoading(false);
+        return;
+      }
+
+      setSelectedTravelQuoteLoading(true);
+
+      const { data: quoteData, error: quoteError } = await supabase.rpc(
+        "artist_travel_quote_v1",
+        {
+          p_artist_id: selectedProfile.id,
+          p_event_lat: location.lat,
+          p_event_lng: location.lng,
+        },
+      );
+
+      if (!active) return;
+
+      if (!quoteError) {
+        const row = Array.isArray(quoteData) ? quoteData[0] : null;
+
+        if (row) {
+          setSelectedTravelQuote({
+            distanceKm: Number(row.distance_km ?? 0),
+            roundTripKm: Number(row.round_trip_km ?? 0),
+            withinRadius: Boolean(row.within_radius),
+            calculationMode:
+              row.calculation_mode === "vehicle" ? "vehicle" : "fixed",
+            fuelLiters:
+              row.fuel_liters === null || row.fuel_liters === undefined
+                ? null
+                : Number(row.fuel_liters),
+            estimatedAmount: Number(row.estimated_amount ?? 0),
+          });
+        }
+      }
+
+      setSelectedTravelQuoteLoading(false);
+    }
+
+    void loadSelectedProfileExtras();
+
+    return () => {
+      active = false;
+    };
+  }, [canSendOffer, location, selectedProfile]);
 
   useEffect(() => {
     if (contextLoading) return;
@@ -837,6 +929,10 @@ export default function ExplorePage() {
                   favorite={favoriteKeys.has(`${selectedProfile.kind}:${selectedProfile.id}`)}
                   favoriteBusy={favoriteBusy === `${selectedProfile.kind}:${selectedProfile.id}`}
                   onToggleFavorite={toggleFavorite}
+                  media={selectedMedia}
+                  mediaLoading={selectedMediaLoading}
+                  travelQuote={selectedTravelQuote}
+                  travelQuoteLoading={selectedTravelQuoteLoading}
                 />
               </aside>
             )}
