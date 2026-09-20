@@ -52,6 +52,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<ThemePreference>("system");
   const [authenticated, setAuthenticated] = useState(false);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const [unreadAlertCount, setUnreadAlertCount] = useState(0);
 
   useEffect(() => {
     const savedTheme = getStoredTheme();
@@ -147,6 +148,53 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           },
           () => {
             void refreshUnread(userId);
+          },
+        )
+        .subscribe();
+    });
+
+    return () => {
+      active = false;
+      if (channel) void supabase.removeChannel(channel);
+    };
+  }, []);
+
+  useEffect(() => {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let active = true;
+
+    async function refreshUnreadAlerts(userId: string) {
+      const { count, error } = await supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .is("read_at", null);
+
+      if (!active || error) return;
+      setUnreadAlertCount(count ?? 0);
+    }
+
+    void supabase.auth.getUser().then(({ data }) => {
+      if (!active || !data.user) {
+        setUnreadAlertCount(0);
+        return;
+      }
+
+      const userId = data.user.id;
+      void refreshUnreadAlerts(userId);
+
+      channel = supabase
+        .channel(`notification-unread-${userId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "notifications",
+            filter: `user_id=eq.${userId}`,
+          },
+          () => {
+            void refreshUnreadAlerts(userId);
           },
         )
         .subscribe();
@@ -286,6 +334,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       {unreadChatCount > 99 ? "99+" : unreadChatCount}
                     </span>
                   )}
+                  {href === "/notificacoes" && unreadAlertCount > 0 && (
+                    <span
+                      className="absolute -right-2 -top-2 grid h-4 min-w-4 place-items-center rounded-full bg-white px-1 text-[9px] font-black leading-none text-red-600"
+                      aria-label={`${unreadAlertCount} alerta(s) não lido(s)`}
+                    >
+                      {unreadAlertCount > 99 ? "99+" : unreadAlertCount}
+                    </span>
+                  )}
                 </span>
                 {label}
               </Link>
@@ -350,6 +406,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   aria-label={`${unreadChatCount} mensagem(ns) não lida(s)`}
                 >
                   {unreadChatCount > 99 ? "99+" : unreadChatCount}
+                </span>
+              )}
+              {href === "/notificacoes" && unreadAlertCount > 0 && (
+                <span
+                  className="absolute -right-2.5 -top-2.5 grid h-4 min-w-4 place-items-center rounded-full bg-red-500 px-1 text-[9px] font-black leading-none text-white"
+                  aria-label={`${unreadAlertCount} alerta(s) não lido(s)`}
+                >
+                  {unreadAlertCount > 99 ? "99+" : unreadAlertCount}
                 </span>
               )}
             </span>
