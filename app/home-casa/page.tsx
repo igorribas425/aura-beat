@@ -1,17 +1,8 @@
 "use client";
 
-import "leaflet/dist/leaflet.css";
-
-import {
-  useEffect,
-  useEffectEvent,
-  useRef,
-  useState,
-} from "react";
-
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ProfileAvatar } from "../../components/profile-avatar";
-import { formatBRL } from "../../lib/finance";
 import { supabase } from "../../lib/supabase";
 
 type Casa = {
@@ -23,1099 +14,228 @@ type Casa = {
   avatar_url: string | null;
 };
 
-type ArtistaProximo = {
-  artist_id: string;
-  stage_name: string;
-  avatar_url: string | null;
-  fixed_fee: number | null;
-  primary_style: string | null;
-  distance_km: number | null;
-  lat: number | null;
-  lng: number | null;
-  verification_status: string | null;
-  rating?: number;
-  reviews?: number;
-};
-
-type Localizacao = {
-  lat: number;
-  lng: number;
-  accuracy: number;
-};
-
-function dinheiro(valor: number) {
-  return formatBRL(
-    Number(valor || 0)
-  );
-}
-
 export default function HomeCasaPage() {
   const router = useRouter();
 
-  const mapaElementoRef =
-    useRef<HTMLDivElement | null>(
-      null
-    );
-
-  const paginaAtivaRef =
-    useRef(true);
-
-  const mapaRef =
-    useRef<
-      import("leaflet").Map | null
-    >(null);
-
-  const camadaMarcadoresRef =
-    useRef<
-      import("leaflet").LayerGroup | null
-    >(null);
-
-  const [casa, setCasa] =
-    useState<Casa | null>(null);
-
-  const [
-    localizacao,
-    setLocalizacao,
-  ] =
-    useState<Localizacao | null>(
-      null
-    );
-
-  const [artistas, setArtistas] =
-    useState<ArtistaProximo[]>(
-      []
-    );
-
-  const [raio, setRaio] =
-    useState(50);
-
-  const [
-    carregando,
-    setCarregando,
-  ] =
-    useState(true);
-
-  const [buscando, setBuscando] =
-    useState(false);
-
-  const [erro, setErro] =
-    useState("");
-
-  const [mensagem, setMensagem] =
-    useState("");
-
-  const [
-    avaliacaoCasa,
-    setAvaliacaoCasa,
-  ] =
-    useState(0);
-
-  const [
-    quantidadeAvaliacoesCasa,
-    setQuantidadeAvaliacoesCasa,
-  ] = useState(0);
-
-  const [
-    eventosConcluidos,
-    setEventosConcluidos,
-  ] = useState(0);
-
-  const carregarCasaEffect =
-    useEffectEvent(() => {
-      void carregarCasa();
-    });
-
-  const montarMapaEffect =
-    useEffectEvent(() => {
-      void montarMapa();
-    });
+  const [casa, setCasa] = useState<Casa | null>(null);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState("");
+  const [avaliacaoCasa, setAvaliacaoCasa] = useState(0);
+  const [quantidadeAvaliacoesCasa, setQuantidadeAvaliacoesCasa] = useState(0);
+  const [eventosConcluidos, setEventosConcluidos] = useState(0);
 
   useEffect(() => {
-    paginaAtivaRef.current = true;
-    carregarCasaEffect();
+    let ativo = true;
 
-    return () => {
-      paginaAtivaRef.current = false;
+    async function carregar() {
+      try {
+        setCarregando(true);
+        setErro("");
 
-      if (camadaMarcadoresRef.current) {
-        camadaMarcadoresRef.current.clearLayers();
-        camadaMarcadoresRef.current = null;
-      }
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
 
-      if (mapaRef.current) {
-        mapaRef.current.off();
-        mapaRef.current.remove();
-        mapaRef.current = null;
-      }
+        if (!ativo) return;
 
-      if (mapaElementoRef.current) {
-        mapaElementoRef.current.replaceChildren();
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!localizacao) return;
-
-    montarMapaEffect();
-  }, [
-    localizacao,
-    artistas,
-  ]);
-
-  async function carregarCasa() {
-    try {
-      setCarregando(true);
-      setErro("");
-
-      const {
-        data: { session },
-      } =
-        await supabase.auth.getSession();
-
-      const user =
-        session?.user;
-
-      if (!user) {
-        router.replace(
-          "/login"
-        );
-
-        return;
-      }
-
-      const {
-        data: perfil,
-        error: erroPerfil,
-      } = await supabase
-        .from("venue_profiles")
-        .select(`
-          id,
-          trade_name,
-          city,
-          state,
-          verification_status,
-          avatar_url
-        `)
-        .eq(
-          "owner_user_id",
-          user.id
-        )
-        .maybeSingle();
-
-      if (erroPerfil) {
-        throw erroPerfil;
-      }
-
-      if (!perfil) {
-        router.replace(
-          "/perfil-casa"
-        );
-
-        return;
-      }
-
-      setCasa(perfil);
-      setCarregando(false);
-
-      void carregarEstatisticasCasa(
-        perfil.id
-      );
-
-    } catch (error) {
-      console.error(error);
-
-      setErro(
-        "Não foi possível carregar a Home da Casa."
-      );
-    } finally {
-      setCarregando(false);
-    }
-  }
-
-  async function carregarEstatisticasCasa(
-    venueId: string
-  ) {
-    try {
-      const {
-        data: avaliacoes,
-        error: erroAvaliacoes,
-      } = await supabase
-        .from("reviews")
-        .select(
-          "overall_rating"
-        )
-        .eq(
-          "reviewee_type",
-          "venue"
-        )
-        .eq(
-          "venue_id",
-          venueId
-        );
-
-      if (erroAvaliacoes) {
-        throw erroAvaliacoes;
-      }
-
-      const notas =
-        (avaliacoes || [])
-          .map((review) =>
-            Number(
-              review.overall_rating ||
-                0
-            )
-          )
-          .filter(
-            (nota) =>
-              nota > 0
-          );
-
-      const media =
-        notas.length > 0
-          ? notas.reduce(
-              (
-                soma,
-                nota
-              ) =>
-                soma + nota,
-              0
-            ) /
-            notas.length
-          : 0;
-
-      setAvaliacaoCasa(
-        media
-      );
-
-      setQuantidadeAvaliacoesCasa(
-        notas.length
-      );
-
-      const {
-        count,
-        error: erroEventos,
-      } = await supabase
-        .from("bookings")
-        .select(
-          "id",
-          {
-            count: "exact",
-            head: true,
-          }
-        )
-        .eq(
-          "venue_id",
-          venueId
-        )
-        .eq(
-          "status",
-          "completed"
-        );
-
-      if (erroEventos) {
-        throw erroEventos;
-      }
-
-      setEventosConcluidos(
-        count || 0
-      );
-    } catch (error) {
-      console.error(
-        "Erro ao carregar estatísticas da Casa:",
-        error
-      );
-
-      setAvaliacaoCasa(0);
-      setQuantidadeAvaliacoesCasa(0);
-      setEventosConcluidos(0);
-    }
-  }
-
-  function mensagemErroGps(
-    error: GeolocationPositionError
-  ) {
-    if (error.code === 1) {
-      return "Permissão de localização negada. Permita o GPS no navegador.";
-    }
-
-    if (error.code === 2) {
-      return "Não foi possível identificar sua localização.";
-    }
-
-    if (error.code === 3) {
-      return "O GPS demorou demais para responder.";
-    }
-
-    return "Erro ao acessar sua localização.";
-  }
-
-  async function obterLocalizacao() {
-    setErro("");
-    setMensagem("");
-
-    if (!navigator.geolocation) {
-      setErro(
-        "Seu navegador não possui suporte à localização."
-      );
-
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      async (posicao) => {
-        const novaLocalizacao = {
-          lat:
-            posicao.coords.latitude,
-
-          lng:
-            posicao.coords.longitude,
-
-          accuracy:
-            posicao.coords.accuracy,
-        };
-
-        setLocalizacao(
-          novaLocalizacao
-        );
-
-        await buscarArtistas(
-          novaLocalizacao,
-          raio
-        );
-      },
-
-      (error) => {
-        console.error(
-          error
-        );
-
-        setErro(
-          mensagemErroGps(
-            error
-          )
-        );
-      },
-
-      {
-        enableHighAccuracy: true,
-        timeout: 20000,
-        maximumAge: 5000,
-      }
-    );
-  }
-
-  async function buscarArtistas(
-    coordenadas = localizacao,
-    raioBusca = raio
-  ) {
-    if (!coordenadas) {
-      setErro(
-        "Ative sua localização para procurar artistas."
-      );
-
-      return;
-    }
-
-    if (
-      casa?.verification_status !==
-      "verified"
-    ) {
-      setErro(
-        "A Casa precisa estar verificada para visualizar artistas disponíveis."
-      );
-
-      return;
-    }
-
-    try {
-      setBuscando(true);
-      setErro("");
-      setMensagem("");
-
-      const {
-        data,
-        error,
-      } = await supabase.rpc(
-        "find_available_artists",
-        {
-          p_lat:
-            coordenadas.lat,
-
-          p_lng:
-            coordenadas.lng,
-
-          p_radius_km:
-            raioBusca,
-        }
-      );
-
-      if (error) {
-        throw error;
-      }
-
-      const encontrados =
-        (data ||
-          []) as ArtistaProximo[];
-
-      if (
-        encontrados.length ===
-        0
-      ) {
-        setArtistas([]);
-
-        setMensagem(
-          `Nenhum artista disponível em um raio de ${raioBusca} km.`
-        );
-
-        return;
-      }
-
-      const ids =
-        encontrados.map(
-          (artista) =>
-            artista.artist_id
-        );
-
-      const {
-        data: avaliacoes,
-      } = await supabase
-        .from("reviews")
-        .select(
-          "artist_id, overall_rating"
-        )
-        .eq(
-          "reviewee_type",
-          "artist"
-        )
-        .in(
-          "artist_id",
-          ids
-        );
-
-      const artistasComAvaliacao =
-        encontrados.map(
-          (artista) => {
-            const reviewsArtista =
-              (
-                avaliacoes ||
-                []
-              ).filter(
-                (review) =>
-                  review.artist_id ===
-                  artista.artist_id
-              );
-
-            let media = 0;
-
-            if (
-              reviewsArtista.length >
-              0
-            ) {
-              const total =
-                reviewsArtista.reduce(
-                  (
-                    soma,
-                    review
-                  ) =>
-                    soma +
-                    Number(
-                      review.overall_rating ||
-                        0
-                    ),
-                  0
-                );
-
-              media =
-                total /
-                reviewsArtista.length;
-            }
-
-            return {
-              ...artista,
-
-              rating:
-                media,
-
-              reviews:
-                reviewsArtista.length,
-            };
-          }
-        );
-
-      setArtistas(
-        artistasComAvaliacao
-      );
-
-      setMensagem(
-        `${artistasComAvaliacao.length} artista(s) disponível(is) encontrado(s).`
-      );
-    } catch (
-      error: unknown
-    ) {
-      console.error(
-        error
-      );
-
-      let texto =
-        "Não foi possível buscar artistas.";
-
-      if (
-        typeof error ===
-          "object" &&
-        error !== null &&
-        "message" in error
-      ) {
-        const mensagemErro =
-          String(
-            (
-              error as {
-                message?: string;
-              }
-            ).message ||
-              ""
-          );
-
-        if (
-          mensagemErro.includes(
-            "verified venue required"
-          )
-        ) {
-          texto =
-            "Sua Casa ainda precisa ser verificada para visualizar a localização dos DJs.";
-        }
-      }
-
-      setErro(texto);
-    } finally {
-      setBuscando(
-        false
-      );
-    }
-  }
-
-  async function montarMapa() {
-    if (
-      !mapaElementoRef.current ||
-      !localizacao
-    ) {
-      return;
-    }
-
-    const elementoMapa =
-      mapaElementoRef.current;
-
-    const L =
-      await import(
-        "leaflet"
-      );
-
-    if (
-      !paginaAtivaRef.current ||
-      !elementoMapa ||
-      mapaElementoRef.current !== elementoMapa
-    ) {
-      return;
-    }
-
-    if (!mapaRef.current) {
-      mapaRef.current =
-        L.map(
-          elementoMapa,
-          {
-            zoomControl: true,
-          }
-        ).setView(
-          [
-            localizacao.lat,
-            localizacao.lng,
-          ],
-          12
-        );
-
-      L.tileLayer(
-        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-        {
-          maxZoom: 19,
-
-          attribution:
-            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        }
-      ).addTo(
-        mapaRef.current
-      );
-
-      camadaMarcadoresRef.current =
-        L.layerGroup().addTo(
-          mapaRef.current
-        );
-    }
-
-    const mapa =
-      mapaRef.current;
-
-    if (!mapa) {
-      return;
-    }
-
-    mapa.setView(
-      [
-        localizacao.lat,
-        localizacao.lng,
-      ],
-      12
-    );
-
-    if (
-      camadaMarcadoresRef.current
-    ) {
-      camadaMarcadoresRef.current.clearLayers();
-    }
-
-    const camada =
-      camadaMarcadoresRef.current;
-
-    if (!camada) {
-      return;
-    }
-
-    const iconeCasa =
-      L.divIcon({
-        className: "",
-
-        html: `
-          <div style="
-            width:42px;
-            height:42px;
-            border-radius:14px;
-            background:#ef4444;
-            border:3px solid white;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            color:white;
-            font-size:20px;
-            box-shadow:0 4px 15px rgba(0,0,0,.45);
-          ">
-            🏠
-          </div>
-        `,
-
-        iconSize: [
-          42,
-          42,
-        ],
-
-        iconAnchor: [
-          21,
-          21,
-        ],
-      });
-
-    L.marker(
-      [
-        localizacao.lat,
-        localizacao.lng,
-      ],
-      {
-        icon:
-          iconeCasa,
-      }
-    )
-      .addTo(
-        camada
-      )
-      .bindPopup(`
-        <div style="min-width:160px">
-          <strong>
-            ${
-              casa?.trade_name ||
-              "Sua Casa"
-            }
-          </strong>
-
-          <br />
-
-          Sua localização
-        </div>
-      `);
-
-    artistas.forEach(
-      (artista) => {
-        if (
-          artista.lat ===
-            null ||
-          artista.lng ===
-            null
-        ) {
+        if (!user) {
+          router.replace("/login");
           return;
         }
 
-        const inicial =
-          artista.stage_name
-            ?.charAt(0)
-            ?.toUpperCase() ||
-          "DJ";
+        const { data: perfil, error: erroPerfil } = await supabase
+          .from("venue_profiles")
+          .select("id,trade_name,city,state,verification_status,avatar_url")
+          .eq("owner_user_id", user.id)
+          .maybeSingle();
 
-        const iconeDj =
-          L.divIcon({
-            className: "",
+        if (erroPerfil) throw erroPerfil;
+        if (!ativo) return;
 
-            html: `
-              <div style="
-                width:46px;
-                height:46px;
-                border-radius:50%;
-                background:linear-gradient(135deg,#7c3aed,#ef4444);
-                border:3px solid white;
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                color:white;
-                font-size:16px;
-                font-weight:900;
-                box-shadow:0 4px 18px rgba(239,68,68,.45);
-              ">
-                ${inicial}
-              </div>
-            `,
+        if (!perfil) {
+          router.replace("/perfil-casa");
+          return;
+        }
 
-            iconSize: [
-              46,
-              46,
-            ],
+        const perfilCasa = perfil as Casa;
+        setCasa(perfilCasa);
 
-            iconAnchor: [
-              23,
-              23,
-            ],
-          });
+        const [avaliacoesResult, eventosResult] = await Promise.all([
+          supabase
+            .from("reviews")
+            .select("overall_rating")
+            .eq("reviewee_type", "venue")
+            .eq("venue_id", perfilCasa.id),
+          supabase
+            .from("bookings")
+            .select("id", { count: "exact", head: true })
+            .eq("venue_id", perfilCasa.id)
+            .eq("status", "completed"),
+        ]);
 
-        const marker =
-          L.marker(
-            [
-              Number(
-                artista.lat
-              ),
+        if (!ativo) return;
 
-              Number(
-                artista.lng
-              ),
-            ],
-            {
-              icon:
-                iconeDj,
-            }
+        if (!avaliacoesResult.error) {
+          const notas = (avaliacoesResult.data ?? [])
+            .map((review) => Number(review.overall_rating || 0))
+            .filter((nota) => nota > 0);
+
+          setQuantidadeAvaliacoesCasa(notas.length);
+          setAvaliacaoCasa(
+            notas.length > 0
+              ? notas.reduce((soma, nota) => soma + nota, 0) / notas.length
+              : 0,
           );
-
-        marker
-          .addTo(
-            camada
-          )
-          .bindPopup(`
-            <div style="
-              min-width:210px;
-              font-family:Arial,sans-serif;
-            ">
-              <strong style="font-size:16px">
-                ${artista.stage_name}
-              </strong>
-
-              <br />
-
-              ${
-                artista.primary_style ||
-                "Estilo não informado"
-              }
-
-              <br />
-
-              📍 ${
-                artista.distance_km ??
-                "--"
-              } km
-
-              <br />
-
-              💰 ${dinheiro(
-                Number(
-                  artista.fixed_fee ||
-                    0
-                )
-              )}/h
-
-              <br />
-
-              ⭐ ${
-                artista.rating &&
-                artista.rating >
-                  0
-                  ? artista.rating.toFixed(
-                      1
-                    )
-                  : "Novo"
-              }
-            </div>
-          `);
-      }
-    );
-
-    if (
-      artistas.length >
-      0
-    ) {
-      const pontos: [
-        number,
-        number,
-      ][] = [
-        [
-          localizacao.lat,
-          localizacao.lng,
-        ],
-      ];
-
-      artistas.forEach(
-        (artista) => {
-          if (
-            artista.lat !==
-              null &&
-            artista.lng !==
-              null
-          ) {
-            pontos.push([
-              Number(
-                artista.lat
-              ),
-
-              Number(
-                artista.lng
-              ),
-            ]);
-          }
         }
-      );
 
-      mapa.fitBounds(
-        pontos,
-        {
-          padding: [
-            40,
-            40,
-          ],
-
-          maxZoom: 13,
+        if (!eventosResult.error) {
+          setEventosConcluidos(eventosResult.count ?? 0);
         }
-      );
-    }
-  }
-
-  async function alterarRaio(
-    novoRaio: number
-  ) {
-    setRaio(
-      novoRaio
-    );
-
-    if (
-      localizacao
-    ) {
-      await buscarArtistas(
-        localizacao,
-        novoRaio
-      );
-    }
-  }
-
-  function focarArtista(
-    artista: ArtistaProximo
-  ) {
-    if (
-      !mapaRef.current ||
-      artista.lat ===
-        null ||
-      artista.lng ===
-        null
-    ) {
-      return;
-    }
-
-    mapaRef.current.setView(
-      [
-        Number(
-          artista.lat
-        ),
-
-        Number(
-          artista.lng
-        ),
-      ],
-      15,
-      {
-        animate: true,
+      } catch (error) {
+        console.error(error);
+        if (ativo) {
+          setErro("Não foi possível carregar a Home da Casa.");
+        }
+      } finally {
+        if (ativo) setCarregando(false);
       }
-    );
+    }
 
-    mapaElementoRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-    });
-  }
+    void carregar();
 
-  function enviarOferta(
-    artistaId: string
-  ) {
-    router.push(
-      `/ofertas?artist=${artistaId}`
-    );
-  }
+    return () => {
+      ativo = false;
+    };
+  }, [router]);
 
   function statusCasa() {
-    if (
-      casa?.verification_status ===
-      "verified"
-    ) {
+    if (casa?.verification_status === "verified") {
       return {
-        texto:
-          "Casa Verificada",
-
-        classe:
-          "bg-green-500/10 border-green-800 text-green-400",
+        texto: "Casa Verificada",
+        classe: "bg-green-500/10 border-green-800 text-green-400",
       };
     }
 
-    if (
-      casa?.verification_status ===
-      "rejected"
-    ) {
+    if (casa?.verification_status === "rejected") {
       return {
-        texto:
-          "Verificação recusada",
-
-        classe:
-          "bg-red-500/10 border-red-800 text-red-400",
+        texto: "Verificação recusada",
+        classe: "bg-red-500/10 border-red-800 text-red-400",
       };
     }
 
-    if (
-      casa?.verification_status ===
-      "suspended"
-    ) {
+    if (casa?.verification_status === "suspended") {
       return {
-        texto:
-          "Casa suspensa",
-
-        classe:
-          "bg-red-500/10 border-red-800 text-red-400",
+        texto: "Casa suspensa",
+        classe: "bg-red-500/10 border-red-800 text-red-400",
       };
     }
 
     return {
-      texto:
-        "Verificação pendente",
-
-      classe:
-        "bg-yellow-500/10 border-yellow-800 text-yellow-400",
+      texto: "Verificação pendente",
+      classe: "bg-yellow-500/10 border-yellow-800 text-yellow-400",
     };
   }
 
-  if (
-    carregando
-  ) {
+  if (carregando) {
     return (
       <main className="aura-page flex min-h-screen items-center justify-center">
-
         <div className="text-center">
-
           <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-zinc-800 border-t-red-500" />
-
-          <p className="text-zinc-400">
-            Carregando Aura Beat...
-          </p>
-
+          <p className="text-zinc-400">Carregando Aura Beat...</p>
         </div>
-
       </main>
     );
   }
 
-  const status =
-    statusCasa();
+  const status = statusCasa();
+  const casaVerificada = casa?.verification_status === "verified";
 
-  const casaVerificada =
-    casa?.verification_status ===
-    "verified";
+  const atalhos = [
+    {
+      icon: "⚡",
+      label: "DJs disponíveis",
+      detail: "Ofertas urgentes dos DJs",
+      href: "/disponibilidades-casa",
+      hover: "hover:border-amber-500/50",
+    },
+    {
+      icon: "🔥",
+      label: "Ofertas",
+      detail: "Criar e acompanhar",
+      href: "/ofertas",
+      hover: "hover:border-red-500/50",
+    },
+    {
+      icon: "🎟️",
+      label: "Eventos",
+      detail: "Contratações da Casa",
+      href: "/eventos-casa",
+      hover: "hover:border-green-500/50",
+    },
+    {
+      icon: "💰",
+      label: "Financeiro",
+      detail: "Pagamentos e taxas",
+      href: "/financeiro-casa",
+      hover: "hover:border-green-500/50",
+    },
+    {
+      icon: "💬",
+      label: "Chat",
+      detail: "Conversas com artistas",
+      href: "/chat-direto",
+      hover: "hover:border-purple-500/50",
+    },
+    {
+      icon: "🏠",
+      label: "Meu perfil",
+      detail: "Editar informações",
+      href: "/perfil-casa",
+      hover: "hover:border-red-500/50",
+    },
+    {
+      icon: "⚙️",
+      label: "Configurações",
+      detail: "Conta e preferências",
+      href: "/configuracoes",
+      hover: "hover:border-red-500/50",
+    },
+  ];
 
   return (
     <main className="aura-page pb-8">
-
       <div className="mx-auto max-w-7xl space-y-6 px-4 py-6">
-
         <section className="aura-hero aura-venue-hero rounded-3xl p-6 sm:p-8">
-
           <div className="flex flex-col justify-between gap-5 md:flex-row md:items-center">
-
             <div className="flex items-center gap-4">
-
               <ProfileAvatar
                 kind="venue"
-                name={
-                  casa?.trade_name ||
-                  "Casa"
-                }
-                url={
-                  casa?.avatar_url
-                }
+                name={casa?.trade_name || "Casa"}
+                url={casa?.avatar_url}
                 sizeClassName="h-20 w-20 sm:h-24 sm:w-24"
                 className="rounded-3xl shadow-[0_0_35px_rgba(239,68,68,0.22)]"
               />
 
               <div>
-
-                <p className="aura-kicker">
-                  Painel da Casa
-                </p>
-
-                <h1 className="mt-2 text-3xl font-black">
-                  {
-                    casa?.trade_name
-                  }
-                </h1>
-
+                <p className="aura-kicker">Painel da Casa</p>
+                <h1 className="mt-2 text-3xl font-black">{casa?.trade_name}</h1>
                 <p className="mt-2 text-zinc-400">
-
-                  {casa?.city ||
-                    "Cidade não informada"}
-
-                  {casa?.state
-                    ? ` — ${casa.state}`
-                    : ""}
-
+                  {casa?.city || "Cidade não informada"}
+                  {casa?.state ? ` — ${casa.state}` : ""}
                 </p>
-
               </div>
-
             </div>
 
             <div className="flex flex-col items-start gap-3 md:items-end">
-
-              <div
-                className={`rounded-full border px-4 py-2 text-sm font-bold ${status.classe}`}
-              >
-                {
-                  status.texto
-                }
+              <div className={`rounded-full border px-4 py-2 text-sm font-bold ${status.classe}`}>
+                {status.texto}
               </div>
 
               <div className="flex flex-wrap gap-2">
-
                 {casa?.id && (
                   <button
                     type="button"
-                    onClick={() =>
-                      router.push(
-                        `/casas/${casa.id}`
-                      )
-                    }
+                    onClick={() => router.push(`/casas/${casa.id}`)}
                     className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm font-bold text-red-300"
                   >
                     Ver perfil público
@@ -1124,261 +244,57 @@ export default function HomeCasaPage() {
 
                 <button
                   type="button"
-                  onClick={() =>
-                    router.push(
-                      "/ofertas"
-                    )
-                  }
+                  onClick={() => router.push("/ofertas")}
                   className="rounded-xl bg-red-500 px-4 py-2 text-sm font-black text-white"
                 >
                   Criar oferta
                 </button>
-
               </div>
-
             </div>
-
           </div>
-
         </section>
 
-        <section
-          className="grid gap-3 sm:grid-cols-2"
-          aria-label="Resumo da Casa"
-        >
-
+        <section className="grid gap-3 sm:grid-cols-2" aria-label="Resumo da Casa">
           <div className="aura-stat rounded-2xl border p-5">
-
-            <p className="text-sm text-zinc-500">
-              Avaliação da Casa
-            </p>
-
+            <p className="text-sm text-zinc-500">Avaliação da Casa</p>
             <p className="mt-2 text-2xl font-black">
-              ⭐{" "}
-              {avaliacaoCasa > 0
-                ? avaliacaoCasa.toFixed(
-                    1
-                  )
-                : "--"}
+              ⭐ {avaliacaoCasa > 0 ? avaliacaoCasa.toFixed(1) : "--"}
             </p>
-
             <p className="mt-1 text-xs text-zinc-600">
-
-              {
-                quantidadeAvaliacoesCasa
-              }{" "}
-
-              {quantidadeAvaliacoesCasa ===
-              1
-                ? "avaliação"
-                : "avaliações"}
-
+              {quantidadeAvaliacoesCasa}{" "}
+              {quantidadeAvaliacoesCasa === 1 ? "avaliação" : "avaliações"}
             </p>
-
           </div>
 
           <div className="aura-stat rounded-2xl border p-5">
-
-            <p className="text-sm text-zinc-500">
-              Eventos concluídos
-            </p>
-
-            <p className="mt-2 text-2xl font-black">
-              {
-                eventosConcluidos
-              }
-            </p>
-
-            <p className="mt-1 text-xs text-zinc-600">
-              Contratações finalizadas
-            </p>
-
+            <p className="text-sm text-zinc-500">Eventos concluídos</p>
+            <p className="mt-2 text-2xl font-black">{eventosConcluidos}</p>
+            <p className="mt-1 text-xs text-zinc-600">Contratações finalizadas</p>
           </div>
-
         </section>
 
         <section>
-
-          <h2 className="mb-3 text-lg font-black">
-            Acesso rápido
-          </h2>
+          <h2 className="mb-3 text-lg font-black">Acesso rápido</h2>
 
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-7">
-
-            <button
-              onClick={() =>
-                router.push(
-                  "/disponibilidades-casa"
-                )
-              }
-              className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-amber-500/50"
-            >
-
-              <div className="text-2xl">
-                ⚡
-              </div>
-
-              <p className="mt-3 font-bold">
-                DJs disponíveis
-              </p>
-
-              <p className="mt-1 text-xs text-zinc-500">
-                Ofertas urgentes dos DJs
-              </p>
-
-            </button>
-
-            <button
-              onClick={() =>
-                router.push(
-                  "/ofertas"
-                )
-              }
-              className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-red-500/50"
-            >
-
-              <div className="text-2xl">
-                🔥
-              </div>
-
-              <p className="mt-3 font-bold">
-                Ofertas
-              </p>
-
-              <p className="mt-1 text-xs text-zinc-500">
-                Criar e acompanhar
-              </p>
-
-            </button>
-
-            <button
-              onClick={() =>
-                router.push(
-                  "/eventos-casa"
-                )
-              }
-              className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-green-500/50"
-            >
-
-              <div className="text-2xl">
-                🎟️
-              </div>
-
-              <p className="mt-3 font-bold">
-                Eventos
-              </p>
-
-              <p className="mt-1 text-xs text-zinc-500">
-                Contratações da Casa
-              </p>
-
-            </button>
-
-            <button
-              onClick={() =>
-                router.push(
-                  "/financeiro-casa"
-                )
-              }
-              className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-green-500/50"
-            >
-
-              <div className="text-2xl">
-                💰
-              </div>
-
-              <p className="mt-3 font-bold">
-                Financeiro
-              </p>
-
-              <p className="mt-1 text-xs text-zinc-500">
-                Pagamentos e taxas
-              </p>
-
-            </button>
-
-            <button
-              onClick={() =>
-                router.push(
-                  "/chat-direto"
-                )
-              }
-              className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-purple-500/50"
-            >
-
-              <div className="text-2xl">
-                💬
-              </div>
-
-              <p className="mt-3 font-bold">
-                Chat
-              </p>
-
-              <p className="mt-1 text-xs text-zinc-500">
-                Conversas com artistas
-              </p>
-
-            </button>
-
-            <button
-              onClick={() =>
-                router.push(
-                  "/perfil-casa"
-                )
-              }
-              className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-red-500/50"
-            >
-
-              <div className="text-2xl">
-                🏠
-              </div>
-
-              <p className="mt-3 font-bold">
-                Meu perfil
-              </p>
-
-              <p className="mt-1 text-xs text-zinc-500">
-                Editar informações
-              </p>
-
-            </button>
-
-            <button
-              onClick={() =>
-                router.push(
-                  "/configuracoes"
-                )
-              }
-              className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-red-500/50"
-            >
-
-              <div className="text-2xl">
-                ⚙️
-              </div>
-
-              <p className="mt-3 font-bold">
-                Configurações
-              </p>
-
-              <p className="mt-1 text-xs text-zinc-500">
-                Conta e preferências
-              </p>
-
-            </button>
-
+            {atalhos.map((atalho) => (
+              <button
+                key={atalho.href}
+                type="button"
+                onClick={() => router.push(atalho.href)}
+                className={`rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition ${atalho.hover}`}
+              >
+                <div className="text-2xl">{atalho.icon}</div>
+                <p className="mt-3 font-bold">{atalho.label}</p>
+                <p className="mt-1 text-xs text-zinc-500">{atalho.detail}</p>
+              </button>
+            ))}
           </div>
-
         </section>
 
         {erro && (
           <div className="rounded-2xl border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
             {erro}
-          </div>
-        )}
-
-        {mensagem && (
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-sm text-zinc-300">
-            {mensagem}
           </div>
         )}
 
@@ -1390,6 +306,7 @@ export default function HomeCasaPage() {
               Finalize a verificação para usar todos os recursos de contratação do Aura Beat.
             </p>
             <button
+              type="button"
               onClick={() => router.push("/perfil-casa")}
               className="mt-6 rounded-xl bg-red-500 px-6 py-3 font-bold transition hover:bg-red-600"
             >
@@ -1403,10 +320,11 @@ export default function HomeCasaPage() {
                 <p className="aura-kicker">Descoberta de talentos</p>
                 <h2 className="mt-2 text-2xl font-black">Encontre DJs no Explorar</h2>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
-                  O mapa e a busca de Artistas agora ficam em um só lugar. Veja DJs de qualquer região,
-                  abra o perfil, converse e envie ofertas sem duplicar ferramentas na Home.
+                  O mapa e a busca de Artistas ficam em um único lugar. Veja DJs de qualquer
+                  região, abra o perfil, converse e envie ofertas pelo Explorar.
                 </p>
               </div>
+
               <button
                 type="button"
                 onClick={() => router.push("/buscar")}
@@ -1417,9 +335,7 @@ export default function HomeCasaPage() {
             </div>
           </section>
         )}
-
       </div>
-
     </main>
   );
 }
