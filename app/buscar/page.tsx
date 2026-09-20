@@ -598,6 +598,17 @@ export default function ExplorePage() {
   const mappableCount = profiles.filter(
     (profile) => profile.latitude !== null && profile.longitude !== null,
   ).length;
+  const nameSuggestions = useMemo(() => {
+    const term = filters.query.trim().toLocaleLowerCase("pt-BR");
+
+    if (!term) return [];
+
+    return profiles
+      .filter((profile) =>
+        profile.name.toLocaleLowerCase("pt-BR").includes(term),
+      )
+      .slice(0, 7);
+  }, [filters.query, profiles]);
   const updateFilter = useCallback(
     <Key extends keyof ExploreFilters>(key: Key, value: ExploreFilters[Key]) => {
       setFilters((current) => ({ ...current, [key]: value }));
@@ -771,14 +782,41 @@ export default function ExplorePage() {
           </p>
 
           <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <label className="xl:col-span-2">
+            <label className="relative xl:col-span-2">
               <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-zinc-500">Nome</span>
               <input
                 value={filters.query}
                 onChange={(event) => updateFilter("query", event.target.value)}
                 placeholder="Nome de Artista ou Casa"
+                autoComplete="off"
                 className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none transition focus:border-red-500"
               />
+
+              {filters.query.trim() && nameSuggestions.length > 0 && (
+                <div className="absolute inset-x-0 top-full z-40 mt-2 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl">
+                  {nameSuggestions.map((profile) => (
+                    <button
+                      key={`${profile.kind}:${profile.id}`}
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => {
+                        updateFilter("query", profile.name);
+                        setSelectedProfile(profile);
+                      }}
+                      className="flex w-full items-center justify-between gap-3 border-b border-zinc-900 px-4 py-3 text-left last:border-b-0 hover:bg-zinc-900"
+                    >
+                      <span>
+                        <span className="block font-bold text-white">{profile.name}</span>
+                        <span className="text-xs text-zinc-500">
+                          {profile.kind === "artist" ? "Artista" : "Casa"}
+                          {profile.city ? ` · ${profile.city}` : ""}
+                        </span>
+                      </span>
+                      <span className="text-zinc-600">↗</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </label>
 
             <label>
