@@ -422,15 +422,15 @@ export default function OfertasCasaPage() {
       const artistId =
         params.get("artist");
 
-      setArtistaAlvoId(
-        artistId
-      );
-
       if (artistId) {
-        await carregarArtista(
-          artistId
+        router.replace(
+          `/oferta-direta/${artistId}`
         );
+        return;
       }
+
+      setArtistaAlvoId(null);
+      setArtistaAlvo(null);
 
       await carregarOfertas(
         casaEncontrada.id
@@ -504,6 +504,10 @@ export default function OfertasCasaPage() {
       .eq(
         "venue_id",
         venueId
+      )
+      .eq(
+        "offer_kind",
+        "public"
       )
       .order(
         "created_at",
@@ -825,6 +829,12 @@ export default function OfertasCasaPage() {
 
         created_by:
           user.id,
+
+        offer_kind:
+          "public",
+
+        target_artist_id:
+          null,
 
         title:
           form.title.trim(),
