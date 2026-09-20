@@ -481,7 +481,16 @@ export default function DisponibilidadesCasaPage() {
     }
 
     setDisponiveisAgora(
-      (data || []).map((item) => ({
+      ((data || []) as Array<{
+        artist_id: string;
+        stage_name: string | null;
+        avatar_url: string | null;
+        base_city: string | null;
+        base_state: string | null;
+        verification_status: string | null;
+        radius_km: number | null;
+        last_seen_at: string | null;
+      }>).map((item) => ({
         artist_id: String(item.artist_id),
         stage_name: String(item.stage_name || "Artista"),
         avatar_url: item.avatar_url ? String(item.avatar_url) : null,
