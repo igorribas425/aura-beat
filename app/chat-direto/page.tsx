@@ -64,6 +64,7 @@ export default function DirectChatPage() {
   const [userId, setUserId] = useState("");
   const [conversations, setConversations] = useState<ConversationView[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(true);
@@ -128,6 +129,10 @@ export default function DirectChatPage() {
       const requestedConversation = params.get("id");
       let conversationId = requestedConversation;
 
+      if (requestedConversation) {
+        setMobileChatOpen(true);
+      }
+
       if (
         (targetKind === "artist" || targetKind === "venue") &&
         targetId
@@ -148,6 +153,7 @@ export default function DirectChatPage() {
           );
         } else if (data) {
           conversationId = String(data);
+          setMobileChatOpen(true);
           window.history.replaceState(
             null,
             "",
@@ -706,7 +712,7 @@ export default function DirectChatPage() {
   return (
     <main className="aura-page pb-8">
       <div className="mx-auto max-w-7xl px-4 py-6">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className={`mb-5 flex-wrap items-center justify-between gap-3 ${mobileChatOpen ? "hidden lg:flex" : "flex"}`}>
           <div>
             <p className="aura-kicker">Rede Aura Beat</p>
             <h1 className="mt-1 text-3xl font-black">Chat Direto</h1>
@@ -766,7 +772,7 @@ export default function DirectChatPage() {
         )}
 
         <section className="aura-card overflow-hidden rounded-3xl border lg:grid lg:min-h-[680px] lg:grid-cols-[340px_1fr]">
-          <aside className="border-b border-zinc-800 lg:border-b-0 lg:border-r">
+          <aside className={`${mobileChatOpen ? "hidden lg:block" : "block"} border-b border-zinc-800 lg:border-b-0 lg:border-r`}>
             <div className="border-b border-zinc-900 p-5">
               <p className="text-xs font-black uppercase tracking-wider text-zinc-500">
                 Conversas diretas
@@ -786,7 +792,10 @@ export default function DirectChatPage() {
                   <button
                     key={conversation.id}
                     type="button"
-                    onClick={() => setSelectedId(conversation.id)}
+                    onClick={() => {
+                      setSelectedId(conversation.id);
+                      setMobileChatOpen(true);
+                    }}
                     className={`flex w-full items-center gap-3 border-b border-zinc-900 p-4 text-left transition ${
                       selectedId === conversation.id
                         ? "bg-red-950/20"
@@ -812,7 +821,7 @@ export default function DirectChatPage() {
             </div>
           </aside>
 
-          <section className="flex min-h-[560px] flex-col">
+          <section className={`${mobileChatOpen ? "flex" : "hidden lg:flex"} min-h-[560px] flex-col`}>
             {!selected ? (
               <div className="grid flex-1 place-items-center p-8 text-center">
                 <div>
@@ -825,7 +834,15 @@ export default function DirectChatPage() {
               </div>
             ) : (
               <>
-                <div className="flex items-center gap-3 border-b border-zinc-900 p-5">
+                <div className="flex items-center gap-3 border-b border-zinc-900 p-4 sm:p-5">
+                  <button
+                    type="button"
+                    onClick={() => setMobileChatOpen(false)}
+                    className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-zinc-800 text-xl text-zinc-300 lg:hidden"
+                    aria-label="Voltar para conversas"
+                  >
+                    ←
+                  </button>
                   <ProfileAvatar
                     kind={selected.otherKind}
                     name={selected.otherName}
