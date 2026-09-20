@@ -293,6 +293,8 @@ export default function ExplorePage() {
   const [usingFallback, setUsingFallback] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
+  const canSendOffer = mode === "venue" && Boolean(ownVenueId);
+
   useEffect(() => {
     let active = true;
 
@@ -518,7 +520,6 @@ export default function ExplorePage() {
       ),
     [favorites],
   );
-  const canSendOffer = mode === "venue" && Boolean(ownVenueId);
   const totalPages = Math.max(1, Math.ceil(totalCount / EXPLORE_PAGE_SIZE));
   const mappableCount = profiles.filter(
     (profile) => profile.latitude !== null && profile.longitude !== null,
