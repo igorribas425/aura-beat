@@ -69,25 +69,6 @@ type ReviewRow = {
 };
 
 const FALLBACK_LIMIT_PER_KIND = 48;
-const BRAZIL_STATE_CODES = new Set([
-  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO",
-  "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI",
-  "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO",
-]);
-
-function isBrazilProfile(profile: ExploreProfile) {
-  if (profile.latitude !== null && profile.longitude !== null) {
-    return (
-      profile.latitude >= -34 &&
-      profile.latitude <= 6 &&
-      profile.longitude >= -74 &&
-      profile.longitude <= -34
-    );
-  }
-
-  return BRAZIL_STATE_CODES.has((profile.state ?? "").trim().toUpperCase());
-}
-
 function defaultExploreKind(mode: Mode): ExploreKind {
   return mode === "venue" ? "artist" : "all";
 }
@@ -301,16 +282,11 @@ export default function ExplorePage() {
   const [totalCount, setTotalCount] = useState(0);
   const [usingFallback, setUsingFallback] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const [brazilOnly, setBrazilOnly] = useState(false);
 
   useEffect(() => {
     let active = true;
 
     async function loadContext() {
-      setBrazilOnly(
-        new URLSearchParams(window.location.search).get("scope") === "brazil",
-      );
-
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -375,8 +351,8 @@ export default function ExplorePage() {
 
       try {
         const effectiveDistanceKm = filters.maximumDistanceKm;
-        const requestLimit = brazilOnly ? FALLBACK_LIMIT_PER_KIND : EXPLORE_PAGE_SIZE;
-        const requestOffset = brazilOnly ? 0 : (page - 1) * EXPLORE_PAGE_SIZE;
+        const requestLimit = EXPLORE_PAGE_SIZE;
+        const requestOffset = (page - 1) * EXPLORE_PAGE_SIZE;
 
         const { data, error: rpcError } = await supabase.rpc("explore_profiles_v1", {
           p_kind: filters.kind,
@@ -406,7 +382,7 @@ export default function ExplorePage() {
         } else {
           const fallback = await loadFallbackProfiles(
             filters,
-            brazilOnly ? 1 : page,
+            page,
             ownArtistId,
             ownVenueId,
           );
@@ -424,13 +400,6 @@ export default function ExplorePage() {
           matchesExploreFilters(profile, effectiveFilters),
         );
 
-        if (brazilOnly) {
-          const brazilProfiles = visibleProfiles.filter(isBrazilProfile);
-          nextTotal = brazilProfiles.length;
-          const offset = (page - 1) * EXPLORE_PAGE_SIZE;
-          visibleProfiles = brazilProfiles.slice(offset, offset + EXPLORE_PAGE_SIZE);
-        }
-
         if (!active) return;
         setProfiles(visibleProfiles);
         setTotalCount(nextTotal);
@@ -446,7 +415,7 @@ export default function ExplorePage() {
       active = false;
       window.clearTimeout(timer);
     };
-  }, [brazilOnly, contextLoading, filters, location, ownArtistId, ownVenueId, page, reloadKey]);
+  }, [contextLoading, filters, location, ownArtistId, ownVenueId, page, reloadKey]);
 
   const favoriteKeys = useMemo(
     () =>
@@ -800,12 +769,6 @@ export default function ExplorePage() {
           <p className="mt-5 rounded-2xl border border-yellow-800/50 bg-yellow-950/20 p-4 text-sm text-yellow-200">
             Os perfis continuam disponíveis na lista. Os marcadores públicos aparecem após aplicar a migration de descoberta segura, sem revelar GPS exato.
           </p>
-        )}
-
-        {brazilOnly && mode === "venue" && (
-          <div className="mt-5 rounded-2xl border border-green-500/20 bg-green-500/5 px-4 py-3 text-sm text-green-200">
-            Busca da Casa: DJs em todo o Brasil. <button type="button" onClick={() => router.push("/buscar")} className="font-black underline">Ver mundo inteiro</button>
-          </div>
         )}
 
         <div id="explore-results" className="mt-7 scroll-mt-4 flex items-center justify-between gap-4">
