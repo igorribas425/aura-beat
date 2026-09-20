@@ -300,7 +300,15 @@ export default function DirectChatPage() {
   }, [router]);
 
   useEffect(() => {
-    if (!selectedId || !userId) {
+    const desktopConversationVisible =
+      typeof window !== "undefined" &&
+      window.matchMedia("(min-width: 1024px)").matches;
+
+    if (
+      !selectedId ||
+      !userId ||
+      (!mobileChatOpen && !desktopConversationVisible)
+    ) {
       setMessages([]);
       return;
     }
@@ -491,7 +499,7 @@ export default function DirectChatPage() {
       void channel.untrack();
       void supabase.removeChannel(channel);
     };
-  }, [selectedId, userId]);
+  }, [mobileChatOpen, selectedId, userId]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -537,23 +545,7 @@ export default function DirectChatPage() {
               (current[incoming.conversation_id] ?? 0) + 1,
           }));
 
-          setConversations((current) => {
-            const found = current.find(
-              (conversation) => conversation.id === incoming.conversation_id,
-            );
 
-            if (!found) return current;
-
-            return [
-              {
-                ...found,
-                updated_at: incoming.created_at,
-              },
-              ...current.filter(
-                (conversation) => conversation.id !== incoming.conversation_id,
-              ),
-            ];
-          });
         },
       )
       .subscribe();
