@@ -72,10 +72,13 @@ begin
     return new;
   end if;
 
-  v_changed :=
-    tg_op = 'INSERT'
-    or old.status is distinct from new.status
-    or old.proposed_fee is distinct from new.proposed_fee;
+  if tg_op = 'INSERT' then
+    v_changed := true;
+  else
+    v_changed :=
+      old.status is distinct from new.status
+      or old.proposed_fee is distinct from new.proposed_fee;
+  end if;
 
   if tg_op = 'INSERT' and new.status = 'pending' then
     perform public.create_aura_notification_v1(
