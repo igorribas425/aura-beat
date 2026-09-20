@@ -28,15 +28,23 @@ function ProfileActions({
         {profile.kind === "artist" ? "Ver perfil completo" : "Ver perfil"}
       </Link>
       {!profile.isOwnProfile && (
-        <button
-          type="button"
-          disabled={favoriteBusy}
-          aria-pressed={favorite}
-          onClick={() => onToggleFavorite(profile)}
-          className="rounded-xl border border-zinc-700 px-4 py-2.5 text-sm font-bold transition hover:border-red-500 disabled:opacity-50"
-        >
-          {favorite ? "♥ Salvo" : "♡ Favoritar"}
-        </button>
+        <>
+          <Link
+            href={`/chat-direto?targetKind=${profile.kind}&targetId=${profile.id}`}
+            className="rounded-xl border border-purple-500/40 bg-purple-500/10 px-4 py-2.5 text-center text-sm font-black text-purple-200 transition hover:bg-purple-500/20"
+          >
+            Conversar
+          </Link>
+          <button
+            type="button"
+            disabled={favoriteBusy}
+            aria-pressed={favorite}
+            onClick={() => onToggleFavorite(profile)}
+            className="rounded-xl border border-zinc-700 px-4 py-2.5 text-sm font-bold transition hover:border-red-500 disabled:opacity-50"
+          >
+            {favorite ? "♥ Salvo" : "♡ Favoritar"}
+          </button>
+        </>
       )}
       {canSendOffer && profile.kind === "artist" && !profile.isOwnProfile && (
         <Link
