@@ -258,7 +258,7 @@ export default function PerfilArtistaPage() {
         >
           <div className="flex items-center gap-4 rounded-2xl border border-zinc-800 bg-black/30 p-4">
             <ProfileAvatar kind="artist" name={stageName || "Artista"} url={avatarUrl} sizeClassName="h-20 w-20" className="rounded-2xl" />
-            <div><p className="font-black">Prévia do Press Kit</p><p className="mt-1 text-xs leading-5 text-zinc-500">A imagem principal também aparece no Explorar e nos marcadores do mapa.</p></div>
+            <div><p className="font-black">Prévia do Mídia Kit</p><p className="mt-1 text-xs leading-5 text-zinc-500">A foto principal escolhida no Mídia Kit também aparece no Explorar e nos marcadores do mapa.</p></div>
           </div>
           <div>
             <label className="mb-2 block text-sm font-semibold">
@@ -333,21 +333,20 @@ export default function PerfilArtistaPage() {
             />
           </div>
 
-          <div>
-            <label className="mb-2 block text-sm font-semibold">
-              URL da foto profissional
-            </label>
-            <input
-              type="url"
-              value={avatarUrl}
-              onChange={(e) => setAvatarUrl(e.target.value)}
-              placeholder="https://..."
-              className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-purple-500"
+          {profileExists && artistId ? (
+            <ArtistMediaManager
+              artistId={artistId}
+              onCoverChange={setAvatarUrl}
             />
-            <p className="mt-2 text-xs text-zinc-500">
-              Use uma imagem pública em HTTPS. E-mail, telefone e documentos nunca aparecem no perfil público.
-            </p>
-          </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-purple-500/30 bg-purple-500/5 p-5">
+              <p className="font-black text-purple-200">Mídia Kit do DJ</p>
+              <p className="mt-2 text-sm leading-6 text-zinc-400">
+                Salve o perfil uma vez para liberar o envio de fotos, flyers e vídeos
+                direto da galeria do celular.
+              </p>
+            </div>
+          )
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
@@ -446,7 +445,6 @@ export default function PerfilArtistaPage() {
           )}
         </form>
 
-        {profileExists && artistId && <ArtistMediaManager artistId={artistId} />}
       </div>
     </main>
   );
