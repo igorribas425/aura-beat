@@ -74,6 +74,13 @@ export default function PerfilArtistaPage() {
   const [priceKm, setPriceKm] = useState("");
   const [freeRadius, setFreeRadius] = useState("");
   const [availabilityRadius, setAvailabilityRadius] = useState("");
+  const [travelMode, setTravelMode] = useState<"fixed" | "vehicle">("fixed");
+  const [vehicleType, setVehicleType] = useState("");
+  const [fuelType, setFuelType] = useState("");
+  const [vehicleConsumption, setVehicleConsumption] = useState("");
+  const [fuelPrice, setFuelPrice] = useState("");
+  const [maintenanceCost, setMaintenanceCost] = useState("");
+  const [travelMargin, setTravelMargin] = useState("");
   const [acceptedEventTypes, setAcceptedEventTypes] = useState("");
   const [style, setStyle] = useState("");
   const [message, setMessage] = useState("");
@@ -113,6 +120,13 @@ export default function PerfilArtistaPage() {
         setPriceKm(String(data.price_per_km ?? ""));
         setFreeRadius(String(data.free_radius_km ?? ""));
         setAvailabilityRadius(String(data.availability_radius_km ?? ""));
+        setTravelMode(data.travel_calculation_mode === "vehicle" ? "vehicle" : "fixed");
+        setVehicleType(data.vehicle_type ?? "");
+        setFuelType(data.fuel_type ?? "");
+        setVehicleConsumption(String(data.vehicle_consumption_km_l ?? ""));
+        setFuelPrice(String(data.fuel_price_per_liter ?? ""));
+        setMaintenanceCost(String(data.maintenance_cost_per_km ?? ""));
+        setTravelMargin(String(data.travel_margin_per_km ?? ""));
         setAcceptedEventTypes((data.accepted_event_types ?? []).join(", "));
         setVerificationStatus(
           (data.verification_status ?? null) as VerificationStatus,
@@ -155,6 +169,15 @@ export default function PerfilArtistaPage() {
             availability_radius_km: availabilityRadius
               ? Number(availabilityRadius)
               : null,
+            travel_calculation_mode: travelMode,
+            vehicle_type: vehicleType.trim() || null,
+            fuel_type: fuelType.trim() || null,
+            vehicle_consumption_km_l: vehicleConsumption
+              ? Number(vehicleConsumption)
+              : null,
+            fuel_price_per_liter: fuelPrice ? Number(fuelPrice) : null,
+            maintenance_cost_per_km: Number(maintenanceCost || 0),
+            travel_margin_per_km: Number(travelMargin || 0),
             accepted_event_types: acceptedEventTypes
               .split(",")
               .map((item) => item.trim())
@@ -348,87 +371,242 @@ export default function PerfilArtistaPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div>
-              <label className="mb-2 block text-sm font-semibold">
-                Cachê por hora
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={fixedFee}
-                onChange={(e) => setFixedFee(e.target.value)}
-                placeholder="1000"
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-red-500"
-              />
+          <section className="rounded-3xl border border-zinc-800 bg-black/25 p-5">
+            <div className="flex items-start gap-3">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-red-500/10 text-xl">
+                💰
+              </div>
+              <div>
+                <h2 className="font-black">Cachê e deslocamento</h2>
+                <p className="mt-1 text-xs leading-5 text-zinc-500">
+                  O cachê e o deslocamento ficam separados. Pedágios e hospedagem são tratados à parte.
+                </p>
+              </div>
             </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-semibold">
-                Valor por km
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={priceKm}
-                onChange={(e) => setPriceKm(e.target.value)}
-                placeholder="1.50"
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-red-500"
-              />
+            <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm font-semibold">
+                  Cachê por hora
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={fixedFee}
+                  onChange={(e) => setFixedFee(e.target.value)}
+                  placeholder="1000"
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-red-500"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold">
+                  Distância máxima que aceita viajar
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="500"
+                  step="1"
+                  value={availabilityRadius}
+                  onChange={(e) => setAvailabilityRadius(e.target.value)}
+                  placeholder="Ex.: 150 km"
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-red-500"
+                />
+                <p className="mt-2 text-xs text-zinc-500">
+                  Serve para informar à Casa se o evento está dentro do seu raio.
+                </p>
+              </div>
             </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-semibold">
-                Raio grátis
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="1"
-                value={freeRadius}
-                onChange={(e) => setFreeRadius(e.target.value)}
-                placeholder="20 km"
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-red-500"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className="mb-2 block text-sm font-semibold">
-                Raio de disponibilidade
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="500"
-                step="1"
-                value={availabilityRadius}
-                onChange={(e) => setAvailabilityRadius(e.target.value)}
-                placeholder="Ex.: 80 km"
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-red-500"
-              />
-              <p className="mt-2 text-xs text-zinc-500">
-                Exibido no Explorar quando você estiver disponível.
+            <div className="mt-5">
+              <p className="mb-2 text-sm font-semibold">
+                Como calcular seu deslocamento?
               </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setTravelMode("fixed")}
+                  className={`rounded-2xl border p-4 text-left transition ${
+                    travelMode === "fixed"
+                      ? "border-red-500 bg-red-500/10"
+                      : "border-zinc-800 bg-zinc-950"
+                  }`}
+                >
+                  <span className="block font-black">🚗 Valor por km</span>
+                  <span className="mt-1 block text-xs leading-5 text-zinc-500">
+                    Você informa quanto cobra por quilômetro.
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setTravelMode("vehicle")}
+                  className={`rounded-2xl border p-4 text-left transition ${
+                    travelMode === "vehicle"
+                      ? "border-purple-500 bg-purple-500/10"
+                      : "border-zinc-800 bg-zinc-950"
+                  }`}
+                >
+                  <span className="block font-black">⛽ Pelo meu veículo</span>
+                  <span className="mt-1 block text-xs leading-5 text-zinc-500">
+                    O Aura Beat estima combustível pela distância e consumo.
+                  </span>
+                </button>
+              </div>
             </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-semibold">
-                Tipos de evento aceitos
-              </label>
-              <input
-                value={acceptedEventTypes}
-                onChange={(e) => setAcceptedEventTypes(e.target.value)}
-                placeholder="Casamento, festival, corporativo"
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-red-500"
-              />
-              <p className="mt-2 text-xs text-zinc-500">
-                Separe os tipos por vírgula.
-              </p>
+            <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm font-semibold">
+                  Raio sem cobrança de deslocamento
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={freeRadius}
+                  onChange={(e) => setFreeRadius(e.target.value)}
+                  placeholder="Ex.: 20 km"
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-red-500"
+                />
+              </div>
+
+              {travelMode === "fixed" && (
+                <div>
+                  <label className="mb-2 block text-sm font-semibold">
+                    Valor por km
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={priceKm}
+                    onChange={(e) => setPriceKm(e.target.value)}
+                    placeholder="Ex.: 1.50"
+                    className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-red-500"
+                  />
+                </div>
+              )}
             </div>
+
+            {travelMode === "vehicle" && (
+              <div className="mt-5 rounded-2xl border border-purple-500/20 bg-purple-500/5 p-4">
+                <p className="font-black text-purple-200">Dados do veículo</p>
+                <p className="mt-1 text-xs leading-5 text-zinc-500">
+                  Esses dados servem para o cálculo. A Casa recebe a estimativa de deslocamento, não os dados detalhados do seu veículo.
+                </p>
+
+                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold">
+                      Veículo
+                    </label>
+                    <input
+                      value={vehicleType}
+                      onChange={(e) => setVehicleType(e.target.value)}
+                      placeholder="Ex.: Gol 1.0, moto, van"
+                      className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-purple-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold">
+                      Combustível
+                    </label>
+                    <select
+                      value={fuelType}
+                      onChange={(e) => setFuelType(e.target.value)}
+                      className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-purple-500"
+                    >
+                      <option value="">Selecione</option>
+                      <option value="gasolina">Gasolina</option>
+                      <option value="etanol">Etanol</option>
+                      <option value="diesel">Diesel</option>
+                      <option value="flex">Flex</option>
+                      <option value="eletrico">Elétrico</option>
+                      <option value="outro">Outro</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold">
+                      Consumo médio (km/L)
+                    </label>
+                    <input
+                      type="number"
+                      min="0.1"
+                      step="0.1"
+                      value={vehicleConsumption}
+                      onChange={(e) => setVehicleConsumption(e.target.value)}
+                      placeholder="Ex.: 12"
+                      className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-purple-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold">
+                      Preço do combustível por litro
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={fuelPrice}
+                      onChange={(e) => setFuelPrice(e.target.value)}
+                      placeholder="Ex.: 6.50"
+                      className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-purple-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold">
+                      Reserva/manutenção por km
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={maintenanceCost}
+                      onChange={(e) => setMaintenanceCost(e.target.value)}
+                      placeholder="Ex.: 0.20"
+                      className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-purple-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold">
+                      Margem extra por km
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={travelMargin}
+                      onChange={(e) => setTravelMargin(e.target.value)}
+                      placeholder="Opcional"
+                      className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-purple-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+
+          <div>
+            <label className="mb-2 block text-sm font-semibold">
+              Tipos de evento aceitos
+            </label>
+            <input
+              value={acceptedEventTypes}
+              onChange={(e) => setAcceptedEventTypes(e.target.value)}
+              placeholder="Casamento, festival, corporativo"
+              className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-red-500"
+            />
+            <p className="mt-2 text-xs text-zinc-500">
+              Separe os tipos por vírgula.
+            </p>
           </div>
 
           {profileExists && <PublicLocationControl kind="artist" />}
