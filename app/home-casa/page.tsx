@@ -153,9 +153,12 @@ export default function HomeCasaPage() {
       setErro("");
 
       const {
-        data: { user },
+        data: { session },
       } =
-        await supabase.auth.getUser();
+        await supabase.auth.getSession();
+
+      const user =
+        session?.user;
 
       if (!user) {
         router.replace(
@@ -197,8 +200,9 @@ export default function HomeCasaPage() {
       }
 
       setCasa(perfil);
+      setCarregando(false);
 
-      await carregarEstatisticasCasa(
+      void carregarEstatisticasCasa(
         perfil.id
       );
 
@@ -206,7 +210,7 @@ export default function HomeCasaPage() {
         perfil.verification_status ===
         "verified"
       ) {
-        await obterLocalizacao();
+        void obterLocalizacao();
       }
     } catch (error) {
       console.error(error);
