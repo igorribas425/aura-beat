@@ -43,7 +43,13 @@ function mediaName(item: ArtistMedia) {
   return "Foto";
 }
 
-export function ArtistMediaManager({ artistId }: { artistId: string }) {
+export function ArtistMediaManager({
+  artistId,
+  onCoverChange,
+}: {
+  artistId: string;
+  onCoverChange?: (url: string) => void;
+}) {
   const [media, setMedia] = useState<ArtistMedia[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -89,6 +95,7 @@ export function ArtistMediaManager({ artistId }: { artistId: string }) {
     try {
       let nextOrder =
         media.reduce((max, item) => Math.max(max, item.sort_order), -1) + 1;
+      let hasCover = media.some((item) => item.is_cover);
 
       for (const file of files) {
         if (!ALLOWED_TYPES.has(file.type)) {
@@ -120,6 +127,7 @@ export function ArtistMediaManager({ artistId }: { artistId: string }) {
         )
           ? "video"
           : "photo";
+        const shouldBeCover = mediaType !== "video" && !hasCover;
 
         const { error: insertError } = await supabase
           .from("artist_media")
@@ -130,12 +138,24 @@ export function ArtistMediaManager({ artistId }: { artistId: string }) {
             public_url: publicUrl,
             caption: null,
             sort_order: nextOrder,
-            is_cover: false,
+            is_cover: shouldBeCover,
           });
 
         if (insertError) {
           await supabase.storage.from("artist-media").remove([storagePath]);
           throw insertError;
+        }
+
+        if (shouldBeCover) {
+          const { error: avatarError } = await supabase
+            .from("artist_profiles")
+            .update({ avatar_url: publicUrl })
+            .eq("id", artistId);
+
+          if (avatarError) throw avatarError;
+
+          hasCover = true;
+          onCoverChange?.(publicUrl);
         }
 
         nextOrder += 1;
@@ -178,7 +198,18 @@ export function ArtistMediaManager({ artistId }: { artistId: string }) {
       return;
     }
 
-    setMessage("✅ Destaque da galeria atualizado.");
+    const { error: avatarError } = await supabase
+      .from("artist_profiles")
+      .update({ avatar_url: item.public_url })
+      .eq("id", artistId);
+
+    if (avatarError) {
+      setMessage(`⚠️ Destaque salvo, mas a foto principal não foi atualizada: ${avatarError.message}`);
+      return;
+    }
+
+    onCoverChange?.(item.public_url);
+    setMessage("✅ Foto principal do Mídia Kit atualizada.");
     await loadMedia();
   }
 
@@ -227,6 +258,35 @@ export function ArtistMediaManager({ artistId }: { artistId: string }) {
       return;
     }
 
+    if (item.is_cover) {
+      const nextCover = media.find(
+        (candidate) =>
+          candidate.id !== item.id && candidate.media_type !== "video",
+      );
+
+      if (nextCover) {
+        const { error: nextCoverError } = await supabase
+          .from("artist_media")
+          .update({ is_cover: true })
+          .eq("id", nextCover.id)
+          .eq("artist_id", artistId);
+
+        if (!nextCoverError) {
+          await supabase
+            .from("artist_profiles")
+            .update({ avatar_url: nextCover.public_url })
+            .eq("id", artistId);
+          onCoverChange?.(nextCover.public_url);
+        }
+      } else {
+        await supabase
+          .from("artist_profiles")
+          .update({ avatar_url: null })
+          .eq("id", artistId);
+        onCoverChange?.("");
+      }
+    }
+
     setMessage("✅ Mídia removida.");
     await loadMedia();
   }
@@ -235,16 +295,16 @@ export function ArtistMediaManager({ artistId }: { artistId: string }) {
     <section className="aura-card mt-6 rounded-3xl border p-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="aura-kicker">Press Kit</p>
-          <h2 className="mt-2 text-2xl font-black">Fotos e vídeos</h2>
+          <p className="aura-kicker">Mídia Kit</p>
+          <h2 className="mt-2 text-2xl font-black">Fotos, flyers e vídeos</h2>
           <p className="mt-2 max-w-xl text-sm leading-6 text-zinc-400">
-            Publique o material que Casas e contratantes verão ao abrir seu perfil.
-            Fotos e vídeos ficam públicos no seu Press Kit.
+            Escolha direto da galeria do celular o material profissional que Casas e
+            contratantes verão no seu perfil.
           </p>
         </div>
 
         <label className="cursor-pointer rounded-xl bg-purple-600 px-5 py-3 text-sm font-black text-white transition hover:bg-purple-500">
-          {uploading ? "Enviando..." : "Adicionar mídias"}
+          {uploading ? "Enviando..." : "Adicionar da galeria"}
           <input
             type="file"
             multiple
@@ -316,7 +376,7 @@ export function ArtistMediaManager({ artistId }: { artistId: string }) {
                       disabled={item.is_cover}
                       className="rounded-lg border border-purple-500/30 px-3 py-2 text-xs font-bold text-purple-200 disabled:cursor-default disabled:opacity-50"
                     >
-                      {item.is_cover ? "Destaque atual" : "Definir destaque"}
+                      {item.is_cover ? "Foto principal" : "Usar como principal"}
                     </button>
                     <button
                       type="button"
