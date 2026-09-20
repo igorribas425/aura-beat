@@ -934,10 +934,9 @@ export default function HomeCasaPage() {
       }
     );
 
-    window.scrollTo({
-      top: 0,
-      behavior:
-        "smooth",
+    mapaElementoRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
     });
   }
 
@@ -1416,10 +1415,37 @@ export default function HomeCasaPage() {
                 </h2>
 
                 <p className="mt-1 text-sm text-zinc-500">
-                  Defina o raio da procura.
+                  Escolha como quer procurar DJs.
                 </p>
 
-                <div className="mt-5 grid grid-cols-2 gap-2">
+                <div className="mt-5 grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    className="rounded-xl border border-red-500 bg-red-500 px-2 py-3 text-xs font-black text-white"
+                  >
+                    Perto de mim
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/buscar?scope=brazil")}
+                    className="rounded-xl border border-zinc-800 bg-zinc-900 px-2 py-3 text-xs font-black text-zinc-300 transition hover:border-purple-500"
+                  >
+                    Brasil inteiro
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/buscar")}
+                    className="rounded-xl border border-zinc-800 bg-zinc-900 px-2 py-3 text-xs font-black text-zinc-300 transition hover:border-purple-500"
+                  >
+                    Mundo
+                  </button>
+                </div>
+
+                <p className="mt-5 text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+                  Raio próximo
+                </p>
+
+                <div className="mt-3 grid grid-cols-2 gap-2">
 
                   {[
                     10,
