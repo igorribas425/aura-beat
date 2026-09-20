@@ -1107,14 +1107,16 @@ export default function DirectChatPage() {
                       </Link>
                     )}
 
-                  {activeMode === "artist" && (
-                    <Link
-                      href="/agenda"
-                      className="ml-auto shrink-0 rounded-xl border border-zinc-700 px-3 py-2 text-xs font-bold text-zinc-300 sm:px-4 sm:text-sm"
-                    >
-                      🗓 Agenda
-                    </Link>
-                  )}
+                  {activeMode === "artist" &&
+                    selected.otherKind === "venue" &&
+                    selected.otherProfileId && (
+                      <Link
+                        href={`/casas/${selected.otherProfileId}#agenda-publica`}
+                        className="ml-auto shrink-0 rounded-xl border border-zinc-700 px-3 py-2 text-xs font-bold text-zinc-300 sm:px-4 sm:text-sm"
+                      >
+                        🗓 Agenda da Casa
+                      </Link>
+                    )}
                 </div>
 
                 <div className="flex-1 space-y-3 overflow-y-auto bg-black/20 p-4 sm:p-6">
