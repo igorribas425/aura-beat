@@ -325,19 +325,14 @@ export default function AdminFinanceiroPage() {
 
           if (
             !adminData?.is_active ||
-            ![
-              "admin",
-              "owner",
-            ].includes(
-              adminData.role
-            )
+            adminData.role !== "owner"
           ) {
             setRole(null);
 
             setDados([]);
 
             setErro(
-              "Acesso restrito aos administradores financeiros da Aura Beat."
+              "Acesso restrito ao proprietário da Aura Beat."
             );
 
             return;
