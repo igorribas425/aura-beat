@@ -898,10 +898,11 @@ export default function DisponibilidadesCasaPage() {
           </div>
 
           <p className="mt-1 text-sm text-amber-100/70">
-            Neste tipo de contratação, a Aura Beat cobra
-            3% da Casa e 3% do artista, somente sobre o
-            cachê. Deslocamento, pedágio e hospedagem não
-            recebem comissão.
+            Neste tipo de contratação, a comissão Aura Beat é de
+            3% da Casa e 3% do artista, somente sobre o cachê.
+            Deslocamento, pedágio e hospedagem não recebem comissão.
+            A taxa de processamento do ASAAS é adicionada separadamente
+            no pagamento.
           </p>
         </div>
 
