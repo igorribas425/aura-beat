@@ -12,17 +12,10 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [carregando, setCarregando] = useState(false);
-  const [verificandoSessao, setVerificandoSessao] = useState(true);
   const [mensagem, setMensagem] = useState("");
 
   useEffect(() => {
     let active = true;
-
-    const fallback = window.setTimeout(() => {
-      if (active) {
-        setVerificandoSessao(false);
-      }
-    }, 5000);
 
     async function redirectAuthenticatedUser() {
       try {
@@ -30,20 +23,12 @@ export default function LoginPage() {
         if (!active) return;
 
         const user = data.session?.user;
+        if (!user) return;
 
-        if (user) {
-          const destination = await getAuthenticatedDestination(user.id);
-          if (active) router.replace(destination);
-          return;
-        }
-
-        setVerificandoSessao(false);
+        const destination = await getAuthenticatedDestination(user.id);
+        if (active) router.replace(destination);
       } catch {
-        if (active) {
-          setVerificandoSessao(false);
-        }
-      } finally {
-        window.clearTimeout(fallback);
+        // O formulario de login continua disponivel mesmo se a verificacao falhar.
       }
     }
 
@@ -51,7 +36,6 @@ export default function LoginPage() {
 
     return () => {
       active = false;
-      window.clearTimeout(fallback);
     };
   }, [router]);
 
@@ -87,21 +71,9 @@ export default function LoginPage() {
     }
   }
 
-  if (verificandoSessao) {
-    return (
-      <main className="aura-page flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-zinc-800 border-t-red-500" />
-          <p className="mt-4 text-sm text-zinc-400">Verificando sua sessão…</p>
-        </div>
-      </main>
-    );
-  }
-
   return (
     <main className="aura-page">
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-6 py-10">
-        
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-red-500 via-red-600 to-purple-700 text-4xl font-black shadow-[0_0_45px_rgba(239,68,68,0.30)]">
             A
@@ -126,7 +98,6 @@ export default function LoginPage() {
           </p>
 
           <form onSubmit={entrar} className="mt-6 space-y-4">
-            
             <div>
               <label className="mb-2 block text-sm font-medium">
                 E-mail
@@ -170,7 +141,6 @@ export default function LoginPage() {
                 {mensagem}
               </div>
             )}
-
           </form>
 
           <button
@@ -185,7 +155,6 @@ export default function LoginPage() {
         <p className="mt-6 text-center text-xs text-zinc-500">
           Música move pessoas. Aura Beat conecta.
         </p>
-
       </div>
     </main>
   );
