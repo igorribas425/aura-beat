@@ -205,6 +205,16 @@ export default function CounterproposalPage() {
 
   const newValue = Number(response.proposed_fee ?? offer.budget_amount);
   const canRespond = response.status === "countered";
+  const descricaoContraproposta =
+    response.message &&
+    ![
+      "Convite direto enviado pela Casa.",
+      "Oferta aceita pelo artista.",
+      "Oferta recusada pelo artista.",
+      "Contraproposta enviada pelo artista.",
+    ].includes(response.message.trim())
+      ? response.message
+      : null;
 
   return (
     <main className="aura-page px-4 py-8">
@@ -267,7 +277,7 @@ export default function CounterproposalPage() {
               Descrição da contraproposta
             </p>
             <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-zinc-300">
-              {response.message || "O DJ não informou uma descrição."}
+              {descricaoContraproposta || "O DJ não informou uma descrição para esta contraproposta."}
             </p>
           </div>
 
