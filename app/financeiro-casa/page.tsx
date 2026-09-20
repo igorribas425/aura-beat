@@ -164,7 +164,8 @@ export default function FinanceiroCasaPage() {
   const totais = useMemo(() => {
     let totalPago = 0;
     let aguardando = 0;
-    let taxas = 0;
+    let taxaAura = 0;
+    let taxaAsaas = 0;
     let extras = 0;
 
     for (const linha of dados) {
@@ -177,8 +178,9 @@ export default function FinanceiroCasaPage() {
 
       if (linha.payment_status === "paid") {
         totalPago += total;
-        taxas +=
-          Number(linha.platform_fee_venue || 0) +
+        taxaAura +=
+          Number(linha.platform_fee_venue || 0);
+        taxaAsaas +=
           Number(linha.provider_fee || 0);
         extras += adicionais;
       }
@@ -191,7 +193,8 @@ export default function FinanceiroCasaPage() {
     return {
       totalPago,
       aguardando,
-      taxas,
+      taxaAura,
+      taxaAsaas,
       extras,
     };
   }, [dados]);
@@ -261,7 +264,7 @@ export default function FinanceiroCasaPage() {
           </div>
         )}
 
-        <div className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <div className="rounded-2xl border border-green-900/60 bg-green-950/10 p-5">
             <p className="text-sm text-green-300">
               Total pago
@@ -284,11 +287,21 @@ export default function FinanceiroCasaPage() {
 
           <div className="rounded-2xl border border-red-900/60 bg-red-950/10 p-5">
             <p className="text-sm text-red-300">
-              Taxas Aura Beat
+              Comissão Aura Beat
             </p>
 
             <p className="mt-2 text-3xl font-black text-red-400">
-              {dinheiro(totais.taxas)}
+              {dinheiro(totais.taxaAura)}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-purple-900/60 bg-purple-950/10 p-5">
+            <p className="text-sm text-purple-300">
+              Taxa ASAAS
+            </p>
+
+            <p className="mt-2 text-3xl font-black text-purple-400">
+              {dinheiro(totais.taxaAsaas)}
             </p>
           </div>
 
@@ -389,11 +402,19 @@ export default function FinanceiroCasaPage() {
                     </div>
 
                     <div className="mt-3 flex justify-between text-sm text-zinc-400">
-                      <span>Taxa Aura Beat</span>
+                      <span>Comissão Aura Beat</span>
                       <span>
                         + {dinheiro(
-                          Number(linha.platform_fee_venue || 0) +
-                            Number(linha.provider_fee || 0)
+                          Number(linha.platform_fee_venue || 0)
+                        )}
+                      </span>
+                    </div>
+
+                    <div className="mt-3 flex justify-between text-sm text-zinc-400">
+                      <span>Taxa ASAAS</span>
+                      <span>
+                        + {dinheiro(
+                          Number(linha.provider_fee || 0)
                         )}
                       </span>
                     </div>
