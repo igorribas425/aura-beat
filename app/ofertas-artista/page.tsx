@@ -902,6 +902,13 @@ export default function OfertasArtistaPage() {
       return;
     }
 
+    if (!mensagemContraproposta.trim()) {
+      setErro(
+        "Escreva uma descrição para a contraproposta."
+      );
+      return;
+    }
+
     const valor = Number(
       valorContraproposta
         .replace(",", ".")
@@ -1827,12 +1834,12 @@ export default function OfertasArtistaPage() {
 
                           <div>
                             <label className="mb-2 block text-sm font-bold text-zinc-300">
-                              Mensagem para
-                              a Casa
+                              Descrição da
+                              contraproposta
                             </label>
 
-                            <input
-                              type="text"
+                            <textarea
+                              rows={3}
                               value={
                                 mensagemContraproposta
                               }
@@ -1844,8 +1851,8 @@ export default function OfertasArtistaPage() {
                                     .value
                                 )
                               }
-                              placeholder="Ex.: Consigo fazer por este valor."
-                              className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 outline-none focus:border-purple-500"
+                              placeholder="Explique o motivo ou condição. Ex.: Consigo fazer por este valor incluindo 2 horas de set."
+                              className="w-full resize-none rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 outline-none focus:border-purple-500"
                             />
                           </div>
                         </div>
