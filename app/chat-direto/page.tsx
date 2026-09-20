@@ -305,7 +305,7 @@ export default function DirectChatPage() {
       window.matchMedia("(min-width: 1024px)").matches;
 
     if (
-      !selectedId ||
+      !conversationId ||
       !userId ||
       (!mobileChatOpen && !desktopConversationVisible)
     ) {
@@ -313,6 +313,7 @@ export default function DirectChatPage() {
       return;
     }
 
+    const conversationId = selectedId;
     let active = true;
     setLoadingMessages(true);
 
@@ -320,7 +321,7 @@ export default function DirectChatPage() {
       const { data, error: messagesError } = await supabase
         .from("direct_messages")
         .select("id,conversation_id,sender_user_id,body,read_at,created_at")
-        .eq("conversation_id", selectedId)
+        .eq("conversation_id", conversationId)
         .order("created_at", { ascending: true });
 
       if (!active) return;
@@ -331,12 +332,12 @@ export default function DirectChatPage() {
       } else {
         setMessages((data ?? []) as DirectMessage[]);
         await supabase.rpc("mark_direct_conversation_read_v1", {
-          p_conversation_id: selectedId,
+          p_conversation_id: conversationId,
         });
 
         setUnreadByConversation((current) => ({
           ...current,
-          [selectedId]: 0,
+          [conversationId]: 0,
         }));
       }
 
@@ -346,7 +347,7 @@ export default function DirectChatPage() {
     void loadMessages();
 
     const channel = supabase
-      .channel(`direct-chat-${selectedId}`, {
+      .channel(`direct-chat-${conversationId}`, {
         config: {
           broadcast: {
             self: false,
@@ -362,7 +363,7 @@ export default function DirectChatPage() {
           event: "INSERT",
           schema: "public",
           table: "direct_messages",
-          filter: `conversation_id=eq.${selectedId}`,
+          filter: `conversation_id=eq.${conversationId}`,
         },
         (payload) => {
           const incoming = payload.new as DirectMessage;
@@ -374,12 +375,12 @@ export default function DirectChatPage() {
 
           if (incoming.sender_user_id !== userId) {
             void supabase.rpc("mark_direct_conversation_read_v1", {
-              p_conversation_id: selectedId,
+              p_conversation_id: conversationId,
             });
 
             setUnreadByConversation((current) => ({
               ...current,
-              [selectedId]: 0,
+              [conversationId]: 0,
             }));
 
             if (alertsEnabledRef.current) {
@@ -402,7 +403,7 @@ export default function DirectChatPage() {
           event: "UPDATE",
           schema: "public",
           table: "direct_messages",
-          filter: `conversation_id=eq.${selectedId}`,
+          filter: `conversation_id=eq.${conversationId}`,
         },
         (payload) => {
           const updated = payload.new as DirectMessage;
