@@ -41,6 +41,7 @@ export default function PublicArtistPage() {
   const [completedEvents, setCompletedEvents] = useState(0);
   const [canSendOffer, setCanSendOffer] = useState(false);
   const [canViewFee, setCanViewFee] = useState(false);
+  const [canChat, setCanChat] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -104,6 +105,7 @@ export default function PublicArtistPage() {
             profileResult.data?.default_mode === "venue" && Boolean(venueResult.data);
           setCanSendOffer(isVenue);
           setCanViewFee(isVenue || ownArtistResult.data?.id === id);
+          setCanChat(ownArtistResult.data?.id !== id);
         }
       }
 
@@ -149,6 +151,14 @@ export default function PublicArtistPage() {
                 {(styles.length ? styles : ["Estilos não informados"]).map((style) => <span key={style} className="rounded-full bg-purple-500/15 px-3 py-1 text-sm text-purple-200">{style}</span>)}
               </div>
               <div className="mt-6 flex flex-wrap gap-3">
+                {canChat && (
+                  <Link
+                    href={`/chat-direto?targetKind=artist&targetId=${artist.id}`}
+                    className="rounded-xl border border-purple-500/40 bg-purple-500/10 px-6 py-3 font-black text-purple-200 hover:bg-purple-500/20"
+                  >
+                    Conversar
+                  </Link>
+                )}
                 {canSendOffer && <Link href={`/ofertas?artist=${artist.id}`} className="rounded-xl bg-red-500 px-6 py-3 font-black text-white hover:bg-red-600">Enviar oferta</Link>}
                 {instagram && <a href={instagram.url} target="_blank" rel="noreferrer" className="rounded-xl border border-purple-500/40 bg-purple-500/10 px-6 py-3 font-bold text-purple-300">Instagram {instagram.username}</a>}
               </div>
