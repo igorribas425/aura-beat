@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
 type ProfileAvatarProps = {
   kind: "artist" | "venue";
   name: string;
@@ -26,15 +30,27 @@ export function ProfileAvatar({
 }: ProfileAvatarProps) {
   const imageUrl = safePublicImageUrl(url);
   const initial = name.trim().charAt(0).toUpperCase() || (kind === "artist" ? "A" : "C");
+  const [imageFailed, setImageFailed] = useState(false);
 
-  if (imageUrl) {
+  useEffect(() => {
+    setImageFailed(false);
+  }, [imageUrl]);
+
+  if (imageUrl && !imageFailed) {
     return (
       <span
         role="img"
         aria-label={`Foto de ${name}`}
-        className={`${sizeClassName} ${className} block shrink-0 bg-cover bg-center ring-1 ring-white/10`}
-        style={{ backgroundImage: `url(${JSON.stringify(imageUrl)})` }}
-      />
+        className={`${sizeClassName} ${className} block shrink-0 overflow-hidden bg-zinc-900 ring-1 ring-white/10`}
+      >
+        <img
+          src={imageUrl}
+          alt=""
+          loading="lazy"
+          className="h-full w-full object-cover"
+          onError={() => setImageFailed(true)}
+        />
+      </span>
     );
   }
 
