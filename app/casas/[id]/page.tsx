@@ -40,6 +40,7 @@ export default function PublicVenuePage() {
   const [reviewCount, setReviewCount] = useState(0);
   const [completedEvents, setCompletedEvents] = useState(0);
   const [offers, setOffers] = useState<PublicOffer[]>([]);
+  const [canChat, setCanChat] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -63,11 +64,12 @@ export default function PublicVenuePage() {
         return;
       }
 
-      const [reviewsResult, bookingsResult, offersResult, visualResult] = await Promise.all([
+      const [reviewsResult, bookingsResult, offersResult, visualResult, userResult] = await Promise.all([
         supabase.from("reviews").select("overall_rating").eq("reviewee_type", "venue").eq("venue_id", id),
         supabase.from("bookings").select("id", { count: "exact", head: true }).eq("venue_id", id).eq("status", "completed"),
         supabase.from("offers").select("id,title,event_type,starts_at,duration_minutes,budget_amount").eq("venue_id", id).eq("status", "open").gte("starts_at", new Date().toISOString()).order("starts_at").limit(6),
         supabase.from("venue_profiles").select("venue_type,avatar_url").eq("id", id).maybeSingle(),
+        supabase.auth.getUser(),
       ]);
 
       if (!active) return;
@@ -84,6 +86,18 @@ export default function PublicVenuePage() {
       setRating(ratings.length ? ratings.reduce((total, value) => total + value, 0) / ratings.length : 0);
       if (!bookingsResult.error) setCompletedEvents(bookingsResult.count ?? 0);
       if (!offersResult.error) setOffers((offersResult.data ?? []) as PublicOffer[]);
+
+      const currentUser = userResult.data.user;
+      if (currentUser) {
+        const { data: ownVenue } = await supabase
+          .from("venue_profiles")
+          .select("id")
+          .eq("owner_user_id", currentUser.id)
+          .maybeSingle();
+
+        if (active) setCanChat(ownVenue?.id !== id);
+      }
+
       setLoading(false);
     }
 
@@ -121,6 +135,16 @@ export default function PublicVenuePage() {
               <h1 className="mt-3 text-4xl font-black tracking-tight sm:text-6xl">{venue.trade_name}</h1>
               <p className="mt-3 text-zinc-400">{location || "Localização não informada"}</p>
               {venueType && <span className="mt-4 inline-flex rounded-full border border-red-500/25 bg-red-500/10 px-3 py-1.5 text-sm font-bold text-red-300">{venueType}</span>}
+              {canChat && (
+                <div className="mt-5">
+                  <Link
+                    href={`/chat-direto?targetKind=venue&targetId=${venue.id}`}
+                    className="inline-flex rounded-xl border border-purple-500/40 bg-purple-500/10 px-6 py-3 font-black text-purple-200 hover:bg-purple-500/20"
+                  >
+                    Conversar
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         </section>
