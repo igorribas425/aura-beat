@@ -69,28 +69,6 @@ with check (
   )
 );
 
-drop policy if exists "direct_messages_participants_update" on public.direct_messages;
-create policy "direct_messages_participants_update"
-on public.direct_messages
-for update
-to authenticated
-using (
-  exists (
-    select 1
-    from public.direct_conversations c
-    where c.id = conversation_id
-      and (c.user_a = auth.uid() or c.user_b = auth.uid())
-  )
-)
-with check (
-  exists (
-    select 1
-    from public.direct_conversations c
-    where c.id = conversation_id
-      and (c.user_a = auth.uid() or c.user_b = auth.uid())
-  )
-);
-
 create or replace function public.start_direct_conversation_v1(
   p_target_kind text,
   p_target_profile_id uuid
@@ -202,6 +180,44 @@ $$;
 revoke all on function public.start_direct_conversation_v1(text,uuid) from public;
 grant execute on function public.start_direct_conversation_v1(text,uuid) to authenticated;
 
+create or replace function public.mark_direct_conversation_read_v1(
+  p_conversation_id uuid
+)
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+  v_updated integer := 0;
+begin
+  if auth.uid() is null then
+    raise exception 'authentication required';
+  end if;
+
+  if not exists (
+    select 1
+    from public.direct_conversations c
+    where c.id = p_conversation_id
+      and (c.user_a = auth.uid() or c.user_b = auth.uid())
+  ) then
+    raise exception 'conversation access denied';
+  end if;
+
+  update public.direct_messages
+  set read_at = coalesce(read_at, now())
+  where conversation_id = p_conversation_id
+    and sender_user_id <> auth.uid()
+    and read_at is null;
+
+  get diagnostics v_updated = row_count;
+  return v_updated;
+end;
+$;
+
+revoke all on function public.mark_direct_conversation_read_v1(uuid) from public;
+grant execute on function public.mark_direct_conversation_read_v1(uuid) to authenticated;
+
 create or replace function public.touch_direct_conversation_v1()
 returns trigger
 language plpgsql
@@ -222,3 +238,24 @@ create trigger direct_messages_touch_conversation
 after insert on public.direct_messages
 for each row
 execute function public.touch_direct_conversation_v1();
+
+
+do $$
+begin
+  if exists (
+    select 1
+    from pg_publication
+    where pubname = 'supabase_realtime'
+  )
+  and not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'direct_messages'
+  ) then
+    alter publication supabase_realtime
+      add table public.direct_messages;
+  end if;
+end;
+$$;
