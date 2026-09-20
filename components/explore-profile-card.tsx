@@ -20,6 +20,15 @@ export type MiniPressKitMedia = {
   is_cover: boolean;
 };
 
+export type MiniPressKitTravelQuote = {
+  distanceKm: number;
+  roundTripKm: number;
+  withinRadius: boolean;
+  calculationMode: "fixed" | "vehicle";
+  fuelLiters: number | null;
+  estimatedAmount: number;
+};
+
 function ProfileActions({
   profile,
   canSendOffer,
@@ -200,6 +209,8 @@ export function MiniPressKit(
   props: ExploreProfileCardProps & {
     media?: MiniPressKitMedia[];
     mediaLoading?: boolean;
+    travelQuote?: MiniPressKitTravelQuote | null;
+    travelQuoteLoading?: boolean;
   },
 ) {
   const {
@@ -207,6 +218,8 @@ export function MiniPressKit(
     canSendOffer,
     media = [],
     mediaLoading = false,
+    travelQuote = null,
+    travelQuoteLoading = false,
   } = props;
   const isArtist = profile.kind === "artist";
 
@@ -361,6 +374,69 @@ export function MiniPressKit(
             </>
           )}
         </div>
+
+        {isArtist && canSendOffer && !profile.isOwnProfile && (
+          <section className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-wider text-emerald-300">
+                  Deslocamento estimado
+                </p>
+                <p className="mt-1 text-xs leading-5 text-zinc-500">
+                  Calculado a partir da sua localização atual no Explorar.
+                </p>
+              </div>
+              <span className="text-lg">🚗</span>
+            </div>
+
+            {travelQuoteLoading ? (
+              <div className="mt-4 h-20 animate-pulse rounded-xl bg-zinc-900" />
+            ) : travelQuote ? (
+              <>
+                <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+                  <div className="rounded-xl bg-zinc-900 p-3">
+                    <p className="text-[11px] text-zinc-500">Até o Artista</p>
+                    <p className="mt-1 font-black">{travelQuote.distanceKm.toFixed(1)} km</p>
+                  </div>
+                  <div className="rounded-xl bg-zinc-900 p-3">
+                    <p className="text-[11px] text-zinc-500">Ida e volta</p>
+                    <p className="mt-1 font-black">{travelQuote.roundTripKm.toFixed(1)} km</p>
+                  </div>
+                  <div className="rounded-xl bg-zinc-900 p-3">
+                    <p className="text-[11px] text-zinc-500">Estimativa</p>
+                    <p className="mt-1 font-black text-emerald-300">
+                      {formatBRL(travelQuote.estimatedAmount)}
+                    </p>
+                  </div>
+                  <div className="rounded-xl bg-zinc-900 p-3">
+                    <p className="text-[11px] text-zinc-500">
+                      {travelQuote.calculationMode === "vehicle" ? "Combustível" : "Cálculo"}
+                    </p>
+                    <p className="mt-1 font-black">
+                      {travelQuote.calculationMode === "vehicle" && travelQuote.fuelLiters !== null
+                        ? `~${travelQuote.fuelLiters.toFixed(1)} L`
+                        : "Valor por km"}
+                    </p>
+                  </div>
+                </div>
+
+                {!travelQuote.withinRadius && (
+                  <p className="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs leading-5 text-amber-200">
+                    ⚠️ Esta distância está acima do raio que o Artista informou que costuma atender.
+                  </p>
+                )}
+
+                <p className="mt-3 text-[11px] leading-5 text-zinc-600">
+                  Estimativa aproximada. Pedágios e hospedagem ficam separados do cachê e do deslocamento.
+                </p>
+              </>
+            ) : (
+              <p className="mt-3 text-xs leading-5 text-zinc-500">
+                Ative sua localização no Explorar para calcular uma estimativa de deslocamento.
+              </p>
+            )}
+          </section>
+        )}
 
         {isArtist && profile.eventTypes.length > 0 && (
           <div>
