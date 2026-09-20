@@ -346,7 +346,7 @@ export default function PerfilArtistaPage() {
                 direto da galeria do celular.
               </p>
             </div>
-          )
+          )}
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
