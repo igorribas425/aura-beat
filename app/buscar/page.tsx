@@ -564,7 +564,7 @@ export default function ExplorePage() {
           ...filters,
           maximumDistanceKm: effectiveDistanceKm,
         };
-        let visibleProfiles = located.filter((profile) =>
+        const visibleProfiles = located.filter((profile) =>
           matchesExploreFilters(profile, effectiveFilters),
         );
 
