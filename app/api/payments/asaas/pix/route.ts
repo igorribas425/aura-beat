@@ -5,6 +5,7 @@ import {
 
 import {
   createClient,
+  type SupabaseClient,
 } from "@supabase/supabase-js";
 
 import {
@@ -109,9 +110,7 @@ function getServerConfig() {
 }
 
 async function authorizeVenue(
-  admin: ReturnType<
-    typeof createClient<any>
-  >,
+  admin: SupabaseClient,
   userId: string,
   venueId: string
 ) {
