@@ -686,18 +686,10 @@ export default function DirectOfferPage() {
             transportMode === "vehicle" ||
             transportMode === "fixed") && (
             <div className="mt-5 rounded-2xl border border-zinc-800 bg-black/25 p-4">
-              <button
-                type="button"
-                onClick={() => void requestCurrentLocation()}
-                className="rounded-xl border border-green-500/40 bg-green-500/10 px-4 py-3 text-sm font-black text-green-300"
-              >
-                📍 Usar localização do evento
-              </button>
-
               {calculating ? (
-                <p className="mt-3 text-sm text-zinc-500">Calculando…</p>
+                <p className="text-sm text-zinc-500">Calculando deslocamento…</p>
               ) : quote ? (
-                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <div className="grid gap-3 sm:grid-cols-3">
                   <div>
                     <p className="text-xs text-zinc-500">Distância</p>
                     <p className="font-black">{quote.distanceKm.toFixed(1)} km</p>
@@ -745,6 +737,37 @@ export default function DirectOfferPage() {
                 className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3"
               />
             </label>
+
+            <div className="rounded-2xl border border-zinc-800 bg-black/25 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-black text-zinc-200">
+                    Localização exata do evento
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    Usada no trajeto do DJ e no acompanhamento da Casa.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => void requestCurrentLocation()}
+                  className="rounded-xl border border-green-500/40 bg-green-500/10 px-4 py-3 text-sm font-black text-green-300"
+                >
+                  📍 Usar localização do evento
+                </button>
+              </div>
+
+              {location ? (
+                <p className="mt-3 text-xs font-bold text-green-300">
+                  ✓ Localização registrada nesta proposta.
+                </p>
+              ) : (
+                <p className="mt-3 text-xs text-amber-300">
+                  Sem coordenadas exatas. O endereço continuará salvo, mas o mapa do trajeto não terá um destino preciso.
+                </p>
+              )}
+            </div>
             <label className="block text-sm font-bold">
               Estrutura
               <textarea
