@@ -66,6 +66,7 @@ export default function DirectChatPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const [messages, setMessages] = useState<DirectMessage[]>([]);
+  const [unreadByConversation, setUnreadByConversation] = useState<Record<string, number>>({});
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
@@ -256,6 +257,34 @@ export default function DirectChatPage() {
       if (!active) return;
 
       setConversations(viewRows);
+
+      if (rows.length > 0) {
+        const { data: unreadRows, error: unreadError } = await supabase
+          .from("direct_messages")
+          .select("conversation_id,sender_user_id,read_at")
+          .in(
+            "conversation_id",
+            rows.map((conversation) => conversation.id),
+          )
+          .is("read_at", null)
+          .neq("sender_user_id", currentUserId);
+
+        if (!unreadError && active) {
+          const counts = (unreadRows ?? []).reduce<Record<string, number>>(
+            (accumulator, message) => {
+              const conversationId = String(message.conversation_id);
+              accumulator[conversationId] = (accumulator[conversationId] ?? 0) + 1;
+              return accumulator;
+            },
+            {},
+          );
+
+          setUnreadByConversation(counts);
+        }
+      } else {
+        setUnreadByConversation({});
+      }
+
       const nextSelected =
         (preferredId && viewRows.some((item) => item.id === preferredId)
           ? preferredId
@@ -296,6 +325,11 @@ export default function DirectChatPage() {
         await supabase.rpc("mark_direct_conversation_read_v1", {
           p_conversation_id: selectedId,
         });
+
+        setUnreadByConversation((current) => ({
+          ...current,
+          [selectedId]: 0,
+        }));
       }
 
       if (active) setLoadingMessages(false);
@@ -334,6 +368,11 @@ export default function DirectChatPage() {
             void supabase.rpc("mark_direct_conversation_read_v1", {
               p_conversation_id: selectedId,
             });
+
+            setUnreadByConversation((current) => ({
+              ...current,
+              [selectedId]: 0,
+            }));
 
             if (alertsEnabledRef.current) {
               void playNotificationSound();
@@ -457,6 +496,72 @@ export default function DirectChatPage() {
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const channel = supabase
+      .channel(`direct-inbox-${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "direct_messages",
+        },
+        (payload) => {
+          const incoming = payload.new as DirectMessage;
+
+          if (incoming.sender_user_id === userId) return;
+
+          const belongsToInbox = conversations.some(
+            (conversation) => conversation.id === incoming.conversation_id,
+          );
+
+          if (!belongsToInbox) return;
+
+          if (
+            incoming.conversation_id === selectedId &&
+            mobileChatOpen
+          ) {
+            setUnreadByConversation((current) => ({
+              ...current,
+              [incoming.conversation_id]: 0,
+            }));
+            return;
+          }
+
+          setUnreadByConversation((current) => ({
+            ...current,
+            [incoming.conversation_id]:
+              (current[incoming.conversation_id] ?? 0) + 1,
+          }));
+
+          setConversations((current) => {
+            const found = current.find(
+              (conversation) => conversation.id === incoming.conversation_id,
+            );
+
+            if (!found) return current;
+
+            return [
+              {
+                ...found,
+                updated_at: incoming.created_at,
+              },
+              ...current.filter(
+                (conversation) => conversation.id !== incoming.conversation_id,
+              ),
+            ];
+          });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [conversations, mobileChatOpen, selectedId, userId]);
 
   const selected = useMemo(
     () => conversations.find((item) => item.id === selectedId) ?? null,
@@ -746,12 +851,7 @@ export default function DirectChatPage() {
             >
               Explorar
             </Link>
-            <Link
-              href="/chat"
-              className="rounded-xl border border-zinc-700 px-4 py-2 text-sm font-bold"
-            >
-              Chats de contratação
-            </Link>
+
           </div>
         </div>
 
@@ -795,6 +895,10 @@ export default function DirectChatPage() {
                     onClick={() => {
                       setSelectedId(conversation.id);
                       setMobileChatOpen(true);
+                      setUnreadByConversation((current) => ({
+                        ...current,
+                        [conversation.id]: 0,
+                      }));
                     }}
                     className={`flex w-full items-center gap-3 border-b border-zinc-900 p-4 text-left transition ${
                       selectedId === conversation.id
@@ -810,7 +914,21 @@ export default function DirectChatPage() {
                       className="rounded-2xl"
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-black">{conversation.otherName}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="min-w-0 flex-1 truncate font-black">
+                          {conversation.otherName}
+                        </p>
+                        {(unreadByConversation[conversation.id] ?? 0) > 0 && (
+                          <span
+                            className="grid h-6 min-w-6 shrink-0 place-items-center rounded-full bg-red-500 px-1.5 text-[11px] font-black text-white"
+                            aria-label={`${unreadByConversation[conversation.id]} mensagem(ns) não lida(s)`}
+                          >
+                            {unreadByConversation[conversation.id] > 99
+                              ? "99+"
+                              : unreadByConversation[conversation.id]}
+                          </span>
+                        )}
+                      </div>
                       <p className="mt-1 text-xs text-zinc-500">
                         {conversation.otherKind === "artist" ? "Artista" : "Casa"} · {formatDateTime(conversation.updated_at)}
                       </p>
