@@ -57,6 +57,9 @@ export default function HomeCasaPage() {
       null
     );
 
+  const paginaAtivaRef =
+    useRef(true);
+
   const mapaRef =
     useRef<
       import("leaflet").Map | null
@@ -128,12 +131,25 @@ export default function HomeCasaPage() {
     });
 
   useEffect(() => {
+    paginaAtivaRef.current = true;
     carregarCasaEffect();
 
     return () => {
+      paginaAtivaRef.current = false;
+
+      if (camadaMarcadoresRef.current) {
+        camadaMarcadoresRef.current.clearLayers();
+        camadaMarcadoresRef.current = null;
+      }
+
       if (mapaRef.current) {
+        mapaRef.current.off();
         mapaRef.current.remove();
         mapaRef.current = null;
+      }
+
+      if (mapaElementoRef.current) {
+        mapaElementoRef.current.replaceChildren();
       }
     };
   }, []);
@@ -586,15 +602,26 @@ export default function HomeCasaPage() {
       return;
     }
 
+    const elementoMapa =
+      mapaElementoRef.current;
+
     const L =
       await import(
         "leaflet"
       );
 
+    if (
+      !paginaAtivaRef.current ||
+      !elementoMapa ||
+      mapaElementoRef.current !== elementoMapa
+    ) {
+      return;
+    }
+
     if (!mapaRef.current) {
       mapaRef.current =
         L.map(
-          mapaElementoRef.current,
+          elementoMapa,
           {
             zoomControl: true,
           }
