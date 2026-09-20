@@ -565,6 +565,10 @@ export default function OfertasArtistaPage() {
   function cacheBaseArtista(
     oferta: Oferta
   ) {
+    if (oferta.offer_kind === "direct") {
+      return Number(oferta.budget_amount || 0);
+    }
+
     const valorHora =
       Number(
         artista?.fixed_fee || 0
@@ -687,8 +691,36 @@ export default function OfertasArtistaPage() {
         "Oferta aceita pelo artista."
       );
 
+      if (
+        oferta.offer_kind === "direct" &&
+        oferta.direct_conversation_id
+      ) {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (user) {
+          await supabase
+            .from("direct_messages")
+            .insert({
+              conversation_id:
+                oferta.direct_conversation_id,
+              sender_user_id:
+                user.id,
+              body:
+                `✅ Proposta aceita. Data fechada no Aura Beat: ${dataEvento(
+                  oferta.starts_at
+                )} · ${duracaoEvento(
+                  oferta.duration_minutes
+                )} · cachê ${dinheiro(
+                  Number(oferta.budget_amount || 0)
+                )}. A contratação já entrou na agenda.`,
+            });
+        }
+      }
+
       setMensagem(
-        `Oferta "${oferta.title}" aceita com sucesso.`
+        `Oferta "${oferta.title}" aceita com sucesso e adicionada à agenda.`
       );
 
       await carregarPagina(
@@ -717,6 +749,25 @@ export default function OfertasArtistaPage() {
       ) {
         setErro(
           "A Casa desta oferta precisa estar verificada para avançar a contratação."
+        );
+      } else if (
+        texto.includes(
+          "Artista já possui contratação"
+        ) ||
+        texto.includes(
+          "horário bloqueado"
+        )
+      ) {
+        setErro(
+          "Você já possui outra contratação ou compromisso neste horário."
+        );
+      } else if (
+        texto.includes(
+          "Casa já possui contratação"
+        )
+      ) {
+        setErro(
+          "A Casa já possui outra contratação neste horário."
         );
       } else {
         setErro(
