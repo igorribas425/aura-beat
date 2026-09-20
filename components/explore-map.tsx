@@ -15,6 +15,19 @@ type ExploreMapProps = {
 
 const DEFAULT_CENTER: [number, number] = [-14.235, -51.9253];
 
+function isValidMapPoint(lat: number | null, lng: number | null): lat is number {
+  return (
+    typeof lat === "number" &&
+    Number.isFinite(lat) &&
+    typeof lng === "number" &&
+    Number.isFinite(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180
+  );
+}
+
 function escapeHtml(value: string) {
   return value
     .replaceAll("&", "&amp;")
@@ -81,7 +94,11 @@ function profileMarkerIcon(
     ? '<span class="aura-profile-marker-own">VOCÊ</span>'
     : "";
   const media = imageUrl
-    ? `<img src="${escapeHtml(imageUrl)}" alt="" />`
+    ? `<span
+        class="aura-profile-marker-image"
+        aria-hidden="true"
+        style="background-image:url('&quot;${escapeHtml(imageUrl)}&quot;')"
+      ></span>`
     : `<span class="aura-profile-marker-fallback">${fallback}</span>`;
 
   return leaflet.divIcon({
@@ -177,9 +194,9 @@ export function ExploreMap({ profiles, userLocation, onSelect }: ExploreMapProps
       }
 
       profiles.forEach((profile) => {
-        if (profile.latitude === null || profile.longitude === null) return;
+        if (!isValidMapPoint(profile.latitude, profile.longitude)) return;
 
-        const point: [number, number] = [profile.latitude, profile.longitude];
+        const point: [number, number] = [profile.latitude, profile.longitude!];
         bounds.push(point);
 
         const marker = leaflet
@@ -242,8 +259,8 @@ export function ExploreMap({ profiles, userLocation, onSelect }: ExploreMapProps
     [],
   );
 
-  const mappableProfiles = profiles.filter(
-    (profile) => profile.latitude !== null && profile.longitude !== null,
+  const mappableProfiles = profiles.filter((profile) =>
+    isValidMapPoint(profile.latitude, profile.longitude),
   );
 
   return (
