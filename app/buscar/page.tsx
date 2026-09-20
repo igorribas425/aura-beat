@@ -341,7 +341,14 @@ export default function ExplorePage() {
       setOwnArtistId(artistResult.data?.id ?? null);
       setOwnVenueId(venueResult.data?.id ?? null);
       setMode(resolvedMode);
-      setFilters((current) => ({ ...current, kind: defaultExploreKind(resolvedMode) }));
+      setFilters((current) => ({
+        ...current,
+        kind: defaultExploreKind(resolvedMode),
+        maximumDistanceKm:
+          resolvedMode === "venue"
+            ? current.maximumDistanceKm ?? 100
+            : current.maximumDistanceKm,
+      }));
       setPage(1);
 
       if (!favoritesResult.error) {
@@ -374,6 +381,14 @@ export default function ExplorePage() {
               : null
             : filters.maximumDistanceKm;
 
+        const brazilWideSearch = mode === "venue" && venueReach === "brazil";
+        const requestLimit = brazilWideSearch
+          ? FALLBACK_LIMIT_PER_KIND
+          : EXPLORE_PAGE_SIZE;
+        const requestOffset = brazilWideSearch
+          ? 0
+          : (page - 1) * EXPLORE_PAGE_SIZE;
+
         const { data, error: rpcError } = await supabase.rpc("explore_profiles_v1", {
           p_kind: filters.kind,
           p_query: filters.query || null,
@@ -387,8 +402,8 @@ export default function ExplorePage() {
           p_origin_lat: location?.lat ?? null,
           p_origin_lng: location?.lng ?? null,
           p_max_distance_km: effectiveDistanceKm,
-          p_limit: EXPLORE_PAGE_SIZE,
-          p_offset: (page - 1) * EXPLORE_PAGE_SIZE,
+          p_limit: requestLimit,
+          p_offset: requestOffset,
         });
 
         let nextProfiles: ExploreProfile[];
@@ -416,8 +431,10 @@ export default function ExplorePage() {
         );
 
         if (mode === "venue" && venueReach === "brazil") {
-          visibleProfiles = visibleProfiles.filter(isBrazilProfile);
-          nextTotal = visibleProfiles.length;
+          const brazilProfiles = visibleProfiles.filter(isBrazilProfile);
+          nextTotal = brazilProfiles.length;
+          const offset = (page - 1) * EXPLORE_PAGE_SIZE;
+          visibleProfiles = brazilProfiles.slice(offset, offset + EXPLORE_PAGE_SIZE);
         }
 
         if (!active) return;
@@ -561,7 +578,11 @@ export default function ExplorePage() {
 
   function clearFilters(event?: FormEvent) {
     event?.preventDefault();
-    setFilters({ ...INITIAL_EXPLORE_FILTERS, kind: defaultExploreKind(mode) });
+    setFilters({
+      ...INITIAL_EXPLORE_FILTERS,
+      kind: defaultExploreKind(mode),
+      maximumDistanceKm: mode === "venue" ? 100 : null,
+    });
     if (mode === "venue") setVenueReach("nearby");
     setPage(1);
   }
