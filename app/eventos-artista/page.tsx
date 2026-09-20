@@ -744,16 +744,25 @@ export default function EventosArtistaPage() {
       const coordenadas =
         await tentarLocalizacao();
 
-      const { error } = await supabase
-        .from("bookings")
-        .update({
-          status: acao.proximo,
-        })
-        .eq("id", booking.id);
+      const {
+        data: novoStatus,
+        error,
+      } = await supabase.rpc(
+        "advance_artist_booking_status_v1",
+        {
+          p_booking_id: booking.id,
+        }
+      );
 
       if (error) {
         throw error;
       }
+
+      const statusConfirmado =
+        String(
+          novoStatus ||
+            acao.proximo
+        ) as BookingStatus;
 
       await gravarTracking(
         booking,
@@ -767,21 +776,21 @@ export default function EventosArtistaPage() {
           previous_status:
             booking.status,
           new_status:
-            acao.proximo,
+            statusConfirmado,
         }
       );
 
       if (
-        acao.proximo === "in_transit"
+        statusConfirmado === "in_transit"
       ) {
         iniciarGpsContinuo({
           ...booking,
-          status: "in_transit",
+          status: statusConfirmado,
         });
       }
 
       if (
-        acao.proximo === "completed"
+        statusConfirmado === "completed"
       ) {
         pararGpsContinuo();
         pararSimulacao();
@@ -792,7 +801,7 @@ export default function EventosArtistaPage() {
           item.id === booking.id
             ? {
                 ...item,
-                status: acao.proximo,
+                status: statusConfirmado,
               }
             : item
         )
@@ -800,7 +809,7 @@ export default function EventosArtistaPage() {
 
       setMensagem(
         `Status atualizado: ${
-          statusInfo(acao.proximo).texto
+          statusInfo(statusConfirmado).texto
         }.`
       );
     } catch (error) {
