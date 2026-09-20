@@ -305,7 +305,7 @@ export default function DirectChatPage() {
       window.matchMedia("(min-width: 1024px)").matches;
 
     if (
-      !conversationId ||
+      !selectedId ||
       !userId ||
       (!mobileChatOpen && !desktopConversationVisible)
     ) {
