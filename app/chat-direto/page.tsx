@@ -170,17 +170,23 @@ export default function DirectChatPage() {
       ]);
 
       const artistMap = new Map(
-        (artistResult.data ?? []).map((item) => [
-          item.user_id,
-          { name: item.stage_name, avatar: item.avatar_url as string | null },
-        ]),
+        (artistResult.data ?? []).map(
+          (item) =>
+            [
+              item.user_id,
+              { name: item.stage_name, avatar: item.avatar_url as string | null },
+            ] as const,
+        ),
       );
 
       const venueMap = new Map(
-        (venueResult.data ?? []).map((item) => [
-          item.owner_user_id,
-          { name: item.trade_name, avatar: item.avatar_url as string | null },
-        ]),
+        (venueResult.data ?? []).map(
+          (item) =>
+            [
+              item.owner_user_id,
+              { name: item.trade_name, avatar: item.avatar_url as string | null },
+            ] as const,
+        ),
       );
 
       const viewRows: ConversationView[] = rows.map((conversation) => {
