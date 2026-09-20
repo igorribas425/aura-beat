@@ -30,7 +30,14 @@ function safeImageUrl(value: string | null) {
   try {
     const parsed = new URL(value);
     if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return null;
-    return parsed.toString();
+
+    const path = parsed.pathname.toLowerCase();
+    const isSupabaseStorage =
+      parsed.hostname.endsWith(".supabase.co") &&
+      path.includes("/storage/v1/object/public/");
+    const isImageFile = /\.(?:jpe?g|png|webp|gif|avif)$/i.test(path);
+
+    return isSupabaseStorage || isImageFile ? parsed.toString() : null;
   } catch {
     return null;
   }
