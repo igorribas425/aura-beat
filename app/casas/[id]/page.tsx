@@ -127,6 +127,66 @@ export default function PublicVenuePage() {
     return () => { active = false; };
   }, [id]);
 
+  useEffect(() => {
+    async function reloadMedia() {
+      const { data, error } = await supabase
+        .from("venue_media")
+        .select("id,media_type,public_url,caption,is_cover,sort_order")
+        .eq("venue_id", id)
+        .eq("is_public", true)
+        .order("is_cover", { ascending: false })
+        .order("sort_order", { ascending: true });
+
+      if (!error) {
+        setMedia((data ?? []) as VenueMediaPublic[]);
+      }
+    }
+
+    const channel = supabase
+      .channel(`venue-public-visual-${id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "venue_profiles",
+          filter: `id=eq.${id}`,
+        },
+        (payload) => {
+          const row = payload.new as {
+            avatar_url?: string | null;
+            venue_type?: string | null;
+            trade_name?: string;
+          };
+
+          if (row.avatar_url !== undefined) setAvatarUrl(row.avatar_url);
+          if (row.venue_type !== undefined) setVenueType(row.venue_type);
+          setVenue((current) =>
+            current && row.trade_name
+              ? { ...current, trade_name: row.trade_name }
+              : current,
+          );
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "venue_media",
+          filter: `venue_id=eq.${id}`,
+        },
+        () => {
+          void reloadMedia();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [id]);
+
   if (loading) return <main className="aura-page flex min-h-[70vh] items-center justify-center text-zinc-400">Carregando perfil público…</main>;
 
   if (error || !venue) {
