@@ -1187,7 +1187,7 @@ export default function DisponibilidadesCasaPage() {
             )}
 
           </div>
-        )}
+        ) : null}
 
         {disponiveisFiltrados.length > 0 && (
           <section className="mt-8">
