@@ -17,6 +17,7 @@ import { supabase } from "../../lib/supabase";
 
 type Mode = "artist" | "venue";
 type ViewMode = "list" | "map";
+type VenueReach = "nearby" | "brazil" | "world";
 type FavoriteRow = { id: string; artist_id: string | null; venue_id: string | null };
 
 type RpcProfile = {
@@ -69,6 +70,24 @@ type ReviewRow = {
 };
 
 const FALLBACK_LIMIT_PER_KIND = 48;
+const BRAZIL_STATE_CODES = new Set([
+  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO",
+  "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI",
+  "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO",
+]);
+
+function isBrazilProfile(profile: ExploreProfile) {
+  if (profile.latitude !== null && profile.longitude !== null) {
+    return (
+      profile.latitude >= -34 &&
+      profile.latitude <= 6 &&
+      profile.longitude >= -74 &&
+      profile.longitude <= -34
+    );
+  }
+
+  return BRAZIL_STATE_CODES.has((profile.state ?? "").trim().toUpperCase());
+}
 
 function defaultExploreKind(mode: Mode): ExploreKind {
   return mode === "venue" ? "artist" : "venue";
@@ -273,6 +292,7 @@ export default function ExplorePage() {
   const [ownVenueId, setOwnVenueId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>("list");
+  const [venueReach, setVenueReach] = useState<VenueReach>("nearby");
   const [selectedProfile, setSelectedProfile] = useState<ExploreProfile | null>(null);
   const [location, setLocation] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
   const [locationMessage, setLocationMessage] = useState("");
@@ -347,6 +367,13 @@ export default function ExplorePage() {
       setSelectedProfile(null);
 
       try {
+        const effectiveDistanceKm =
+          mode === "venue"
+            ? venueReach === "nearby" && location
+              ? filters.maximumDistanceKm ?? 100
+              : null
+            : filters.maximumDistanceKm;
+
         const { data, error: rpcError } = await supabase.rpc("explore_profiles_v1", {
           p_kind: filters.kind,
           p_query: filters.query || null,
@@ -359,7 +386,7 @@ export default function ExplorePage() {
           p_max_hourly_fee: filters.maximumHourlyFee,
           p_origin_lat: location?.lat ?? null,
           p_origin_lng: location?.lng ?? null,
-          p_max_distance_km: filters.maximumDistanceKm,
+          p_max_distance_km: effectiveDistanceKm,
           p_limit: EXPLORE_PAGE_SIZE,
           p_offset: (page - 1) * EXPLORE_PAGE_SIZE,
         });
@@ -380,10 +407,21 @@ export default function ExplorePage() {
         }
 
         const located = withDistances(nextProfiles, location);
-        const distanceFiltered = located.filter((profile) => matchesExploreFilters(profile, filters));
+        const effectiveFilters: ExploreFilters = {
+          ...filters,
+          maximumDistanceKm: effectiveDistanceKm,
+        };
+        let visibleProfiles = located.filter((profile) =>
+          matchesExploreFilters(profile, effectiveFilters),
+        );
+
+        if (mode === "venue" && venueReach === "brazil") {
+          visibleProfiles = visibleProfiles.filter(isBrazilProfile);
+          nextTotal = visibleProfiles.length;
+        }
 
         if (!active) return;
-        setProfiles(distanceFiltered);
+        setProfiles(visibleProfiles);
         setTotalCount(nextTotal);
       } catch (loadError) {
         console.error(loadError);
@@ -397,7 +435,7 @@ export default function ExplorePage() {
       active = false;
       window.clearTimeout(timer);
     };
-  }, [contextLoading, filters, location, ownArtistId, ownVenueId, page, reloadKey]);
+  }, [contextLoading, filters, location, mode, ownArtistId, ownVenueId, page, reloadKey, venueReach]);
 
   const favoriteKeys = useMemo(
     () =>
@@ -426,6 +464,38 @@ export default function ExplorePage() {
     mode === "venue"
       ? "No modo Casa, o Aura Beat mostra Artistas primeiro. Você ainda pode explorar Casas para networking e referências."
       : "No modo Artista, o Aura Beat mostra Casas primeiro. Você ainda pode explorar outros Artistas para networking e referências.";
+
+  function changeView(nextView: ViewMode) {
+    setView(nextView);
+
+    if (nextView === "map") {
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          document.getElementById("explore-results")?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+        });
+      });
+    }
+  }
+
+  function changeVenueReach(nextReach: VenueReach) {
+    setVenueReach(nextReach);
+    setPage(1);
+
+    if (nextReach === "nearby") {
+      setFilters((current) => ({
+        ...current,
+        maximumDistanceKm: current.maximumDistanceKm ?? 100,
+      }));
+    } else {
+      setFilters((current) => ({
+        ...current,
+        maximumDistanceKm: null,
+      }));
+    }
+  }
 
   async function toggleFavorite(profile: ExploreProfile) {
     if (!userId) return;
@@ -492,6 +562,7 @@ export default function ExplorePage() {
   function clearFilters(event?: FormEvent) {
     event?.preventDefault();
     setFilters({ ...INITIAL_EXPLORE_FILTERS, kind: defaultExploreKind(mode) });
+    if (mode === "venue") setVenueReach("nearby");
     setPage(1);
   }
 
@@ -522,7 +593,7 @@ export default function ExplorePage() {
                 key={item}
                 type="button"
                 aria-pressed={view === item}
-                onClick={() => setView(item)}
+                onClick={() => changeView(item)}
                 className={`rounded-xl px-5 py-2 text-sm font-bold transition ${
                   view === item ? "bg-white text-black" : "text-zinc-400 hover:text-white"
                 }`}
@@ -563,6 +634,42 @@ export default function ExplorePage() {
               : "Artista → Casas é o foco principal. Use as outras abas quando quiser explorar a comunidade."}
           </p>
 
+          {mode === "venue" && (
+            <div className="mt-5 rounded-2xl border border-purple-500/20 bg-purple-500/5 p-4">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-purple-300">
+                Alcance dos DJs
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {([
+                  ["nearby", "Até 100 km"],
+                  ["brazil", "Brasil inteiro"],
+                  ["world", "Mundo"],
+                ] as Array<[VenueReach, string]>).map(([reach, label]) => (
+                  <button
+                    key={reach}
+                    type="button"
+                    aria-pressed={venueReach === reach}
+                    onClick={() => changeVenueReach(reach)}
+                    className={`rounded-xl px-4 py-2 text-sm font-black transition ${
+                      venueReach === reach
+                        ? "bg-purple-500 text-white"
+                        : "border border-zinc-700 text-zinc-300 hover:border-purple-500/50"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-3 text-xs leading-5 text-zinc-500">
+                {venueReach === "nearby"
+                  ? "Use sua localização para encontrar DJs próximos. Você pode ajustar o raio abaixo."
+                  : venueReach === "brazil"
+                    ? "Mostra DJs de qualquer região do Brasil, sem limitar a busca ao raio local."
+                    : "Mostra todos os DJs disponíveis na plataforma, sem limite de distância."}
+              </p>
+            </div>
+          )}
+
           <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <label className="xl:col-span-2">
               <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-zinc-500">Nome</span>
@@ -588,7 +695,7 @@ export default function ExplorePage() {
               <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-zinc-500">Distância</span>
               <select
                 value={filters.maximumDistanceKm ?? ""}
-                disabled={!location}
+                disabled={!location || (mode === "venue" && venueReach !== "nearby")}
                 onChange={(event) =>
                   updateFilter(
                     "maximumDistanceKm",
@@ -731,7 +838,7 @@ export default function ExplorePage() {
           </p>
         )}
 
-        <div className="mt-7 flex items-center justify-between gap-4">
+        <div id="explore-results" className="mt-7 scroll-mt-4 flex items-center justify-between gap-4">
           <p className="text-sm text-zinc-400" aria-live="polite">
             {loading ? "Atualizando resultados…" : `${totalCount} perfil(is) encontrado(s)`}
           </p>
