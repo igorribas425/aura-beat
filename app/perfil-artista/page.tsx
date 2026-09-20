@@ -74,8 +74,12 @@ export default function PerfilArtistaPage() {
   const [priceKm, setPriceKm] = useState("");
   const [freeRadius, setFreeRadius] = useState("");
   const [availabilityRadius, setAvailabilityRadius] = useState("");
-  const [travelMode, setTravelMode] = useState<"fixed" | "vehicle">("fixed");
+  const [travelMode, setTravelMode] = useState<"fixed" | "vehicle" | "ticket">("fixed");
   const [vehicleType, setVehicleType] = useState("");
+  const [ticketTransportType, setTicketTransportType] = useState("");
+  const [ticketRoundTrip, setTicketRoundTrip] = useState("");
+  const [localTransport, setLocalTransport] = useState("");
+  const [travelNotes, setTravelNotes] = useState("");
   const [fuelType, setFuelType] = useState("");
   const [vehicleConsumption, setVehicleConsumption] = useState("");
   const [fuelPrice, setFuelPrice] = useState("");
@@ -120,8 +124,18 @@ export default function PerfilArtistaPage() {
         setPriceKm(String(data.price_per_km ?? ""));
         setFreeRadius(String(data.free_radius_km ?? ""));
         setAvailabilityRadius(String(data.availability_radius_km ?? ""));
-        setTravelMode(data.travel_calculation_mode === "vehicle" ? "vehicle" : "fixed");
+        setTravelMode(
+          data.travel_calculation_mode === "vehicle"
+            ? "vehicle"
+            : data.travel_calculation_mode === "ticket"
+              ? "ticket"
+              : "fixed",
+        );
         setVehicleType(data.vehicle_type ?? "");
+        setTicketTransportType(data.ticket_transport_type ?? "");
+        setTicketRoundTrip(String(data.ticket_round_trip_amount ?? ""));
+        setLocalTransport(String(data.local_transport_default_amount ?? ""));
+        setTravelNotes(data.travel_notes ?? "");
         setFuelType(data.fuel_type ?? "");
         setVehicleConsumption(String(data.vehicle_consumption_km_l ?? ""));
         setFuelPrice(String(data.fuel_price_per_liter ?? ""));
@@ -185,6 +199,10 @@ export default function PerfilArtistaPage() {
               ? Number(availabilityRadius)
               : null,
             travel_calculation_mode: travelMode,
+            ticket_transport_type: ticketTransportType.trim() || null,
+            ticket_round_trip_amount: Number(ticketRoundTrip || 0),
+            local_transport_default_amount: Number(localTransport || 0),
+            travel_notes: travelNotes.trim() || null,
             vehicle_type: vehicleType.trim() || null,
             fuel_type: fuelType.trim() || null,
             vehicle_consumption_km_l: vehicleConsumption
@@ -439,7 +457,7 @@ export default function PerfilArtistaPage() {
               <p className="mb-2 text-sm font-semibold">
                 Como calcular seu deslocamento?
               </p>
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-2 sm:grid-cols-3">
                 <button
                   type="button"
                   onClick={() => setTravelMode("fixed")}
@@ -467,6 +485,21 @@ export default function PerfilArtistaPage() {
                   <span className="block font-black">⛽ Pelo meu veículo</span>
                   <span className="mt-1 block text-xs leading-5 text-zinc-500">
                     O Aura Beat estima combustível pela distância e consumo.
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setTravelMode("ticket")}
+                  className={`rounded-2xl border p-4 text-left transition ${
+                    travelMode === "ticket"
+                      ? "border-cyan-500 bg-cyan-500/10"
+                      : "border-zinc-800 bg-zinc-950"
+                  }`}
+                >
+                  <span className="block font-black">🎫 Passagem / transporte</span>
+                  <span className="mt-1 block text-xs leading-5 text-zinc-500">
+                    Ônibus, avião ou outro transporte, com ida e volta.
                   </span>
                 </button>
               </div>
@@ -505,6 +538,68 @@ export default function PerfilArtistaPage() {
                 </div>
               )}
             </div>
+
+            {travelMode === "ticket" && (
+              <div className="mt-5 rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-4">
+                <p className="font-black text-cyan-200">Dados de passagem</p>
+                <p className="mt-1 text-xs leading-5 text-zinc-500">
+                  Use como padrão. Na hora de fechar cada data, Casa e DJ podem confirmar valores diferentes para aquele evento.
+                </p>
+
+                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold">Tipo de transporte</label>
+                    <select
+                      value={ticketTransportType}
+                      onChange={(e) => setTicketTransportType(e.target.value)}
+                      className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-cyan-500"
+                    >
+                      <option value="">Selecione</option>
+                      <option value="onibus">Ônibus</option>
+                      <option value="aviao">Avião</option>
+                      <option value="van">Van</option>
+                      <option value="outro">Outro</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold">Passagem ida e volta</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={ticketRoundTrip}
+                      onChange={(e) => setTicketRoundTrip(e.target.value)}
+                      placeholder="Ex.: 180,00"
+                      className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-cyan-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold">Transporte local estimado</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={localTransport}
+                      onChange={(e) => setLocalTransport(e.target.value)}
+                      placeholder="Ex.: 40,00"
+                      className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-cyan-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold">Observação</label>
+                    <input
+                      value={travelNotes}
+                      onChange={(e) => setTravelNotes(e.target.value)}
+                      placeholder="Ex.: bagagem/equipamento incluso"
+                      className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {travelMode === "vehicle" && (
               <div className="mt-5 rounded-2xl border border-purple-500/20 bg-purple-500/5 p-4">
