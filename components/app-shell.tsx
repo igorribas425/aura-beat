@@ -51,6 +51,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [mode, setMode] = useState<Mode | null>(null);
   const [theme, setTheme] = useState<ThemePreference>("system");
   const [authenticated, setAuthenticated] = useState(false);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
 
   useEffect(() => {
     const savedTheme = getStoredTheme();
@@ -110,6 +111,52 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       alive = false;
     };
   }, [pathname]);
+
+  useEffect(() => {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let active = true;
+
+    async function refreshUnread(userId: string) {
+      const { count, error } = await supabase
+        .from("direct_messages")
+        .select("id", { count: "exact", head: true })
+        .is("read_at", null)
+        .neq("sender_user_id", userId);
+
+      if (!active || error) return;
+      setUnreadChatCount(count ?? 0);
+    }
+
+    void supabase.auth.getUser().then(({ data }) => {
+      if (!active || !data.user) {
+        setUnreadChatCount(0);
+        return;
+      }
+
+      const userId = data.user.id;
+      void refreshUnread(userId);
+
+      channel = supabase
+        .channel(`direct-unread-${userId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "direct_messages",
+          },
+          () => {
+            void refreshUnread(userId);
+          },
+        )
+        .subscribe();
+    });
+
+    return () => {
+      active = false;
+      if (channel) void supabase.removeChannel(channel);
+    };
+  }, []);
 
   useEffect(() => {
     applyTheme(theme);
@@ -229,7 +276,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     : "aura-nav-link"
                 }`}
               >
-                <NavigationIcon name={icon} />
+                <span className="relative inline-flex">
+                  <NavigationIcon name={icon} />
+                  {href === "/chat-direto" && unreadChatCount > 0 && (
+                    <span
+                      className="absolute -right-2 -top-2 grid h-4 min-w-4 place-items-center rounded-full bg-white px-1 text-[9px] font-black leading-none text-red-600"
+                      aria-label={`${unreadChatCount} mensagem(ns) não lida(s)`}
+                    >
+                      {unreadChatCount > 99 ? "99+" : unreadChatCount}
+                    </span>
+                  )}
+                </span>
                 {label}
               </Link>
             ))}
@@ -285,7 +342,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               pathname === href ? "text-red-500" : "aura-mobile-link"
             }`}
           >
-            <NavigationIcon name={icon} />
+            <span className="relative inline-flex">
+              <NavigationIcon name={icon} />
+              {href === "/chat-direto" && unreadChatCount > 0 && (
+                <span
+                  className="absolute -right-2.5 -top-2.5 grid h-4 min-w-4 place-items-center rounded-full bg-red-500 px-1 text-[9px] font-black leading-none text-white"
+                  aria-label={`${unreadChatCount} mensagem(ns) não lida(s)`}
+                >
+                  {unreadChatCount > 99 ? "99+" : unreadChatCount}
+                </span>
+              )}
+            </span>
             {label}
           </Link>
         ))}
