@@ -23,7 +23,6 @@ type Booking = {
   travel_amount: number;
   toll_amount: number;
   lodging_amount: number;
-  platform_fee_venue: number;
 };
 
 type PixResponse = {
@@ -144,8 +143,7 @@ export default function PagamentoPixPage() {
               agreed_fee,
               travel_amount,
               toll_amount,
-              lodging_amount,
-              platform_fee_venue
+              lodging_amount
             `)
             .eq(
               "id",
@@ -447,12 +445,6 @@ export default function PagamentoPixPage() {
       );
     }, [booking]);
 
-  const taxaAuraBeat =
-    Number(
-      booking?.platform_fee_venue ||
-        0
-    );
-
   const taxaAsaas =
     Number(
       pix?.providerFee ||
@@ -541,18 +533,6 @@ export default function PagamentoPixPage() {
 
               <div className="flex justify-between text-zinc-400">
                 <span>
-                  Comissão Aura Beat
-                </span>
-
-                <span>
-                  {money(
-                    taxaAuraBeat
-                  )}
-                </span>
-              </div>
-
-              <div className="flex justify-between text-zinc-400">
-                <span>
                   Taxa ASAAS
                 </span>
 
@@ -575,17 +555,7 @@ export default function PagamentoPixPage() {
                     ? money(
                         pix.total
                       )
-                    : money(
-                        Number(
-                          booking.agreed_fee ||
-                            0
-                        ) +
-                          extras +
-                          Number(
-                            booking.platform_fee_venue ||
-                              0
-                          )
-                      )}
+                    : "calculado ao gerar o Pix"}
                 </span>
               </div>
             </div>
