@@ -206,12 +206,6 @@ export default function HomeCasaPage() {
         perfil.id
       );
 
-      if (
-        perfil.verification_status ===
-        "verified"
-      ) {
-        void obterLocalizacao();
-      }
     } catch (error) {
       console.error(error);
 
@@ -1362,348 +1356,39 @@ export default function HomeCasaPage() {
         )}
 
         {!casaVerificada ? (
-
           <section className="rounded-3xl border border-yellow-900/50 bg-yellow-950/10 p-8 text-center">
-
-            <div className="text-5xl">
-              🔐
-            </div>
-
-            <h2 className="mt-4 text-2xl font-black">
-              Mapa protegido
-            </h2>
-
+            <div className="text-5xl">🔐</div>
+            <h2 className="mt-4 text-2xl font-black">Casa ainda não verificada</h2>
             <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-zinc-400">
-              Para proteger a localização dos artistas,
-              somente Casas verificadas podem visualizar
-              DJs disponíveis no mapa.
+              Finalize a verificação para usar todos os recursos de contratação do Aura Beat.
             </p>
-
             <button
-              onClick={() =>
-                router.push(
-                  "/perfil-casa"
-                )
-              }
+              onClick={() => router.push("/perfil-casa")}
               className="mt-6 rounded-xl bg-red-500 px-6 py-3 font-bold transition hover:bg-red-600"
             >
               Ver perfil da Casa
             </button>
-
           </section>
-
         ) : (
-          <>
-
-            <section className="grid gap-4 lg:grid-cols-[1fr_300px]">
-
-              <div className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950">
-
-                <div
-                  ref={
-                    mapaElementoRef
-                  }
-                  className="h-[480px] w-full"
-                />
-
-              </div>
-
-              <div className="rounded-3xl border border-zinc-800 bg-zinc-950 p-5">
-
-                <h2 className="text-lg font-black">
-                  Buscar DJs
-                </h2>
-
-                <p className="mt-1 text-sm text-zinc-500">
-                  Escolha como quer procurar DJs.
+          <section className="aura-card rounded-3xl border p-6 sm:p-8">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="aura-kicker">Descoberta de talentos</p>
+                <h2 className="mt-2 text-2xl font-black">Encontre DJs no Explorar</h2>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
+                  O mapa e a busca de Artistas agora ficam em um só lugar. Veja DJs de qualquer região,
+                  abra o perfil, converse e envie ofertas sem duplicar ferramentas na Home.
                 </p>
-
-                <div className="mt-5 grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    className="rounded-xl border border-red-500 bg-red-500 px-2 py-3 text-xs font-black text-white"
-                  >
-                    Perto de mim
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => router.push("/buscar?scope=brazil")}
-                    className="rounded-xl border border-zinc-800 bg-zinc-900 px-2 py-3 text-xs font-black text-zinc-300 transition hover:border-purple-500"
-                  >
-                    Brasil inteiro
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => router.push("/buscar")}
-                    className="rounded-xl border border-zinc-800 bg-zinc-900 px-2 py-3 text-xs font-black text-zinc-300 transition hover:border-purple-500"
-                  >
-                    Mundo
-                  </button>
-                </div>
-
-                <p className="mt-5 text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
-                  Raio próximo
-                </p>
-
-                <div className="mt-3 grid grid-cols-2 gap-2">
-
-                  {[
-                    10,
-                    25,
-                    50,
-                    100,
-                  ].map(
-                    (valor) => (
-                      <button
-                        key={
-                          valor
-                        }
-                        onClick={() =>
-                          alterarRaio(
-                            valor
-                          )
-                        }
-                        className={`rounded-xl border px-3 py-3 text-sm font-bold transition ${
-                          raio ===
-                          valor
-                            ? "border-red-500 bg-red-500 text-white"
-                            : "border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-zinc-600"
-                        }`}
-                      >
-                        {valor} km
-                      </button>
-                    )
-                  )}
-
-                </div>
-
-                <button
-                  onClick={
-                    obterLocalizacao
-                  }
-                  disabled={
-                    buscando
-                  }
-                  className="mt-4 w-full rounded-xl bg-red-500 py-3 font-bold transition hover:bg-red-600 disabled:opacity-50"
-                >
-                  {buscando
-                    ? "Buscando..."
-                    : "Atualizar DJs próximos"}
-                </button>
-
-                {localizacao && (
-                  <div className="mt-5 rounded-xl bg-zinc-900 p-4">
-
-                    <p className="text-xs text-zinc-500">
-                      GPS da Casa
-                    </p>
-
-                    <p className="mt-1 text-sm font-bold text-green-400">
-                      ● Localização ativa
-                    </p>
-
-                    <p className="mt-2 text-xs text-zinc-500">
-                      Precisão aproximada: ±
-                      {localizacao.accuracy.toFixed(
-                        0
-                      )}{" "}
-                      metros
-                    </p>
-
-                  </div>
-                )}
-
               </div>
-
-            </section>
-
-            <section>
-
-              <div className="mb-4 flex items-end justify-between">
-
-                <div>
-
-                  <h2 className="text-xl font-black">
-                    DJs disponíveis
-                  </h2>
-
-                  <p className="mt-1 text-sm text-zinc-500">
-                    Até {raio} km da sua localização
-                  </p>
-
-                </div>
-
-                <span className="rounded-full bg-zinc-900 px-3 py-1 text-sm font-bold text-zinc-400">
-                  {artistas.length} DJ(s)
-                </span>
-
-              </div>
-
-              {artistas.length ===
-              0 ? (
-
-                <div className="rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/50 p-10 text-center">
-
-                  <div className="text-5xl">
-                    🎧
-                  </div>
-
-                  <p className="mt-4 font-bold">
-                    Nenhum DJ disponível nesse raio
-                  </p>
-
-                  <p className="mt-2 text-sm text-zinc-500">
-                    Tente aumentar a distância ou atualizar a busca.
-                  </p>
-
-                </div>
-
-              ) : (
-
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-
-                  {artistas.map(
-                    (artista) => (
-                      <article
-                        key={
-                          artista.artist_id
-                        }
-                        className="rounded-3xl border border-zinc-800 bg-zinc-950 p-5 transition hover:border-red-500/50"
-                      >
-
-                        <div className="flex items-start gap-4">
-
-                          <ProfileAvatar
-                            kind="artist"
-                            name={
-                              artista.stage_name
-                            }
-                            url={
-                              artista.avatar_url
-                            }
-                            sizeClassName="h-16 w-16"
-                            className="rounded-2xl"
-                          />
-
-                          <div className="min-w-0 flex-1">
-
-                            <div className="flex flex-wrap items-center gap-2">
-
-                              <h3 className="truncate text-lg font-black">
-                                {
-                                  artista.stage_name
-                                }
-                              </h3>
-
-                              {artista.verification_status ===
-                                "verified" && (
-                                <span className="rounded-full bg-blue-500/10 px-2 py-1 text-[10px] font-bold text-blue-400">
-                                  ✓ Verificado
-                                </span>
-                              )}
-
-                            </div>
-
-                            <p className="mt-1 text-sm text-zinc-500">
-                              {artista.primary_style ||
-                                "Estilo não informado"}
-                            </p>
-
-                          </div>
-
-                        </div>
-
-                        <div className="mt-5 grid grid-cols-3 gap-2">
-
-                          <div className="rounded-xl bg-zinc-900 p-3">
-
-                            <p className="text-[10px] uppercase text-zinc-600">
-                              Distância
-                            </p>
-
-                            <p className="mt-1 text-sm font-bold">
-                              {artista.distance_km ??
-                                "--"}{" "}
-                              km
-                            </p>
-
-                          </div>
-
-                          <div className="rounded-xl bg-zinc-900 p-3">
-
-                            <p className="text-[10px] uppercase text-zinc-600">
-                              Cachê por hora
-                            </p>
-
-                            <p className="mt-1 text-sm font-bold text-green-400">
-                              {dinheiro(
-                                Number(
-                                  artista.fixed_fee ||
-                                    0
-                                )
-                              )}
-                              /h
-                            </p>
-
-                          </div>
-
-                          <div className="rounded-xl bg-zinc-900 p-3">
-
-                            <p className="text-[10px] uppercase text-zinc-600">
-                              Avaliação
-                            </p>
-
-                            <p className="mt-1 text-sm font-bold">
-                              ⭐{" "}
-                              {artista.rating &&
-                              artista.rating >
-                                0
-                                ? artista.rating.toFixed(
-                                    1
-                                  )
-                                : "Novo"}
-                            </p>
-
-                          </div>
-
-                        </div>
-
-                        <div className="mt-4 grid grid-cols-2 gap-2">
-
-                          <button
-                            onClick={() =>
-                              focarArtista(
-                                artista
-                              )
-                            }
-                            className="rounded-xl border border-zinc-700 py-3 text-sm font-bold text-zinc-300 transition hover:bg-zinc-900"
-                          >
-                            Ver no mapa
-                          </button>
-
-                          <button
-                            onClick={() =>
-                              enviarOferta(
-                                artista.artist_id
-                              )
-                            }
-                            className="rounded-xl bg-red-500 py-3 text-sm font-bold transition hover:bg-red-600"
-                          >
-                            Enviar oferta
-                          </button>
-
-                        </div>
-
-                      </article>
-                    )
-                  )}
-
-                </div>
-              )}
-
-            </section>
-
-          </>
+              <button
+                type="button"
+                onClick={() => router.push("/buscar")}
+                className="rounded-2xl bg-red-500 px-6 py-4 font-black text-white transition hover:bg-red-600"
+              >
+                Explorar DJs
+              </button>
+            </div>
+          </section>
         )}
 
       </div>
