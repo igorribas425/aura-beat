@@ -853,10 +853,30 @@ export default function OfertasArtistaPage() {
       ).toFixed(2)
     );
 
-    setMensagemContraproposta(
+    const respostaAtual =
       respostas[
         oferta.id
-      ]?.message || ""
+      ];
+
+    const mensagemAtual =
+      respostaAtual?.status ===
+        "countered"
+        ? respostaAtual.message || ""
+        : "";
+
+    const mensagensDoSistema = new Set([
+      "Convite direto enviado pela Casa.",
+      "Oferta aceita pelo artista.",
+      "Oferta recusada pelo artista.",
+      "Contraproposta enviada pelo artista.",
+    ]);
+
+    setMensagemContraproposta(
+      mensagensDoSistema.has(
+        mensagemAtual.trim()
+      )
+        ? ""
+        : mensagemAtual
     );
 
     setOfertaContraproposta(
