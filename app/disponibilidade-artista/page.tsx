@@ -16,6 +16,32 @@ type Artista = {
   base_city: string | null;
   base_state: string | null;
   verification_status: string | null;
+  travel_calculation_mode: "fixed" | "vehicle" | "ticket" | null;
+  ticket_transport_type: string | null;
+  ticket_round_trip_amount: number | null;
+  local_transport_default_amount: number | null;
+  travel_notes: string | null;
+};
+
+type SolicitacaoRecebida = {
+  id: string;
+  artist_offer_id: string;
+  venue_id: string;
+  requested_starts_at: string;
+  duration_minutes: number;
+  agreed_fee: number;
+  travel_amount: number;
+  toll_amount: number;
+  lodging_amount: number;
+  event_address: string | null;
+  message: string | null;
+  status: "pending" | "accepted" | "declined" | "cancelled";
+  transport_mode: string | null;
+  transport_type: string | null;
+  ticket_amount: number | null;
+  local_transport_amount: number | null;
+  transport_notes: string | null;
+  venue_name?: string;
 };
 
 type OfertaArtista = {
@@ -48,6 +74,11 @@ type OfertaArtista = {
   expires_at: string | null;
 
   created_at: string;
+  transport_mode: string | null;
+  transport_type: string | null;
+  ticket_amount: number | null;
+  local_transport_amount: number | null;
+  transport_notes: string | null;
 };
 
 function dinheiro(valor: number) {
@@ -151,6 +182,24 @@ export default function DisponibilidadeArtistaPage() {
   const [expiraEm, setExpiraEm] =
     useState("");
 
+  const [transportMode, setTransportMode] =
+    useState<"fixed" | "vehicle" | "ticket" | "venue_pickup" | "other">("fixed");
+
+  const [transportType, setTransportType] =
+    useState("");
+
+  const [ticketAmount, setTicketAmount] =
+    useState("");
+
+  const [localTransportAmount, setLocalTransportAmount] =
+    useState("");
+
+  const [transportNotes, setTransportNotes] =
+    useState("");
+
+  const [solicitacoes, setSolicitacoes] =
+    useState<SolicitacaoRecebida[]>([]);
+
   const [carregando, setCarregando] =
     useState(true);
 
@@ -225,7 +274,12 @@ export default function DisponibilidadeArtistaPage() {
           stage_name,
           base_city,
           base_state,
-          verification_status
+          verification_status,
+          travel_calculation_mode,
+          ticket_transport_type,
+          ticket_round_trip_amount,
+          local_transport_default_amount,
+          travel_notes
         `)
         .eq(
           "user_id",
@@ -257,6 +311,21 @@ export default function DisponibilidadeArtistaPage() {
       setEstado(
         perfil.base_state || ""
       );
+
+      const modoPadrao =
+        perfil.travel_calculation_mode === "vehicle"
+          ? "vehicle"
+          : perfil.travel_calculation_mode === "ticket"
+            ? "ticket"
+            : "fixed";
+
+      setTransportMode(modoPadrao);
+      setTransportType(perfil.ticket_transport_type || "");
+      setTicketAmount(String(perfil.ticket_round_trip_amount ?? ""));
+      setLocalTransportAmount(
+        String(perfil.local_transport_default_amount ?? "")
+      );
+      setTransportNotes(perfil.travel_notes || "");
 
       await carregarOfertas(
         perfil.id
@@ -297,7 +366,12 @@ export default function DisponibilidadeArtistaPage() {
         is_urgent,
         status,
         expires_at,
-        created_at
+        created_at,
+        transport_mode,
+        transport_type,
+        ticket_amount,
+        local_transport_amount,
+        transport_notes
       `)
       .eq(
         "artist_id",
@@ -317,6 +391,99 @@ export default function DisponibilidadeArtistaPage() {
     setOfertas(
       (data || []) as OfertaArtista[]
     );
+
+    await carregarSolicitacoesRecebidas(
+      (data || []) as OfertaArtista[]
+    );
+  }
+
+  async function carregarSolicitacoesRecebidas(
+    lista: OfertaArtista[]
+  ) {
+    const offerIds = lista.map((item) => item.id);
+
+    if (offerIds.length === 0) {
+      setSolicitacoes([]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("artist_offer_requests")
+      .select(
+        "id,artist_offer_id,venue_id,requested_starts_at,duration_minutes,agreed_fee,travel_amount,toll_amount,lodging_amount,event_address,message,status,transport_mode,transport_type,ticket_amount,local_transport_amount,transport_notes"
+      )
+      .in("artist_offer_id", offerIds)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    const requests = (data || []) as SolicitacaoRecebida[];
+    const venueIds = [...new Set(requests.map((item) => item.venue_id))];
+
+    if (venueIds.length === 0) {
+      setSolicitacoes(requests);
+      return;
+    }
+
+    const { data: venues } = await supabase
+      .from("venue_profiles")
+      .select("id,trade_name")
+      .in("id", venueIds);
+
+    const names = new Map(
+      (venues || []).map((venue) => [venue.id, venue.trade_name])
+    );
+
+    setSolicitacoes(
+      requests.map((item) => ({
+        ...item,
+        venue_name: names.get(item.venue_id) || "Casa",
+      }))
+    );
+  }
+
+  async function responderSolicitacao(
+    requestId: string,
+    action: "accepted" | "declined"
+  ) {
+    try {
+      setErro("");
+      setMensagem("");
+
+      const { data, error } = await supabase.rpc(
+        "responder_solicitacao_oferta_artista",
+        {
+          p_request_id: requestId,
+          p_action: action,
+        }
+      );
+
+      if (error) throw error;
+
+      setMensagem(
+        action === "accepted"
+          ? "Solicitação aceita. A contratação já entrou nos eventos."
+          : "Solicitação recusada."
+      );
+
+      if (artista) {
+        await carregarOfertas(artista.id);
+      }
+
+      if (action === "accepted" && data) {
+        router.push("/eventos-artista");
+      }
+    } catch (error) {
+      console.error(error);
+      setErro(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível responder à solicitação."
+      );
+    }
   }
 
   async function publicarOferta(
@@ -472,6 +639,25 @@ export default function DisponibilidadeArtistaPage() {
 
           status:
             "open",
+
+          transport_mode:
+            transportMode,
+
+          transport_type:
+            transportType.trim() || null,
+
+          ticket_amount:
+            transportMode === "ticket"
+              ? converterNumero(ticketAmount || "0")
+              : 0,
+
+          local_transport_amount:
+            transportMode === "ticket" || transportMode === "other"
+              ? converterNumero(localTransportAmount || "0")
+              : 0,
+
+          transport_notes:
+            transportNotes.trim() || null,
 
           expires_at:
             expiraEm
@@ -807,6 +993,84 @@ export default function DisponibilidadeArtistaPage() {
                 </div>
               )}
 
+              <div className="rounded-2xl border border-cyan-900/50 bg-cyan-950/10 p-4">
+                <label className="mb-3 block text-sm font-black text-cyan-300">
+                  Como você vai até o evento?
+                </label>
+
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {[
+                    ["fixed", "🚗 Valor por km"],
+                    ["vehicle", "⛽ Meu veículo"],
+                    ["ticket", "🎫 Passagem"],
+                    ["venue_pickup", "🏠 Casa me busca"],
+                    ["other", "🚐 Outro"],
+                  ].map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() =>
+                        setTransportMode(
+                          value as
+                            | "fixed"
+                            | "vehicle"
+                            | "ticket"
+                            | "venue_pickup"
+                            | "other"
+                        )
+                      }
+                      className={`rounded-xl border px-3 py-3 text-left text-sm font-bold ${
+                        transportMode === value
+                          ? "border-cyan-500 bg-cyan-500/10 text-cyan-200"
+                          : "border-zinc-800 bg-black text-zinc-400"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                {(transportMode === "ticket" || transportMode === "other") && (
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    <input
+                      value={transportType}
+                      onChange={(e) => setTransportType(e.target.value)}
+                      placeholder="Ônibus, avião, van..."
+                      className="rounded-xl border border-zinc-800 bg-black px-4 py-3"
+                    />
+
+                    {transportMode === "ticket" && (
+                      <input
+                        value={ticketAmount}
+                        onChange={(e) => setTicketAmount(e.target.value)}
+                        inputMode="decimal"
+                        placeholder="Passagem ida e volta"
+                        className="rounded-xl border border-zinc-800 bg-black px-4 py-3"
+                      />
+                    )}
+
+                    <input
+                      value={localTransportAmount}
+                      onChange={(e) => setLocalTransportAmount(e.target.value)}
+                      inputMode="decimal"
+                      placeholder="Transporte local"
+                      className="rounded-xl border border-zinc-800 bg-black px-4 py-3"
+                    />
+
+                    <input
+                      value={transportNotes}
+                      onChange={(e) => setTransportNotes(e.target.value)}
+                      placeholder="Observação sobre deslocamento"
+                      className="rounded-xl border border-zinc-800 bg-black px-4 py-3"
+                    />
+                  </div>
+                )}
+
+                <p className="mt-3 text-xs text-zinc-500">
+                  A Casa verá esse meio de locomoção antes de solicitar sua contratação.
+                </p>
+              </div>
+
               <div className="grid gap-4 md:grid-cols-[1fr_120px]">
 
                 <div>
@@ -1045,6 +1309,104 @@ export default function DisponibilidadeArtistaPage() {
           </section>
 
         </div>
+
+        <section className="mt-8 rounded-3xl border border-zinc-800 bg-zinc-950 p-6">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-black uppercase text-amber-400">
+                Solicitações das Casas
+              </p>
+              <h2 className="mt-1 text-2xl font-black">
+                Pedidos recebidos
+              </h2>
+            </div>
+
+            <span className="rounded-full border border-zinc-800 px-3 py-1 text-xs text-zinc-400">
+              {solicitacoes.filter((item) => item.status === "pending").length} pendente(s)
+            </span>
+          </div>
+
+          <div className="mt-5 space-y-4">
+            {solicitacoes.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-zinc-800 p-8 text-center text-zinc-500">
+                Nenhuma Casa enviou solicitação ainda.
+              </div>
+            ) : (
+              solicitacoes.map((solicitacao) => (
+                <article
+                  key={solicitacao.id}
+                  id={`request-${solicitacao.id}`}
+                  className="rounded-2xl border border-zinc-800 bg-black p-5"
+                >
+                  <div className="flex flex-col justify-between gap-4 md:flex-row">
+                    <div>
+                      <p className="text-xs uppercase text-zinc-500">
+                        {solicitacao.venue_name || "Casa"}
+                      </p>
+                      <h3 className="mt-1 text-lg font-black">
+                        {dataHora(solicitacao.requested_starts_at)}
+                      </h3>
+                      <p className="mt-1 text-sm text-zinc-500">
+                        {Math.round(solicitacao.duration_minutes / 60 * 10) / 10}h · {dinheiro(solicitacao.agreed_fee)}
+                      </p>
+                    </div>
+
+                    <span className="h-fit rounded-full border border-zinc-700 px-3 py-1 text-xs font-bold text-zinc-300">
+                      {solicitacao.status === "pending"
+                        ? "Aguardando sua resposta"
+                        : solicitacao.status === "accepted"
+                          ? "Aceita"
+                          : solicitacao.status === "declined"
+                            ? "Recusada"
+                            : "Cancelada"}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                    <div className="rounded-xl bg-zinc-950 p-3">
+                      <p className="text-xs text-zinc-600">Local</p>
+                      <p className="mt-1 text-zinc-300">
+                        {solicitacao.event_address || "Não informado"}
+                      </p>
+                    </div>
+                    <div className="rounded-xl bg-zinc-950 p-3">
+                      <p className="text-xs text-zinc-600">Deslocamento</p>
+                      <p className="mt-1 text-zinc-300">
+                        {solicitacao.transport_mode || "Padrão do DJ"} · {dinheiro(solicitacao.travel_amount)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {solicitacao.message && (
+                    <div className="mt-3 rounded-xl border border-zinc-800 p-3 text-sm text-zinc-400">
+                      “{solicitacao.message}”
+                    </div>
+                  )}
+
+                  {solicitacao.status === "pending" && (
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={() => void responderSolicitacao(solicitacao.id, "declined")}
+                        className="rounded-xl border border-zinc-700 py-3 font-bold text-zinc-300"
+                      >
+                        Recusar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void responderSolicitacao(solicitacao.id, "accepted")}
+                        className="rounded-xl bg-green-600 py-3 font-black text-white"
+                      >
+                        ✓ Aceitar Casa
+                      </button>
+                    </div>
+                  )}
+                </article>
+              ))
+            )}
+          </div>
+        </section>
+
       </div>
     </main>
   );
