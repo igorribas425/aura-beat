@@ -18,21 +18,41 @@ export default function LoginPage() {
   useEffect(() => {
     let active = true;
 
-    async function redirectAuthenticatedUser() {
-      const { data } = await supabase.auth.getUser();
-      if (!active) return;
-
-      if (data.user) {
-        const destination = await getAuthenticatedDestination(data.user.id);
-        if (active) router.replace(destination);
-        return;
+    const fallback = window.setTimeout(() => {
+      if (active) {
+        setVerificandoSessao(false);
       }
+    }, 5000);
 
-      setVerificandoSessao(false);
+    async function redirectAuthenticatedUser() {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (!active) return;
+
+        const user = data.session?.user;
+
+        if (user) {
+          const destination = await getAuthenticatedDestination(user.id);
+          if (active) router.replace(destination);
+          return;
+        }
+
+        setVerificandoSessao(false);
+      } catch {
+        if (active) {
+          setVerificandoSessao(false);
+        }
+      } finally {
+        window.clearTimeout(fallback);
+      }
     }
 
     void redirectAuthenticatedUser();
-    return () => { active = false; };
+
+    return () => {
+      active = false;
+      window.clearTimeout(fallback);
+    };
   }, [router]);
 
   async function entrar(e: FormEvent<HTMLFormElement>) {
