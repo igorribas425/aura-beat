@@ -280,6 +280,7 @@ export default function ExplorePage() {
   const [selectedProfile, setSelectedProfile] = useState<ExploreProfile | null>(null);
   const [selectedMedia, setSelectedMedia] = useState<MiniPressKitMedia[]>([]);
   const [selectedMediaLoading, setSelectedMediaLoading] = useState(false);
+  const [selectedMediaReloadKey, setSelectedMediaReloadKey] = useState(0);
   const [selectedTravelQuote, setSelectedTravelQuote] =
     useState<MiniPressKitTravelQuote | null>(null);
   const [selectedTravelQuoteLoading, setSelectedTravelQuoteLoading] = useState(false);
@@ -432,7 +433,76 @@ export default function ExplorePage() {
     return () => {
       active = false;
     };
-  }, [canSendOffer, location, selectedProfile]);
+  }, [canSendOffer, location, selectedProfile, selectedMediaReloadKey]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("explore-profile-visuals")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "artist_profiles" },
+        (payload) => {
+          const row = payload.new as { id?: string; avatar_url?: string | null };
+          if (!row.id) return;
+
+          setProfiles((current) =>
+            current.map((profile) =>
+              profile.kind === "artist" && profile.id === row.id
+                ? { ...profile, avatarUrl: row.avatar_url ?? null }
+                : profile,
+            ),
+          );
+
+          setSelectedProfile((current) =>
+            current?.kind === "artist" && current.id === row.id
+              ? { ...current, avatarUrl: row.avatar_url ?? null }
+              : current,
+          );
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "venue_profiles" },
+        (payload) => {
+          const row = payload.new as { id?: string; avatar_url?: string | null };
+          if (!row.id) return;
+
+          setProfiles((current) =>
+            current.map((profile) =>
+              profile.kind === "venue" && profile.id === row.id
+                ? { ...profile, avatarUrl: row.avatar_url ?? null }
+                : profile,
+            ),
+          );
+
+          setSelectedProfile((current) =>
+            current?.kind === "venue" && current.id === row.id
+              ? { ...current, avatarUrl: row.avatar_url ?? null }
+              : current,
+          );
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "artist_media" },
+        (payload) => {
+          const row = (payload.new ?? payload.old) as { artist_id?: string };
+          if (!row.artist_id) return;
+
+          setSelectedProfile((current) => {
+            if (current?.kind === "artist" && current.id === row.artist_id) {
+              setSelectedMediaReloadKey((value) => value + 1);
+            }
+            return current;
+          });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, []);
 
   useEffect(() => {
     if (contextLoading) return;
