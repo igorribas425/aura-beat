@@ -59,6 +59,15 @@ type LocalEvento = {
   accuracy: number;
 };
 
+type TravelQuote = {
+  distanceKm: number;
+  roundTripKm: number;
+  withinRadius: boolean;
+  calculationMode: "fixed" | "vehicle";
+  fuelLiters: number | null;
+  estimatedAmount: number;
+};
+
 type FormOferta = {
   title: string;
   description: string;
@@ -234,6 +243,14 @@ export default function OfertasCasaPage() {
     null
   );
 
+  const [travelQuote, setTravelQuote] =
+    useState<TravelQuote | null>(null);
+
+  const [
+    calculandoDeslocamento,
+    setCalculandoDeslocamento,
+  ] = useState(false);
+
   const [carregando, setCarregando] =
     useState(true);
 
@@ -258,6 +275,78 @@ export default function OfertasCasaPage() {
   useEffect(() => {
     carregarPaginaEffect();
   }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function calcularDeslocamento() {
+      setTravelQuote(null);
+
+      if (!artistaAlvoId || !localEvento) {
+        setCalculandoDeslocamento(false);
+        return;
+      }
+
+      setCalculandoDeslocamento(true);
+
+      const { data, error } = await supabase.rpc(
+        "artist_travel_quote_v1",
+        {
+          p_artist_id: artistaAlvoId,
+          p_event_lat: localEvento.lat,
+          p_event_lng: localEvento.lng,
+        }
+      );
+
+      if (!active) return;
+
+      if (!error) {
+        const row = Array.isArray(data)
+          ? data[0]
+          : null;
+
+        if (row) {
+          setTravelQuote({
+            distanceKm: Number(
+              row.distance_km || 0
+            ),
+            roundTripKm: Number(
+              row.round_trip_km || 0
+            ),
+            withinRadius: Boolean(
+              row.within_radius
+            ),
+            calculationMode:
+              row.calculation_mode ===
+              "vehicle"
+                ? "vehicle"
+                : "fixed",
+            fuelLiters:
+              row.fuel_liters === null ||
+              row.fuel_liters === undefined
+                ? null
+                : Number(
+                    row.fuel_liters
+                  ),
+            estimatedAmount: Number(
+              row.estimated_amount || 0
+            ),
+          });
+        }
+      }
+
+      setCalculandoDeslocamento(false);
+    }
+
+    void calcularDeslocamento();
+
+    return () => {
+      active = false;
+    };
+  }, [
+    artistaAlvoId,
+    localEvento,
+  ]);
 
   async function carregarPagina() {
     try {
@@ -1498,6 +1587,81 @@ export default function OfertasCasaPage() {
                   )}
                   m
                 </p>
+              )}
+
+              {artistaAlvo && (
+                <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+                  <p className="text-xs font-black uppercase tracking-wider text-emerald-300">
+                    🚗 Deslocamento do Artista
+                  </p>
+
+                  {!localEvento ? (
+                    <p className="mt-2 text-sm text-zinc-500">
+                      Registre o GPS do evento para estimar distância e combustível.
+                    </p>
+                  ) : calculandoDeslocamento ? (
+                    <p className="mt-2 text-sm text-zinc-400">
+                      Calculando deslocamento...
+                    </p>
+                  ) : travelQuote ? (
+                    <>
+                      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                        <div className="rounded-xl bg-black/30 p-3">
+                          <p className="text-[11px] text-zinc-500">
+                            Distância
+                          </p>
+                          <p className="mt-1 font-black">
+                            {travelQuote.distanceKm.toFixed(1)} km
+                          </p>
+                        </div>
+
+                        <div className="rounded-xl bg-black/30 p-3">
+                          <p className="text-[11px] text-zinc-500">
+                            Ida e volta
+                          </p>
+                          <p className="mt-1 font-black">
+                            {travelQuote.roundTripKm.toFixed(1)} km
+                          </p>
+                        </div>
+
+                        <div className="rounded-xl bg-black/30 p-3">
+                          <p className="text-[11px] text-zinc-500">
+                            Estimativa
+                          </p>
+                          <p className="mt-1 font-black text-emerald-300">
+                            {dinheiro(
+                              travelQuote.estimatedAmount
+                            )}
+                          </p>
+                        </div>
+                      </div>
+
+                      {travelQuote.fuelLiters !== null && (
+                        <p className="mt-3 text-xs text-zinc-400">
+                          ⛽ Aproximadamente{" "}
+                          {travelQuote.fuelLiters.toFixed(
+                            1
+                          )}{" "}
+                          L de combustível no trecho cobrado.
+                        </p>
+                      )}
+
+                      {!travelQuote.withinRadius && (
+                        <p className="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-200">
+                          ⚠️ O evento está acima da distância máxima informada pelo Artista. Ainda é possível conversar antes de fechar.
+                        </p>
+                      )}
+
+                      <p className="mt-3 text-[11px] leading-5 text-zinc-600">
+                        Pedágios e hospedagem continuam separados do cachê. O valor final é consolidado quando a contratação for aceita.
+                      </p>
+                    </>
+                  ) : (
+                    <p className="mt-2 text-sm text-zinc-500">
+                      O Artista ainda não possui dados suficientes para calcular o deslocamento.
+                    </p>
+                  )}
+                </div>
               )}
             </div>
 
