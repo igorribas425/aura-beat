@@ -24,6 +24,15 @@ type PublicOffer = {
   budget_amount: number | null;
 };
 
+type VenueMediaPublic = {
+  id: string;
+  media_type: "photo" | "video";
+  public_url: string;
+  caption: string | null;
+  is_cover: boolean;
+  sort_order: number;
+};
+
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "medium",
@@ -40,6 +49,7 @@ export default function PublicVenuePage() {
   const [reviewCount, setReviewCount] = useState(0);
   const [completedEvents, setCompletedEvents] = useState(0);
   const [offers, setOffers] = useState<PublicOffer[]>([]);
+  const [media, setMedia] = useState<VenueMediaPublic[]>([]);
   const [canChat, setCanChat] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -64,11 +74,18 @@ export default function PublicVenuePage() {
         return;
       }
 
-      const [reviewsResult, bookingsResult, offersResult, visualResult, userResult] = await Promise.all([
+      const [reviewsResult, bookingsResult, offersResult, visualResult, mediaResult, userResult] = await Promise.all([
         supabase.from("reviews").select("overall_rating").eq("reviewee_type", "venue").eq("venue_id", id),
         supabase.from("bookings").select("id", { count: "exact", head: true }).eq("venue_id", id).eq("status", "completed"),
         supabase.from("offers").select("id,title,event_type,starts_at,duration_minutes,budget_amount").eq("venue_id", id).eq("status", "open").gte("starts_at", new Date().toISOString()).order("starts_at").limit(6),
         supabase.from("venue_profiles").select("venue_type,avatar_url").eq("id", id).maybeSingle(),
+        supabase
+          .from("venue_media")
+          .select("id,media_type,public_url,caption,is_cover,sort_order")
+          .eq("venue_id", id)
+          .eq("is_public", true)
+          .order("is_cover", { ascending: false })
+          .order("sort_order", { ascending: true }),
         supabase.auth.getUser(),
       ]);
 
@@ -86,6 +103,11 @@ export default function PublicVenuePage() {
       setRating(ratings.length ? ratings.reduce((total, value) => total + value, 0) / ratings.length : 0);
       if (!bookingsResult.error) setCompletedEvents(bookingsResult.count ?? 0);
       if (!offersResult.error) setOffers((offersResult.data ?? []) as PublicOffer[]);
+      if (!mediaResult.error) {
+        setMedia((mediaResult.data ?? []) as VenueMediaPublic[]);
+      } else {
+        setMedia([]);
+      }
 
       const currentUser = userResult.data.user;
       if (currentUser) {
@@ -186,8 +208,75 @@ export default function PublicVenuePage() {
         </section>
 
         <section className="aura-card mt-6 rounded-3xl border p-6 sm:p-8">
-          <p className="aura-kicker">Identidade visual</p><h2 className="mt-2 text-2xl font-black">Galeria do espaço</h2>
-          {avatarUrl ? <div className="mt-5 grid gap-4 sm:grid-cols-3"><ProfileAvatar kind="venue" name={venue.trade_name} url={avatarUrl} sizeClassName="h-64 w-full" className="rounded-3xl" /><div className="col-span-2 grid min-h-64 place-items-center rounded-3xl border border-dashed border-zinc-700 p-8 text-center text-sm text-zinc-500">Mais imagens públicas do espaço ainda não foram adicionadas.</div></div> : <div className="mt-5 grid min-h-52 place-items-center rounded-3xl border border-dashed border-zinc-700 p-8 text-center text-sm text-zinc-500">Galeria ainda não publicada.</div>}
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="aura-kicker">Identidade visual</p>
+              <h2 className="mt-2 text-2xl font-black">Galeria do espaço</h2>
+            </div>
+            {media.length > 0 && (
+              <span className="rounded-full bg-red-500/10 px-3 py-1 text-xs font-bold text-red-300">
+                {media.length} mídia(s)
+              </span>
+            )}
+          </div>
+
+          {media.length > 0 ? (
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {media.map((item) => (
+                <article
+                  key={item.id}
+                  className={`overflow-hidden rounded-3xl border border-white/10 bg-zinc-950 ${item.is_cover ? "sm:col-span-2" : ""}`}
+                >
+                  <div className={item.is_cover ? "h-72" : "h-56"}>
+                    {item.media_type === "video" ? (
+                      <video
+                        src={item.public_url}
+                        controls
+                        playsInline
+                        preload="metadata"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div
+                        className="h-full w-full bg-cover bg-center"
+                        style={{ backgroundImage: `url(${item.public_url})` }}
+                      />
+                    )}
+                  </div>
+
+                  {(item.caption || item.is_cover) && (
+                    <div className="flex items-center justify-between gap-3 border-t border-white/10 px-4 py-3">
+                      <p className="text-sm text-zinc-300">
+                        {item.caption || "Foto principal do espaço"}
+                      </p>
+                      {item.is_cover && (
+                        <span className="shrink-0 rounded-full bg-red-500/15 px-2.5 py-1 text-[10px] font-black uppercase text-red-200">
+                          Principal
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </article>
+              ))}
+            </div>
+          ) : avatarUrl ? (
+            <div className="mt-5 grid gap-4 sm:grid-cols-3">
+              <ProfileAvatar
+                kind="venue"
+                name={venue.trade_name}
+                url={avatarUrl}
+                sizeClassName="h-64 w-full"
+                className="rounded-3xl"
+              />
+              <div className="col-span-2 grid min-h-64 place-items-center rounded-3xl border border-dashed border-zinc-700 p-8 text-center text-sm text-zinc-500">
+                A Casa ainda não adicionou outras fotos ou vídeos públicos.
+              </div>
+            </div>
+          ) : (
+            <div className="mt-5 grid min-h-52 place-items-center rounded-3xl border border-dashed border-zinc-700 p-8 text-center text-sm text-zinc-500">
+              Galeria ainda não publicada.
+            </div>
+          )}
         </section>
 
         <p className="mt-7 text-xs leading-5 text-zinc-600">Endereço detalhado, telefone, e-mail, documentos, dados financeiros e informações privadas de bookings não são exibidos.</p>
