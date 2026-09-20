@@ -64,8 +64,17 @@ export function ArtistMediaGallery({ items }: { items: ArtistMediaItem[] }) {
 
   return (
     <>
-      <div className="mt-5 grid auto-rows-[180px] grid-cols-2 gap-3 sm:auto-rows-[220px] sm:grid-cols-3">
+      <div
+        className={`mt-5 grid gap-3 ${
+          ordered.length === 1
+            ? "grid-cols-1"
+            : ordered.length === 2
+              ? "grid-cols-1 sm:grid-cols-2"
+              : "auto-rows-[180px] grid-cols-2 sm:auto-rows-[220px] sm:grid-cols-3"
+        }`}
+      >
         {ordered.map((item, index) => {
+          const single = ordered.length === 1;
           const featured = index === 0 && ordered.length > 2;
 
           return (
@@ -73,21 +82,36 @@ export function ArtistMediaGallery({ items }: { items: ArtistMediaItem[] }) {
               key={item.id}
               type="button"
               onClick={() => setOpenIndex(index)}
-              className={`group relative overflow-hidden rounded-3xl border border-white/10 bg-zinc-950 text-left shadow-xl ${featured ? "col-span-2 row-span-2" : ""}`}
+              className={`group relative overflow-hidden rounded-3xl border border-white/10 bg-black text-left shadow-xl ${
+                single
+                  ? "min-h-[340px] sm:min-h-[460px]"
+                  : ordered.length === 2
+                    ? "min-h-[260px] sm:min-h-[320px]"
+                    : featured
+                      ? "col-span-2 row-span-2"
+                      : ""
+              }`}
               aria-label={`Abrir ${mediaLabel(item.media_type)} ${index + 1}`}
             >
+              <div
+                className="absolute inset-0 scale-110 bg-cover bg-center opacity-25 blur-2xl"
+                style={{ backgroundImage: `url(${item.public_url})` }}
+                aria-hidden="true"
+              />
+
               {item.media_type === "video" ? (
                 <video
                   src={item.public_url}
                   muted
                   playsInline
                   preload="metadata"
-                  className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                  className="relative z-[1] h-full w-full object-contain transition duration-300 group-hover:scale-[1.015]"
                 />
               ) : (
-                <div
-                  className="absolute inset-0 bg-cover bg-center transition duration-300 group-hover:scale-105"
-                  style={{ backgroundImage: `url(${item.public_url})` }}
+                <img
+                  src={item.public_url}
+                  alt={item.caption || mediaLabel(item.media_type)}
+                  className="relative z-[1] h-full w-full object-contain transition duration-300 group-hover:scale-[1.015]"
                 />
               )}
 
