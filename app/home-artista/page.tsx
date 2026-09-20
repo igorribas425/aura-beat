@@ -1063,6 +1063,37 @@ export default function HomeArtistaPage() {
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
 
             <button
+              type="button"
+              onClick={() =>
+                router.push(
+                  "/disponibilidade-artista"
+                )
+              }
+              className="group relative overflow-hidden rounded-2xl border border-amber-400/50 bg-gradient-to-br from-amber-500/15 via-orange-500/10 to-red-500/10 p-5 text-left shadow-[0_0_28px_rgba(245,158,11,0.18)] transition duration-300 hover:-translate-y-1 hover:border-amber-300/80 hover:shadow-[0_0_42px_rgba(245,158,11,0.30)]"
+            >
+              <span className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-amber-300/30" />
+              <span className="pointer-events-none absolute -right-8 -top-8 h-20 w-20 rounded-full bg-amber-400/20 blur-2xl" />
+
+              <div className="relative z-10 flex h-11 w-11 items-center justify-center rounded-xl bg-amber-400/15 text-2xl shadow-[0_0_22px_rgba(251,191,36,0.25)] ring-1 ring-amber-300/30">
+                <span className="absolute inset-0 animate-ping rounded-xl bg-amber-400/10" />
+                <span className="relative">⚡</span>
+              </div>
+
+              <p className="relative z-10 mt-3 font-black text-amber-200">
+                Disponibilidade urgente
+              </p>
+
+              <p className="relative z-10 mt-1 text-xs text-zinc-500">
+                Publicar que está livre para show
+              </p>
+
+              <span className="relative z-10 mt-3 inline-flex rounded-full border border-amber-400/30 bg-amber-400/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-amber-300">
+                Destaque
+              </span>
+            </button>
+
+            <button
+              type="button"
               onClick={() =>
                 router.push(
                   "/buscar"
@@ -1070,20 +1101,13 @@ export default function HomeArtistaPage() {
               }
               className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-purple-500/50"
             >
-              <div className="text-2xl">
-                ⌕
-              </div>
-
-              <p className="mt-3 font-bold">
-                Explorar
-              </p>
-
-              <p className="mt-1 text-xs text-zinc-500">
-                Artistas e Casas
-              </p>
+              <div className="text-2xl">⌕</div>
+              <p className="mt-3 font-bold">Explorar</p>
+              <p className="mt-1 text-xs text-zinc-500">Artistas e Casas</p>
             </button>
 
             <button
+              type="button"
               onClick={() =>
                 router.push(
                   "/ofertas-artista"
@@ -1091,41 +1115,13 @@ export default function HomeArtistaPage() {
               }
               className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-red-500/50"
             >
-              <div className="text-2xl">
-                🔥
-              </div>
-
-              <p className="mt-3 font-bold">
-                Ofertas
-              </p>
-
-              <p className="mt-1 text-xs text-zinc-500">
-                Ver oportunidades
-              </p>
+              <div className="text-2xl">🔥</div>
+              <p className="mt-3 font-bold">Ofertas</p>
+              <p className="mt-1 text-xs text-zinc-500">Ver oportunidades</p>
             </button>
 
             <button
-              onClick={() =>
-                router.push(
-                  "/disponibilidade-artista"
-                )
-              }
-              className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-amber-500/50"
-            >
-              <div className="text-2xl">
-                ⚡
-              </div>
-
-              <p className="mt-3 font-bold">
-                Publicar disponibilidade
-              </p>
-
-              <p className="mt-1 text-xs text-zinc-500">
-                Procurar show urgente
-              </p>
-            </button>
-
-            <button
+              type="button"
               onClick={() =>
                 router.push(
                   "/solicitacoes-artista"
@@ -1133,20 +1129,13 @@ export default function HomeArtistaPage() {
               }
               className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-green-500/50"
             >
-              <div className="text-2xl">
-                📩
-              </div>
-
-              <p className="mt-3 font-bold">
-                Solicitações
-              </p>
-
-              <p className="mt-1 text-xs text-zinc-500">
-                Casas interessadas
-              </p>
+              <div className="text-2xl">📩</div>
+              <p className="mt-3 font-bold">Solicitações</p>
+              <p className="mt-1 text-xs text-zinc-500">Casas interessadas</p>
             </button>
 
             <button
+              type="button"
               onClick={() =>
                 router.push(
                   "/financeiro-artista"
@@ -1154,20 +1143,13 @@ export default function HomeArtistaPage() {
               }
               className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-green-500/50"
             >
-              <div className="text-2xl">
-                💰
-              </div>
-
-              <p className="mt-3 font-bold">
-                Financeiro
-              </p>
-
-              <p className="mt-1 text-xs text-zinc-500">
-                Cachês e repasses
-              </p>
+              <div className="text-2xl">💰</div>
+              <p className="mt-3 font-bold">Financeiro</p>
+              <p className="mt-1 text-xs text-zinc-500">Cachês e repasses</p>
             </button>
 
             <button
+              type="button"
               onClick={() =>
                 router.push(
                   "/agenda"
@@ -1175,20 +1157,13 @@ export default function HomeArtistaPage() {
               }
               className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-red-500/50"
             >
-              <div className="text-2xl">
-                📅
-              </div>
-
-              <p className="mt-3 font-bold">
-                Agenda
-              </p>
-
-              <p className="mt-1 text-xs text-zinc-500">
-                Datas e eventos
-              </p>
+              <div className="text-2xl">📅</div>
+              <p className="mt-3 font-bold">Agenda</p>
+              <p className="mt-1 text-xs text-zinc-500">Datas e eventos</p>
             </button>
 
             <button
+              type="button"
               onClick={() =>
                 router.push(
                   "/chat-direto"
@@ -1196,20 +1171,13 @@ export default function HomeArtistaPage() {
               }
               className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-red-500/50"
             >
-              <div className="text-2xl">
-                💬
-              </div>
-
-              <p className="mt-3 font-bold">
-                Chat
-              </p>
-
-              <p className="mt-1 text-xs text-zinc-500">
-                Contratantes
-              </p>
+              <div className="text-2xl">💬</div>
+              <p className="mt-3 font-bold">Chat</p>
+              <p className="mt-1 text-xs text-zinc-500">Contratantes</p>
             </button>
 
             <button
+              type="button"
               onClick={() =>
                 router.push(
                   "/perfil-artista"
@@ -1217,20 +1185,13 @@ export default function HomeArtistaPage() {
               }
               className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-red-500/50"
             >
-              <div className="text-2xl">
-                🎧
-              </div>
-
-              <p className="mt-3 font-bold">
-                Meu perfil
-              </p>
-
-              <p className="mt-1 text-xs text-zinc-500">
-                Editar informações
-              </p>
+              <div className="text-2xl">🎧</div>
+              <p className="mt-3 font-bold">Meu perfil</p>
+              <p className="mt-1 text-xs text-zinc-500">Editar informações</p>
             </button>
 
             <button
+              type="button"
               onClick={() =>
                 router.push(
                   "/configuracoes"
@@ -1238,23 +1199,14 @@ export default function HomeArtistaPage() {
               }
               className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-red-500/50"
             >
-              <div className="text-2xl">
-                ⚙️
-              </div>
-
-              <p className="mt-3 font-bold">
-                Configurações
-              </p>
-
-              <p className="mt-1 text-xs text-zinc-500">
-                Conta e preferências
-              </p>
+              <div className="text-2xl">⚙️</div>
+              <p className="mt-3 font-bold">Configurações</p>
+              <p className="mt-1 text-xs text-zinc-500">Conta e preferências</p>
             </button>
 
           </div>
 
         </section>
-
         <section>
 
           <div className="mb-3 flex items-center justify-between">
