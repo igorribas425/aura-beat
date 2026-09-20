@@ -116,6 +116,70 @@ export default function PublicArtistPage() {
     return () => { active = false; };
   }, [id]);
 
+  useEffect(() => {
+    async function reloadMedia() {
+      const { data, error } = await supabase
+        .from("artist_media")
+        .select("id,media_type,public_url,caption,sort_order,is_cover")
+        .eq("artist_id", id)
+        .eq("is_public", true)
+        .order("is_cover", { ascending: false })
+        .order("sort_order", { ascending: true });
+
+      if (!error) {
+        setMedia((data ?? []) as ArtistMediaItem[]);
+      }
+    }
+
+    const channel = supabase
+      .channel(`artist-public-visual-${id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "artist_profiles",
+          filter: `id=eq.${id}`,
+        },
+        (payload) => {
+          const row = payload.new as {
+            avatar_url?: string | null;
+            stage_name?: string;
+            bio?: string | null;
+          };
+
+          setArtist((current) =>
+            current
+              ? {
+                  ...current,
+                  avatar_url:
+                    row.avatar_url === undefined ? current.avatar_url : row.avatar_url,
+                  stage_name: row.stage_name ?? current.stage_name,
+                  bio: row.bio === undefined ? current.bio : row.bio,
+                }
+              : current,
+          );
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "artist_media",
+          filter: `artist_id=eq.${id}`,
+        },
+        () => {
+          void reloadMedia();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [id]);
+
   if (loading) return <main className="aura-page flex min-h-[70vh] items-center justify-center text-zinc-400">Carregando Press Kit…</main>;
 
   if (error || !artist) {
