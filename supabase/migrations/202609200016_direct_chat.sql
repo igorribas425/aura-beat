@@ -33,6 +33,9 @@ create index if not exists direct_messages_conversation_created_idx
 alter table public.direct_conversations enable row level security;
 alter table public.direct_messages enable row level security;
 
+grant select on public.direct_conversations to authenticated;
+grant select, insert on public.direct_messages to authenticated;
+
 drop policy if exists "direct_conversations_participants_read" on public.direct_conversations;
 create policy "direct_conversations_participants_read"
 on public.direct_conversations
