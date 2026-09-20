@@ -538,8 +538,16 @@ export default function DirectChatPage() {
 
     if (!("Notification" in window) || !("serviceWorker" in navigator)) {
       setNotificationStatus("unsupported");
+
+      const isAndroid = /Android/i.test(navigator.userAgent);
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
       setError(
-        "Este navegador não permite notificações web neste modo. No iPhone, adicione o Aura Beat à Tela de Início e abra por lá.",
+        isAndroid
+          ? "Este navegador não liberou notificações web. Abra o Aura Beat no Google Chrome pelo mesmo link HTTPS e toque novamente em Ativar notificações."
+          : isIOS
+            ? "No iPhone, adicione o Aura Beat à Tela de Início e abra o app instalado para permitir notificações."
+            : "Este navegador não permite notificações web neste modo. Abra o Aura Beat em um navegador compatível e tente novamente.",
       );
       return;
     }
@@ -585,6 +593,14 @@ export default function DirectChatPage() {
       console.error(notificationError);
       setError("Não foi possível ativar as notificações neste navegador.");
     }
+  }
+
+  function openInChrome() {
+    if (!/Android/i.test(navigator.userAgent)) return;
+
+    const current = window.location.href.replace(/^https?:\/\//, "");
+    window.location.href =
+      `intent://${current}#Intent;scheme=https;package=com.android.chrome;end`;
   }
 
   function disablePhoneAlerts() {
@@ -735,7 +751,17 @@ export default function DirectChatPage() {
 
         {error && (
           <div className="mb-5 rounded-2xl border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
-            {error}
+            <p>{error}</p>
+            {notificationStatus === "unsupported" &&
+              /Android/i.test(navigator.userAgent) && (
+                <button
+                  type="button"
+                  onClick={openInChrome}
+                  className="mt-3 rounded-xl border border-red-700 px-4 py-2 font-black text-red-200"
+                >
+                  Abrir no Google Chrome
+                </button>
+              )}
           </div>
         )}
 
