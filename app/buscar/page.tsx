@@ -415,7 +415,11 @@ export default function ExplorePage() {
             roundTripKm: Number(row.round_trip_km ?? 0),
             withinRadius: Boolean(row.within_radius),
             calculationMode:
-              row.calculation_mode === "vehicle" ? "vehicle" : "fixed",
+              row.calculation_mode === "vehicle"
+                ? "vehicle"
+                : row.calculation_mode === "ticket"
+                  ? "ticket"
+                  : "fixed",
             fuelLiters:
               row.fuel_liters === null || row.fuel_liters === undefined
                 ? null
