@@ -144,8 +144,10 @@ export function ArtistMediaGallery({ items }: { items: ArtistMediaItem[] }) {
                 type="button"
                 onClick={(event) => {
                   event.stopPropagation();
-                  setOpenIndex(
-                    (openIndex - 1 + ordered.length) % ordered.length,
+                  setOpenIndex((index) =>
+                    index === null
+                      ? null
+                      : (index - 1 + ordered.length) % ordered.length,
                   );
                 }}
                 className="absolute left-3 z-20 grid h-12 w-12 place-items-center rounded-full bg-white/10 text-3xl text-white backdrop-blur hover:bg-white/20 sm:left-6"
@@ -157,7 +159,9 @@ export function ArtistMediaGallery({ items }: { items: ArtistMediaItem[] }) {
                 type="button"
                 onClick={(event) => {
                   event.stopPropagation();
-                  setOpenIndex((openIndex + 1) % ordered.length);
+                  setOpenIndex((index) =>
+                    index === null ? null : (index + 1) % ordered.length,
+                  );
                 }}
                 className="absolute right-3 z-20 grid h-12 w-12 place-items-center rounded-full bg-white/10 text-3xl text-white backdrop-blur hover:bg-white/20 sm:right-6"
                 aria-label="Próxima mídia"
