@@ -57,7 +57,9 @@ export default function DirectChatPage() {
   const stopTypingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideTypingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTypingBroadcastRef = useRef(0);
+  const typingReadyRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const alertsEnabledRef = useRef(false);
 
   const [userId, setUserId] = useState("");
   const [conversations, setConversations] = useState<ConversationView[]>([]);
@@ -69,11 +71,36 @@ export default function DirectChatPage() {
   const [sending, setSending] = useState(false);
   const [otherTyping, setOtherTyping] = useState(false);
   const [alertsEnabled, setAlertsEnabled] = useState(false);
+  const [notificationStatus, setNotificationStatus] = useState<
+    "off" | "granted" | "denied" | "unsupported"
+  >("off");
   const [error, setError] = useState("");
 
   useEffect(() => {
-    setAlertsEnabled(window.localStorage.getItem("aura-direct-alerts") === "on");
+    const saved = window.localStorage.getItem("aura-direct-alerts") === "on";
+    setAlertsEnabled(saved);
+    alertsEnabledRef.current = saved;
+
+    if (!("Notification" in window) || !("serviceWorker" in navigator)) {
+      setNotificationStatus("unsupported");
+    } else if (Notification.permission === "granted") {
+      setNotificationStatus("granted");
+    } else if (Notification.permission === "denied") {
+      setNotificationStatus("denied");
+    } else {
+      setNotificationStatus("off");
+    }
+
+    if ("serviceWorker" in navigator && window.isSecureContext) {
+      void navigator.serviceWorker.register("/sw.js").catch((serviceWorkerError) => {
+        console.error("Não foi possível registrar notificações:", serviceWorkerError);
+      });
+    }
   }, []);
+
+  useEffect(() => {
+    alertsEnabledRef.current = alertsEnabled;
+  }, [alertsEnabled]);
 
   useEffect(() => {
     let active = true;
@@ -276,6 +303,9 @@ export default function DirectChatPage() {
           broadcast: {
             self: false,
           },
+          presence: {
+            key: userId,
+          },
         },
       })
       .on(
@@ -299,26 +329,15 @@ export default function DirectChatPage() {
               p_conversation_id: selectedId,
             });
 
-            if (alertsEnabled) {
+            if (alertsEnabledRef.current) {
               void playNotificationSound();
 
               if ("vibrate" in navigator) {
-                navigator.vibrate(80);
+                navigator.vibrate([80, 50, 80]);
               }
 
-              if (
-                document.hidden &&
-                "Notification" in window &&
-                Notification.permission === "granted"
-              ) {
-                const notification = new Notification("Nova mensagem no Aura Beat", {
-                  body: incoming.body.slice(0, 120),
-                });
-
-                notification.onclick = () => {
-                  window.focus();
-                  notification.close();
-                };
+              if (document.hidden) {
+                void showPhoneNotification(incoming.body);
               }
             }
           }
@@ -339,6 +358,34 @@ export default function DirectChatPage() {
               message.id === updated.id ? updated : message,
             ),
           );
+        },
+      )
+      .on(
+        "presence",
+        {
+          event: "sync",
+        },
+        () => {
+          const state = channel.presenceState() as Record<
+            string,
+            Array<{
+              user_id?: string;
+              typing?: boolean;
+              updated_at?: number;
+            }>
+          >;
+
+          const isOtherTyping = Object.values(state)
+            .flat()
+            .some(
+              (presence) =>
+                presence.user_id &&
+                presence.user_id !== userId &&
+                presence.typing === true &&
+                Date.now() - Number(presence.updated_at ?? 0) < 4000,
+            );
+
+          setOtherTyping(isOtherTyping);
         },
       )
       .on(
@@ -369,7 +416,18 @@ export default function DirectChatPage() {
       );
 
     typingChannelRef.current = channel;
-    channel.subscribe();
+    channel.subscribe((status) => {
+      const ready = status === "SUBSCRIBED";
+      typingReadyRef.current = ready;
+
+      if (ready) {
+        void channel.track({
+          user_id: userId,
+          typing: false,
+          updated_at: Date.now(),
+        });
+      }
+    });
 
     return () => {
       active = false;
@@ -382,11 +440,13 @@ export default function DirectChatPage() {
         clearTimeout(hideTypingRef.current);
       }
 
+      typingReadyRef.current = false;
       typingChannelRef.current = null;
       setOtherTyping(false);
+      void channel.untrack();
       void supabase.removeChannel(channel);
     };
-  }, [alertsEnabled, selectedId, userId]);
+  }, [selectedId, userId]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -440,30 +500,102 @@ export default function DirectChatPage() {
     }
   }
 
-  async function toggleAlerts() {
-    const next = !alertsEnabled;
-    setAlertsEnabled(next);
-    window.localStorage.setItem("aura-direct-alerts", next ? "on" : "off");
-
-    if (!next) return;
-
-    await playNotificationSound();
-
+  async function showPhoneNotification(body: string) {
     if (
-      "Notification" in window &&
-      Notification.permission === "default"
+      !window.isSecureContext ||
+      !("Notification" in window) ||
+      Notification.permission !== "granted" ||
+      !("serviceWorker" in navigator)
     ) {
-      try {
-        await Notification.requestPermission();
-      } catch {
-        // O som continua funcionando mesmo sem notificação do sistema.
-      }
+      return;
     }
+
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      await registration.showNotification("Aura Beat", {
+        body: body.slice(0, 120),
+        icon: "/icons/icon.svg",
+        badge: "/icons/icon.svg",
+        tag: "aura-direct-message",
+        data: {
+          url: "/chat-direto",
+        },
+      });
+    } catch (notificationError) {
+      console.error("Não foi possível exibir a notificação:", notificationError);
+    }
+  }
+
+  async function enablePhoneAlerts() {
+    setError("");
+
+    if (!window.isSecureContext) {
+      setError(
+        "Para o celular liberar notificações, abra o Aura Beat pelo link HTTPS do teste.",
+      );
+      return;
+    }
+
+    if (!("Notification" in window) || !("serviceWorker" in navigator)) {
+      setNotificationStatus("unsupported");
+      setError(
+        "Este navegador não permite notificações web neste modo. No iPhone, adicione o Aura Beat à Tela de Início e abra por lá.",
+      );
+      return;
+    }
+
+    try {
+      const permission = await Notification.requestPermission();
+
+      if (permission !== "granted") {
+        setAlertsEnabled(false);
+        alertsEnabledRef.current = false;
+        window.localStorage.setItem("aura-direct-alerts", "off");
+        setNotificationStatus(permission === "denied" ? "denied" : "off");
+        setError(
+          permission === "denied"
+            ? "As notificações foram bloqueadas. Libere o Aura Beat nas permissões de notificações do navegador/celular."
+            : "A permissão de notificações não foi concedida.",
+        );
+        return;
+      }
+
+      setAlertsEnabled(true);
+      alertsEnabledRef.current = true;
+      setNotificationStatus("granted");
+      window.localStorage.setItem("aura-direct-alerts", "on");
+
+      await playNotificationSound();
+
+      if ("vibrate" in navigator) {
+        navigator.vibrate([70, 40, 70]);
+      }
+
+      const registration = await navigator.serviceWorker.ready;
+      await registration.showNotification("Aura Beat", {
+        body: "Notificações ativadas. Você será avisado quando chegar uma nova mensagem.",
+        icon: "/icons/icon.svg",
+        badge: "/icons/icon.svg",
+        tag: "aura-alerts-enabled",
+        data: {
+          url: "/chat-direto",
+        },
+      });
+    } catch (notificationError) {
+      console.error(notificationError);
+      setError("Não foi possível ativar as notificações neste navegador.");
+    }
+  }
+
+  function disablePhoneAlerts() {
+    setAlertsEnabled(false);
+    alertsEnabledRef.current = false;
+    window.localStorage.setItem("aura-direct-alerts", "off");
   }
 
   function broadcastTyping(value: string) {
     const channel = typingChannelRef.current;
-    if (!channel || !userId) return;
+    if (!channel || !userId || !typingReadyRef.current) return;
 
     if (stopTypingRef.current) {
       clearTimeout(stopTypingRef.current);
@@ -482,6 +614,12 @@ export default function DirectChatPage() {
           typing,
         },
       });
+
+      void channel.track({
+        user_id: userId,
+        typing,
+        updated_at: Date.now(),
+      });
     }
 
     if (typing) {
@@ -493,6 +631,12 @@ export default function DirectChatPage() {
             user_id: userId,
             typing: false,
           },
+        });
+
+        void channel.track({
+          user_id: userId,
+          typing: false,
+          updated_at: Date.now(),
         });
       }, 1200);
     }
@@ -555,18 +699,25 @@ export default function DirectChatPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => void toggleAlerts()}
-              className={`rounded-xl border px-4 py-2 text-sm font-bold transition ${
-                alertsEnabled
-                  ? "border-green-500/40 bg-green-500/10 text-green-300"
-                  : "border-zinc-700 text-zinc-300"
-              }`}
-              title="Som, vibração e notificação quando chegar uma nova mensagem"
-            >
-              {alertsEnabled ? "🔔 Alertas ligados" : "🔕 Ativar alertas"}
-            </button>
+            {alertsEnabled && notificationStatus === "granted" ? (
+              <button
+                type="button"
+                onClick={disablePhoneAlerts}
+                className="rounded-xl border border-green-500/40 bg-green-500/10 px-4 py-2 text-sm font-bold text-green-300"
+                title="Desativar som, vibração e avisos do Chat Direto"
+              >
+                🔔 Notificações ativas
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void enablePhoneAlerts()}
+                className="rounded-xl border border-yellow-500/40 bg-yellow-500/10 px-4 py-2 text-sm font-black text-yellow-200"
+                title="O celular vai pedir permissão para o Aura Beat enviar notificações"
+              >
+                🔔 Ativar notificações
+              </button>
+            )}
             <Link
               href="/buscar"
               className="rounded-xl border border-zinc-700 px-4 py-2 text-sm font-bold"
