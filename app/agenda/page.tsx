@@ -344,6 +344,45 @@ export default function AgendaPage() {
     carregarAgendaEffect();
   }, []);
 
+  useEffect(() => {
+    if (!artista?.id) {
+      return;
+    }
+
+    const artistId = artista.id;
+    const channel = supabase
+      .channel(`agenda-realtime-${artistId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "bookings",
+          filter: `artist_id=eq.${artistId}`,
+        },
+        () => {
+          carregarAgendaEffect();
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "artist_calendar",
+          filter: `artist_id=eq.${artistId}`,
+        },
+        () => {
+          carregarAgendaEffect();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [artista?.id]);
+
   async function carregarAgenda() {
     try {
       setCarregando(true);
