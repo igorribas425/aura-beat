@@ -152,6 +152,21 @@ export default function PerfilArtistaPage() {
         return;
       }
 
+      if (
+        travelMode === "vehicle" &&
+        (
+          !Number.isFinite(Number(vehicleConsumption)) ||
+          Number(vehicleConsumption) <= 0 ||
+          !Number.isFinite(Number(fuelPrice)) ||
+          Number(fuelPrice) <= 0
+        )
+      ) {
+        setMessage(
+          "❌ Para calcular pelo veículo, informe consumo em km/L e preço do combustível.",
+        );
+        return;
+      }
+
       const { data: artist, error } = await supabase
         .from("artist_profiles")
         .upsert(
@@ -525,7 +540,6 @@ export default function PerfilArtistaPage() {
                       <option value="etanol">Etanol</option>
                       <option value="diesel">Diesel</option>
                       <option value="flex">Flex</option>
-                      <option value="eletrico">Elétrico</option>
                       <option value="outro">Outro</option>
                     </select>
                   </div>
