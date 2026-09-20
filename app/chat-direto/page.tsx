@@ -53,12 +53,10 @@ function formatDateTime(value: string) {
 export default function DirectChatPage() {
   const router = useRouter();
   const endRef = useRef<HTMLDivElement | null>(null);
-  const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const stopTypingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const typingHeartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hideTypingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastTypingActivityRef = useRef(0);
-  const typingReadyRef = useRef(false);
+  const lastTypingWriteRef = useRef(0);
+  const typingActiveRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const alertsEnabledRef = useRef(false);
 
@@ -347,17 +345,41 @@ export default function DirectChatPage() {
 
     void loadMessages();
 
+    async function loadTypingStatus() {
+      const { data } = await supabase
+        .from("direct_typing_status")
+        .select("user_id,is_typing,updated_at")
+        .eq("conversation_id", conversationId)
+        .neq("user_id", userId)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!active || !data) return;
+
+      const updatedAt = new Date(data.updated_at).getTime();
+      const fresh =
+        data.is_typing === true &&
+        Number.isFinite(updatedAt) &&
+        Date.now() - updatedAt < 5000;
+
+      setOtherTyping(fresh);
+
+      if (fresh) {
+        if (hideTypingRef.current) {
+          clearTimeout(hideTypingRef.current);
+        }
+
+        hideTypingRef.current = setTimeout(() => {
+          setOtherTyping(false);
+        }, 5000);
+      }
+    }
+
+    void loadTypingStatus();
+
     const channel = supabase
-      .channel(`direct-chat-${conversationId}`, {
-        config: {
-          broadcast: {
-            self: false,
-          },
-          presence: {
-            key: userId,
-          },
-        },
-      })
+      .channel(`direct-chat-${conversationId}`)
       .on(
         "postgres_changes",
         {
@@ -416,42 +438,18 @@ export default function DirectChatPage() {
         },
       )
       .on(
-        "presence",
+        "postgres_changes",
         {
-          event: "sync",
+          event: "*",
+          schema: "public",
+          table: "direct_typing_status",
+          filter: `conversation_id=eq.${conversationId}`,
         },
-        () => {
-          const state = channel.presenceState() as Record<
-            string,
-            Array<{
-              user_id?: string;
-              typing?: boolean;
-              updated_at?: number;
-            }>
-          >;
-
-          const isOtherTyping = Object.values(state)
-            .flat()
-            .some(
-              (presence) =>
-                presence.user_id &&
-                presence.user_id !== userId &&
-                presence.typing === true &&
-                Date.now() - Number(presence.updated_at ?? 0) < 6000,
-            );
-
-          setOtherTyping(isOtherTyping);
-        },
-      )
-      .on(
-        "broadcast",
-        {
-          event: "typing",
-        },
-        ({ payload }) => {
-          const status = payload as {
+        (payload) => {
+          const status = payload.new as {
             user_id?: string;
-            typing?: boolean;
+            is_typing?: boolean;
+            updated_at?: string;
           };
 
           if (!status.user_id || status.user_id === userId) return;
@@ -460,50 +458,44 @@ export default function DirectChatPage() {
             clearTimeout(hideTypingRef.current);
           }
 
-          setOtherTyping(Boolean(status.typing));
+          const updatedAt = status.updated_at
+            ? new Date(status.updated_at).getTime()
+            : Date.now();
 
-          if (status.typing) {
+          const fresh =
+            status.is_typing === true &&
+            Number.isFinite(updatedAt) &&
+            Date.now() - updatedAt < 5000;
+
+          setOtherTyping(fresh);
+
+          if (fresh) {
             hideTypingRef.current = setTimeout(() => {
               setOtherTyping(false);
-            }, 4500);
+            }, 5000);
           }
         },
       );
 
-    typingChannelRef.current = channel;
-    channel.subscribe((status) => {
-      const ready = status === "SUBSCRIBED";
-      typingReadyRef.current = ready;
-
-      if (ready) {
-        void channel.track({
-          user_id: userId,
-          typing: false,
-          updated_at: Date.now(),
-        });
-      }
-    });
+    channel.subscribe();
 
     return () => {
       active = false;
 
       if (stopTypingRef.current) {
         clearTimeout(stopTypingRef.current);
-      }
-
-      if (typingHeartbeatRef.current) {
-        clearInterval(typingHeartbeatRef.current);
-        typingHeartbeatRef.current = null;
+        stopTypingRef.current = null;
       }
 
       if (hideTypingRef.current) {
         clearTimeout(hideTypingRef.current);
+        hideTypingRef.current = null;
       }
 
-      typingReadyRef.current = false;
-      typingChannelRef.current = null;
+      typingActiveRef.current = false;
+      lastTypingWriteRef.current = 0;
       setOtherTyping(false);
-      void channel.untrack();
+      void writeTypingStatus(conversationId, false);
       void supabase.removeChannel(channel);
     };
   }, [mobileChatOpen, selectedId, userId]);
@@ -719,71 +711,65 @@ export default function DirectChatPage() {
     window.localStorage.setItem("aura-direct-alerts", "off");
   }
 
-  function stopTypingHeartbeat() {
-    if (typingHeartbeatRef.current) {
-      clearInterval(typingHeartbeatRef.current);
-      typingHeartbeatRef.current = null;
+  async function writeTypingStatus(
+    conversationId: string,
+    typing: boolean,
+  ) {
+    if (!conversationId || !userId) return;
+
+    const { error: typingError } = await supabase
+      .from("direct_typing_status")
+      .upsert(
+        {
+          conversation_id: conversationId,
+          user_id: userId,
+          is_typing: typing,
+        },
+        {
+          onConflict: "conversation_id,user_id",
+        },
+      );
+
+    if (typingError) {
+      console.error("Nao foi possivel atualizar o status de digitacao:", typingError);
     }
   }
 
-  function sendTypingStatus(typing: boolean) {
-    const channel = typingChannelRef.current;
-    if (!channel || !userId || !typingReadyRef.current) return;
-
-    void channel.send({
-      type: "broadcast",
-      event: "typing",
-      payload: {
-        user_id: userId,
-        typing,
-      },
-    });
-
-    void channel.track({
-      user_id: userId,
-      typing,
-      updated_at: Date.now(),
-    });
-  }
-
   function broadcastTyping(value: string) {
-    if (!typingChannelRef.current || !userId || !typingReadyRef.current) return;
+    if (!selectedId || !userId) return;
 
     if (stopTypingRef.current) {
       clearTimeout(stopTypingRef.current);
       stopTypingRef.current = null;
     }
 
-    if (value.length === 0) {
-      lastTypingActivityRef.current = 0;
-      stopTypingHeartbeat();
-      sendTypingStatus(false);
+    const typing = value.length > 0;
+
+    if (!typing) {
+      typingActiveRef.current = false;
+      lastTypingWriteRef.current = 0;
+      void writeTypingStatus(selectedId, false);
       return;
     }
 
-    lastTypingActivityRef.current = Date.now();
-    sendTypingStatus(true);
+    const now = Date.now();
 
-    if (!typingHeartbeatRef.current) {
-      typingHeartbeatRef.current = setInterval(() => {
-        const stillTyping =
-          Date.now() - lastTypingActivityRef.current < 2400;
-
-        if (stillTyping) {
-          sendTypingStatus(true);
-          return;
-        }
-
-        sendTypingStatus(false);
-        stopTypingHeartbeat();
-      }, 900);
+    if (
+      !typingActiveRef.current ||
+      now - lastTypingWriteRef.current >= 700
+    ) {
+      typingActiveRef.current = true;
+      lastTypingWriteRef.current = now;
+      void writeTypingStatus(selectedId, true);
     }
 
     stopTypingRef.current = setTimeout(() => {
-      lastTypingActivityRef.current = 0;
-      sendTypingStatus(false);
-      stopTypingHeartbeat();
-    }, 2800);
+      if (!selectedId) return;
+
+      typingActiveRef.current = false;
+      lastTypingWriteRef.current = 0;
+      void writeTypingStatus(selectedId, false);
+    }, 2200);
   }
 
   async function sendMessage(event?: FormEvent) {
@@ -1063,9 +1049,6 @@ export default function DirectChatPage() {
                         const value = event.target.value;
                         setText(value);
                         broadcastTyping(value);
-                      }}
-                      onInput={(event) => {
-                        broadcastTyping(event.currentTarget.value);
                       }}
                       onBlur={() => broadcastTyping("")}
                       onKeyDown={(event) => {
