@@ -17,7 +17,6 @@ import { supabase } from "../../lib/supabase";
 
 type Mode = "artist" | "venue";
 type ViewMode = "list" | "map";
-type VenueReach = "nearby" | "brazil" | "world";
 type FavoriteRow = { id: string; artist_id: string | null; venue_id: string | null };
 
 type RpcProfile = {
@@ -70,25 +69,6 @@ type ReviewRow = {
 };
 
 const FALLBACK_LIMIT_PER_KIND = 48;
-const BRAZIL_STATE_CODES = new Set([
-  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO",
-  "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI",
-  "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO",
-]);
-
-function isBrazilProfile(profile: ExploreProfile) {
-  if (profile.latitude !== null && profile.longitude !== null) {
-    return (
-      profile.latitude >= -34 &&
-      profile.latitude <= 6 &&
-      profile.longitude >= -74 &&
-      profile.longitude <= -34
-    );
-  }
-
-  return BRAZIL_STATE_CODES.has((profile.state ?? "").trim().toUpperCase());
-}
-
 function defaultExploreKind(mode: Mode): ExploreKind {
   return mode === "venue" ? "artist" : "venue";
 }
@@ -292,7 +272,6 @@ export default function ExplorePage() {
   const [ownVenueId, setOwnVenueId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>("list");
-  const [venueReach, setVenueReach] = useState<VenueReach>("nearby");
   const [selectedProfile, setSelectedProfile] = useState<ExploreProfile | null>(null);
   const [location, setLocation] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
   const [locationMessage, setLocationMessage] = useState("");
@@ -344,10 +323,7 @@ export default function ExplorePage() {
       setFilters((current) => ({
         ...current,
         kind: defaultExploreKind(resolvedMode),
-        maximumDistanceKm:
-          resolvedMode === "venue"
-            ? current.maximumDistanceKm ?? 100
-            : current.maximumDistanceKm,
+        maximumDistanceKm: null,
       }));
       setPage(1);
 
@@ -374,20 +350,9 @@ export default function ExplorePage() {
       setSelectedProfile(null);
 
       try {
-        const effectiveDistanceKm =
-          mode === "venue"
-            ? venueReach === "nearby" && location
-              ? filters.maximumDistanceKm ?? 100
-              : null
-            : filters.maximumDistanceKm;
-
-        const brazilWideSearch = mode === "venue" && venueReach === "brazil";
-        const requestLimit = brazilWideSearch
-          ? FALLBACK_LIMIT_PER_KIND
-          : EXPLORE_PAGE_SIZE;
-        const requestOffset = brazilWideSearch
-          ? 0
-          : (page - 1) * EXPLORE_PAGE_SIZE;
+        const effectiveDistanceKm = filters.maximumDistanceKm;
+        const requestLimit = EXPLORE_PAGE_SIZE;
+        const requestOffset = (page - 1) * EXPLORE_PAGE_SIZE;
 
         const { data, error: rpcError } = await supabase.rpc("explore_profiles_v1", {
           p_kind: filters.kind,
@@ -430,13 +395,6 @@ export default function ExplorePage() {
           matchesExploreFilters(profile, effectiveFilters),
         );
 
-        if (mode === "venue" && venueReach === "brazil") {
-          const brazilProfiles = visibleProfiles.filter(isBrazilProfile);
-          nextTotal = brazilProfiles.length;
-          const offset = (page - 1) * EXPLORE_PAGE_SIZE;
-          visibleProfiles = brazilProfiles.slice(offset, offset + EXPLORE_PAGE_SIZE);
-        }
-
         if (!active) return;
         setProfiles(visibleProfiles);
         setTotalCount(nextTotal);
@@ -452,7 +410,7 @@ export default function ExplorePage() {
       active = false;
       window.clearTimeout(timer);
     };
-  }, [contextLoading, filters, location, mode, ownArtistId, ownVenueId, page, reloadKey, venueReach]);
+  }, [contextLoading, filters, location, ownArtistId, ownVenueId, page, reloadKey]);
 
   const favoriteKeys = useMemo(
     () =>
@@ -494,23 +452,6 @@ export default function ExplorePage() {
           });
         });
       });
-    }
-  }
-
-  function changeVenueReach(nextReach: VenueReach) {
-    setVenueReach(nextReach);
-    setPage(1);
-
-    if (nextReach === "nearby") {
-      setFilters((current) => ({
-        ...current,
-        maximumDistanceKm: current.maximumDistanceKm ?? 100,
-      }));
-    } else {
-      setFilters((current) => ({
-        ...current,
-        maximumDistanceKm: null,
-      }));
     }
   }
 
@@ -581,9 +522,8 @@ export default function ExplorePage() {
     setFilters({
       ...INITIAL_EXPLORE_FILTERS,
       kind: defaultExploreKind(mode),
-      maximumDistanceKm: mode === "venue" ? 100 : null,
+      maximumDistanceKm: null,
     });
-    if (mode === "venue") setVenueReach("nearby");
     setPage(1);
   }
 
@@ -655,42 +595,6 @@ export default function ExplorePage() {
               : "Artista → Casas é o foco principal. Use as outras abas quando quiser explorar a comunidade."}
           </p>
 
-          {mode === "venue" && (
-            <div className="mt-5 rounded-2xl border border-purple-500/20 bg-purple-500/5 p-4">
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-purple-300">
-                Alcance dos DJs
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {([
-                  ["nearby", "Até 100 km"],
-                  ["brazil", "Brasil inteiro"],
-                  ["world", "Mundo"],
-                ] as Array<[VenueReach, string]>).map(([reach, label]) => (
-                  <button
-                    key={reach}
-                    type="button"
-                    aria-pressed={venueReach === reach}
-                    onClick={() => changeVenueReach(reach)}
-                    className={`rounded-xl px-4 py-2 text-sm font-black transition ${
-                      venueReach === reach
-                        ? "bg-purple-500 text-white"
-                        : "border border-zinc-700 text-zinc-300 hover:border-purple-500/50"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <p className="mt-3 text-xs leading-5 text-zinc-500">
-                {venueReach === "nearby"
-                  ? "Use sua localização para encontrar DJs próximos. Você pode ajustar o raio abaixo."
-                  : venueReach === "brazil"
-                    ? "Mostra DJs de qualquer região do Brasil, sem limitar a busca ao raio local."
-                    : "Mostra todos os DJs disponíveis na plataforma, sem limite de distância."}
-              </p>
-            </div>
-          )}
-
           <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <label className="xl:col-span-2">
               <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-zinc-500">Nome</span>
@@ -716,7 +620,7 @@ export default function ExplorePage() {
               <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-zinc-500">Distância</span>
               <select
                 value={filters.maximumDistanceKm ?? ""}
-                disabled={!location || (mode === "venue" && venueReach !== "nearby")}
+                disabled={!location}
                 onChange={(event) =>
                   updateFilter(
                     "maximumDistanceKm",
