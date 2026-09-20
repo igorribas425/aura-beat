@@ -146,13 +146,19 @@ export function ExploreProfileCard(props: ExploreProfileCardProps) {
         </div>
         <div className="bg-zinc-950 p-3">
           <p className="text-[11px] text-zinc-500">
-            {profile.kind === "artist" ? "Cachê por hora" : "Reputação"}
-          </p>
-          <p className={`mt-1 font-black ${profile.kind === "artist" ? "text-red-400" : ""}`}>
             {profile.kind === "artist"
-              ? profile.hourlyFee === null
-                ? "Sob consulta"
-                : `${formatBRL(profile.hourlyFee)}/h`
+              ? canSendOffer || profile.isOwnProfile
+                ? "Cachê por hora"
+                : "Contratação"
+              : "Reputação"}
+          </p>
+          <p className={`mt-1 font-black ${profile.kind === "artist" && (canSendOffer || profile.isOwnProfile) ? "text-red-400" : ""}`}>
+            {profile.kind === "artist"
+              ? canSendOffer || profile.isOwnProfile
+                ? profile.hourlyFee === null
+                  ? "Sob consulta"
+                  : `${formatBRL(profile.hourlyFee)}/h`
+                : "Valor visível para Casas"
               : profile.reviewCount > 0
                 ? `${profile.reviewCount} avaliação(ões)`
                 : "Em construção"}
@@ -241,9 +247,15 @@ export function MiniPressKit(props: ExploreProfileCardProps) {
           {isArtist && (
             <>
               <div className="rounded-2xl bg-zinc-900 p-3">
-                <p className="text-[11px] text-zinc-500">Cachê por hora</p>
-                <p className="mt-1 font-black text-red-400">
-                  {profile.hourlyFee === null ? "Sob consulta" : `${formatBRL(profile.hourlyFee)}/h`}
+                <p className="text-[11px] text-zinc-500">
+                  {canSendOffer || profile.isOwnProfile ? "Cachê por hora" : "Contratação"}
+                </p>
+                <p className={`mt-1 font-black ${canSendOffer || profile.isOwnProfile ? "text-red-400" : ""}`}>
+                  {canSendOffer || profile.isOwnProfile
+                    ? profile.hourlyFee === null
+                      ? "Sob consulta"
+                      : `${formatBRL(profile.hourlyFee)}/h`
+                    : "Valor visível para Casas"}
                 </p>
               </div>
               <div className="rounded-2xl bg-zinc-900 p-3">
