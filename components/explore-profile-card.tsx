@@ -66,7 +66,7 @@ function ProfileActions({
       )}
       {canSendOffer && profile.kind === "artist" && !profile.isOwnProfile && (
         <Link
-          href={`/ofertas?artist=${profile.id}`}
+          href={`/oferta-direta/${profile.id}`}
           className="flex-1 rounded-xl bg-red-500 px-4 py-2.5 text-center text-sm font-black text-white transition hover:bg-red-600"
         >
           Enviar oferta
