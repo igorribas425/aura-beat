@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { formatBRL } from "../../lib/finance";
 import { supabase } from "../../lib/supabase";
 import { setThemePreference, type ThemePreference } from "../../lib/theme";
+import { ProfilePhotoEditor } from "../../components/profile-photo-editor";
 
 type ModoPerfil = "artist" | "venue";
 type Tema = ThemePreference;
@@ -27,12 +28,14 @@ type PerfilBase = {
 type Artista = {
   id: string;
   stage_name: string;
+  avatar_url: string | null;
 };
 
 type Casa = {
   id: string;
   trade_name: string;
   verification_status: string;
+  avatar_url: string | null;
 };
 
 type Plano = {
@@ -190,12 +193,12 @@ export default function ConfiguracoesPage() {
               .maybeSingle(),
             supabase
               .from("artist_profiles")
-              .select("id,stage_name")
+              .select("id,stage_name,avatar_url")
               .eq("user_id", user.id)
               .maybeSingle(),
             supabase
               .from("venue_profiles")
-              .select("id,trade_name,verification_status")
+              .select("id,trade_name,verification_status,avatar_url")
               .eq("owner_user_id", user.id)
               .maybeSingle(),
             supabase
@@ -618,17 +621,34 @@ export default function ConfiguracoesPage() {
           <div className="mt-6 grid gap-4">
             {modoAtual === "artist" && artista && (
               <article className="rounded-2xl border border-zinc-800 bg-black/30 p-5">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-xs font-black text-purple-400">
-                      🎧 ARTISTA
-                    </p>
-                    <h3 className="mt-2 text-xl font-black">
-                      {artista.stage_name}
-                    </h3>
+                <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-4">
+                    <ProfilePhotoEditor
+                      kind="artist"
+                      profileId={artista.id}
+                      name={artista.stage_name}
+                      url={artista.avatar_url}
+                      onChange={(url) =>
+                        setArtista((atual) =>
+                          atual ? { ...atual, avatar_url: url } : atual,
+                        )
+                      }
+                    />
+
+                    <div>
+                      <p className="text-xs font-black text-purple-400">
+                        🎧 ARTISTA
+                      </p>
+                      <h3 className="mt-2 text-xl font-black">
+                        {artista.stage_name}
+                      </h3>
+                      <p className="mt-1 text-xs text-zinc-500">
+                        Esta foto aparece no perfil público e no mapa.
+                      </p>
+                    </div>
                   </div>
 
-                  <span className="rounded-full border border-red-800 bg-red-950/30 px-3 py-1 text-xs font-black text-red-400">
+                  <span className="self-start rounded-full border border-red-800 bg-red-950/30 px-3 py-1 text-xs font-black text-red-400 sm:self-center">
                     Atual
                   </span>
                 </div>
@@ -654,20 +674,37 @@ export default function ConfiguracoesPage() {
 
             {modoAtual === "venue" && casa && (
               <article className="rounded-2xl border border-zinc-800 bg-black/30 p-5">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-xs font-black text-blue-400">🏢 CASA</p>
-                    <h3 className="mt-2 text-xl font-black">
-                      {casa.trade_name}
-                    </h3>
-                    <p className="mt-1 text-xs text-zinc-500">
-                      {casa.verification_status === "verified"
-                        ? "✓ Casa Verificada"
-                        : "Verificação pendente"}
-                    </p>
+                <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-4">
+                    <ProfilePhotoEditor
+                      kind="venue"
+                      profileId={casa.id}
+                      name={casa.trade_name}
+                      url={casa.avatar_url}
+                      onChange={(url) =>
+                        setCasa((atual) =>
+                          atual ? { ...atual, avatar_url: url } : atual,
+                        )
+                      }
+                    />
+
+                    <div>
+                      <p className="text-xs font-black text-blue-400">🏢 CASA</p>
+                      <h3 className="mt-2 text-xl font-black">
+                        {casa.trade_name}
+                      </h3>
+                      <p className="mt-1 text-xs text-zinc-500">
+                        {casa.verification_status === "verified"
+                          ? "✓ Casa Verificada"
+                          : "Verificação pendente"}
+                      </p>
+                      <p className="mt-1 text-xs text-zinc-500">
+                        Esta foto aparece no perfil público e no mapa.
+                      </p>
+                    </div>
                   </div>
 
-                  <span className="rounded-full border border-red-800 bg-red-950/30 px-3 py-1 text-xs font-black text-red-400">
+                  <span className="self-start rounded-full border border-red-800 bg-red-950/30 px-3 py-1 text-xs font-black text-red-400 sm:self-center">
                     Atual
                   </span>
                 </div>
