@@ -87,7 +87,7 @@ function LocationLine({ profile }: { profile: ExploreProfile }) {
 }
 
 export function ExploreProfileCard(props: ExploreProfileCardProps) {
-  const { profile } = props;
+  const { profile, canSendOffer } = props;
 
   return (
     <article
@@ -180,7 +180,7 @@ export function ExploreProfileCard(props: ExploreProfileCardProps) {
 }
 
 export function MiniPressKit(props: ExploreProfileCardProps) {
-  const { profile } = props;
+  const { profile, canSendOffer } = props;
   const isArtist = profile.kind === "artist";
 
   return (
