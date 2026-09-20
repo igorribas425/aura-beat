@@ -28,6 +28,52 @@ function isValidMapPoint(lat: number | null, lng: number | null): lat is number 
   );
 }
 
+function spreadCoincidentPoints(profiles: ExploreProfile[]) {
+  const groups = new Map<string, ExploreProfile[]>();
+
+  for (const profile of profiles) {
+    if (!isValidMapPoint(profile.latitude, profile.longitude)) continue;
+
+    const key = `${profile.latitude!.toFixed(8)}:${profile.longitude!.toFixed(8)}`;
+    const current = groups.get(key) ?? [];
+    current.push(profile);
+    groups.set(key, current);
+  }
+
+  const points = new Map<string, [number, number]>();
+
+  for (const group of groups.values()) {
+    if (group.length === 1) {
+      const profile = group[0];
+      points.set(
+        `${profile.kind}:${profile.id}`,
+        [profile.latitude!, profile.longitude!],
+      );
+      continue;
+    }
+
+    const spreadDegrees = 0.0032;
+
+    group
+      .slice()
+      .sort((a, b) =>
+        `${a.kind}:${a.id}`.localeCompare(`${b.kind}:${b.id}`),
+      )
+      .forEach((profile, index) => {
+        const angle = (Math.PI * 2 * index) / group.length - Math.PI / 2;
+        const latitude = profile.latitude! + Math.sin(angle) * spreadDegrees;
+        const longitude = profile.longitude! + Math.cos(angle) * spreadDegrees;
+
+        points.set(
+          `${profile.kind}:${profile.id}`,
+          [latitude, longitude],
+        );
+      });
+  }
+
+  return points;
+}
+
 function escapeHtml(value: string) {
   return value
     .replaceAll("&", "&amp;")
@@ -193,10 +239,15 @@ export function ExploreMap({ profiles, userLocation, onSelect }: ExploreMapProps
           .addTo(layer);
       }
 
+      const displayPoints = spreadCoincidentPoints(profiles);
+
       profiles.forEach((profile) => {
         if (!isValidMapPoint(profile.latitude, profile.longitude)) return;
 
-        const point: [number, number] = [profile.latitude, profile.longitude!];
+        const point =
+          displayPoints.get(`${profile.kind}:${profile.id}`) ??
+          ([profile.latitude, profile.longitude!] as [number, number]);
+
         bounds.push(point);
 
         const marker = leaflet
