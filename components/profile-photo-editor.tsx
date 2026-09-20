@@ -6,7 +6,7 @@ import { supabase } from "../lib/supabase";
 
 type ProfileKind = "artist" | "venue";
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_FILE_SIZE = 25 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 function extensionFor(file: File) {
@@ -52,7 +52,7 @@ export function ProfilePhotoEditor({
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      setMessage("A foto pode ter no máximo 10 MB.");
+      setMessage("A foto pode ter no máximo 25 MB.");
       return;
     }
 
