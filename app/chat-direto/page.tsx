@@ -249,12 +249,9 @@ export default function DirectChatPage() {
         setMessages([]);
       } else {
         setMessages((data ?? []) as DirectMessage[]);
-        await supabase
-          .from("direct_messages")
-          .update({ read_at: new Date().toISOString() })
-          .eq("conversation_id", selectedId)
-          .neq("sender_user_id", userId)
-          .is("read_at", null);
+        await supabase.rpc("mark_direct_conversation_read_v1", {
+          p_conversation_id: selectedId,
+        });
       }
 
       if (active) setLoadingMessages(false);
@@ -281,10 +278,9 @@ export default function DirectChatPage() {
           );
 
           if (incoming.sender_user_id !== userId) {
-            void supabase
-              .from("direct_messages")
-              .update({ read_at: new Date().toISOString() })
-              .eq("id", incoming.id);
+            void supabase.rpc("mark_direct_conversation_read_v1", {
+              p_conversation_id: selectedId,
+            });
           }
         },
       )
