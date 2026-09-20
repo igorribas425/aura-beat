@@ -216,6 +216,19 @@ export default function DisponibilidadeArtistaPage() {
     void carregarPagina();
   }, []);
 
+  useEffect(() => {
+    if (solicitacoes.length === 0) return;
+
+    const requestToFocus = new URLSearchParams(window.location.search).get("request");
+    if (!requestToFocus) return;
+
+    window.requestAnimationFrame(() => {
+      document
+        .getElementById(`request-${requestToFocus}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }, [solicitacoes]);
+
   const taxaArtista = useMemo(() => {
     const valor = converterNumero(cache);
 
@@ -830,8 +843,9 @@ export default function DisponibilidadeArtistaPage() {
 
               <p className="mt-1 text-sm text-amber-100/70">
                 Quando uma contratação acontecer por este
-                anúncio, a Aura Beat cobra 3% da Casa e 3%
-                do artista, somente sobre o cachê.
+                anúncio, a comissão Aura Beat é de 3% da Casa e 3%
+                do artista, somente sobre o cachê. A taxa de processamento
+                do ASAAS é calculada separadamente no pagamento.
               </p>
             </div>
 
