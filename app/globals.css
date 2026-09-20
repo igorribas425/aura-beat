@@ -505,8 +505,12 @@ html[data-theme="light"] .aura-explore-map .aura-map-tiles {
 .aura-profile-marker-photo {
   position: relative;
   display: grid;
-  width: 56px;
-  height: 56px;
+  width: 56px !important;
+  height: 56px !important;
+  min-width: 56px !important;
+  min-height: 56px !important;
+  max-width: 56px !important;
+  max-height: 56px !important;
   place-items: center;
   overflow: visible;
   border: 3px solid var(--aura-marker);
@@ -534,11 +538,19 @@ html[data-theme="light"] .aura-explore-map .aura-map-tiles {
   z-index: -1;
 }
 
-.aura-profile-marker-photo img {
-  width: 100%;
-  height: 100%;
-  border-radius: 999px;
-  object-fit: cover;
+.aura-profile-marker-image {
+  display: block !important;
+  width: 50px !important;
+  height: 50px !important;
+  min-width: 50px !important;
+  min-height: 50px !important;
+  max-width: 50px !important;
+  max-height: 50px !important;
+  border-radius: 999px !important;
+  background-position: center !important;
+  background-size: cover !important;
+  background-repeat: no-repeat !important;
+  overflow: hidden !important;
 }
 
 .aura-profile-marker-fallback {
