@@ -55,8 +55,9 @@ export default function DirectChatPage() {
   const endRef = useRef<HTMLDivElement | null>(null);
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const stopTypingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingHeartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hideTypingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastTypingBroadcastRef = useRef(0);
+  const lastTypingActivityRef = useRef(0);
   const typingReadyRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const alertsEnabledRef = useRef(false);
@@ -490,6 +491,11 @@ export default function DirectChatPage() {
         clearTimeout(stopTypingRef.current);
       }
 
+      if (typingHeartbeatRef.current) {
+        clearInterval(typingHeartbeatRef.current);
+        typingHeartbeatRef.current = null;
+      }
+
       if (hideTypingRef.current) {
         clearTimeout(hideTypingRef.current);
       }
@@ -713,53 +719,71 @@ export default function DirectChatPage() {
     window.localStorage.setItem("aura-direct-alerts", "off");
   }
 
-  function broadcastTyping(value: string) {
+  function stopTypingHeartbeat() {
+    if (typingHeartbeatRef.current) {
+      clearInterval(typingHeartbeatRef.current);
+      typingHeartbeatRef.current = null;
+    }
+  }
+
+  function sendTypingStatus(typing: boolean) {
     const channel = typingChannelRef.current;
     if (!channel || !userId || !typingReadyRef.current) return;
 
-    if (stopTypingRef.current) {
-      clearTimeout(stopTypingRef.current);
-    }
-
-    const typing = value.trim().length > 0;
-    const now = Date.now();
-
-    if (!typing || now - lastTypingBroadcastRef.current > 500) {
-      lastTypingBroadcastRef.current = now;
-      void channel.send({
-        type: "broadcast",
-        event: "typing",
-        payload: {
-          user_id: userId,
-          typing,
-        },
-      });
-
-      void channel.track({
+    void channel.send({
+      type: "broadcast",
+      event: "typing",
+      payload: {
         user_id: userId,
         typing,
-        updated_at: Date.now(),
-      });
+      },
+    });
+
+    void channel.track({
+      user_id: userId,
+      typing,
+      updated_at: Date.now(),
+    });
+  }
+
+  function broadcastTyping(value: string) {
+    if (!typingChannelRef.current || !userId || !typingReadyRef.current) return;
+
+    if (stopTypingRef.current) {
+      clearTimeout(stopTypingRef.current);
+      stopTypingRef.current = null;
     }
 
-    if (typing) {
-      stopTypingRef.current = setTimeout(() => {
-        void channel.send({
-          type: "broadcast",
-          event: "typing",
-          payload: {
-            user_id: userId,
-            typing: false,
-          },
-        });
-
-        void channel.track({
-          user_id: userId,
-          typing: false,
-          updated_at: Date.now(),
-        });
-      }, 2800);
+    if (value.length === 0) {
+      lastTypingActivityRef.current = 0;
+      stopTypingHeartbeat();
+      sendTypingStatus(false);
+      return;
     }
+
+    lastTypingActivityRef.current = Date.now();
+    sendTypingStatus(true);
+
+    if (!typingHeartbeatRef.current) {
+      typingHeartbeatRef.current = setInterval(() => {
+        const stillTyping =
+          Date.now() - lastTypingActivityRef.current < 2400;
+
+        if (stillTyping) {
+          sendTypingStatus(true);
+          return;
+        }
+
+        sendTypingStatus(false);
+        stopTypingHeartbeat();
+      }, 900);
+    }
+
+    stopTypingRef.current = setTimeout(() => {
+      lastTypingActivityRef.current = 0;
+      sendTypingStatus(false);
+      stopTypingHeartbeat();
+    }, 2800);
   }
 
   async function sendMessage(event?: FormEvent) {
@@ -1040,6 +1064,10 @@ export default function DirectChatPage() {
                         setText(value);
                         broadcastTyping(value);
                       }}
+                      onInput={(event) => {
+                        broadcastTyping(event.currentTarget.value);
+                      }}
+                      onBlur={() => broadcastTyping("")}
                       onKeyDown={(event) => {
                         if (event.key === "Enter" && !event.shiftKey) {
                           event.preventDefault();
