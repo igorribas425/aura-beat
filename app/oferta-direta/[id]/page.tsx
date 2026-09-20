@@ -277,11 +277,11 @@ export default function DirectOfferPage() {
     };
   }, [artist, location, transportMode]);
 
-  function useSuggestedFee() {
+  function applySuggestedFee() {
     setFee(suggestedFee.toFixed(2));
   }
 
-  async function useCurrentLocation() {
+  async function requestCurrentLocation() {
     if (!navigator.geolocation) {
       setError("Este navegador não permite obter a localização.");
       return;
@@ -596,7 +596,7 @@ export default function DirectOfferPage() {
                 />
                 <button
                   type="button"
-                  onClick={useSuggestedFee}
+                  onClick={applySuggestedFee}
                   className="rounded-xl bg-purple-600 px-4 py-3 text-sm font-black"
                 >
                   Usar cachê
@@ -688,7 +688,7 @@ export default function DirectOfferPage() {
             <div className="mt-5 rounded-2xl border border-zinc-800 bg-black/25 p-4">
               <button
                 type="button"
-                onClick={() => void useCurrentLocation()}
+                onClick={() => void requestCurrentLocation()}
                 className="rounded-xl border border-green-500/40 bg-green-500/10 px-4 py-3 text-sm font-black text-green-300"
               >
                 📍 Usar localização do evento
