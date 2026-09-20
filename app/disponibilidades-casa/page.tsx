@@ -8,6 +8,7 @@ import {
 } from "react";
 
 import { useRouter } from "next/navigation";
+import { ProfileAvatar } from "../../components/profile-avatar";
 import { supabase } from "../../lib/supabase";
 
 type Casa = {
@@ -69,6 +70,17 @@ type OfertaArtista = {
 
 type OfertaVisual = OfertaArtista & {
   artista: Artista | null;
+};
+
+type DisponivelAgora = {
+  artist_id: string;
+  stage_name: string;
+  avatar_url: string | null;
+  base_city: string | null;
+  base_state: string | null;
+  verification_status: string | null;
+  radius_km: number;
+  last_seen_at: string | null;
 };
 
 type Solicitacao = {
@@ -180,6 +192,9 @@ export default function DisponibilidadesCasaPage() {
 
   const [ofertas, setOfertas] =
     useState<OfertaVisual[]>([]);
+
+  const [disponiveisAgora, setDisponiveisAgora] =
+    useState<DisponivelAgora[]>([]);
 
   const [
     solicitacoes,
@@ -299,6 +314,7 @@ export default function DisponibilidadesCasaPage() {
 
       await Promise.all([
         carregarOfertas(),
+        carregarDisponiveisAgora(),
         carregarSolicitacoes(
           perfilCasa.id
         ),
@@ -449,6 +465,36 @@ export default function DisponibilidadesCasaPage() {
             ) || null,
         })
       )
+    );
+  }
+
+  async function carregarDisponiveisAgora() {
+    const { data, error } = await supabase.rpc(
+      "available_artists_for_venue_v1",
+      {
+        p_search: null,
+      }
+    );
+
+    if (error) {
+      throw error;
+    }
+
+    setDisponiveisAgora(
+      (data || []).map((item) => ({
+        artist_id: String(item.artist_id),
+        stage_name: String(item.stage_name || "Artista"),
+        avatar_url: item.avatar_url ? String(item.avatar_url) : null,
+        base_city: item.base_city ? String(item.base_city) : null,
+        base_state: item.base_state ? String(item.base_state) : null,
+        verification_status: item.verification_status
+          ? String(item.verification_status)
+          : null,
+        radius_km: Number(item.radius_km || 0),
+        last_seen_at: item.last_seen_at
+          ? String(item.last_seen_at)
+          : null,
+      }))
     );
   }
 
@@ -839,6 +885,35 @@ export default function DisponibilidadesCasaPage() {
       );
     }, [busca, ofertas]);
 
+  const idsComOfertaUrgente = new Set(
+    ofertas.map((oferta) => oferta.artist_id)
+  );
+
+  const disponiveisFiltrados = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+
+    return disponiveisAgora.filter((artista) => {
+      if (idsComOfertaUrgente.has(artista.artist_id)) {
+        return false;
+      }
+
+      if (!termo) {
+        return true;
+      }
+
+      const texto = [
+        artista.stage_name,
+        artista.base_city,
+        artista.base_state,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return texto.includes(termo);
+    });
+  }, [busca, disponiveisAgora, ofertas]);
+
   if (carregando) {
     return (
       <main className="min-h-screen bg-black p-6 text-white">
@@ -906,12 +981,12 @@ export default function DisponibilidadesCasaPage() {
           </p>
         </div>
 
-        {ofertasFiltradas.length ===
-        0 ? (
+        {ofertasFiltradas.length === 0 &&
+        disponiveisFiltrados.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-zinc-800 p-12 text-center text-zinc-500">
-            Nenhum DJ disponível encontrado.
+            Nenhum DJ disponível encontrado para esta busca.
           </div>
-        ) : (
+        ) : ofertasFiltradas.length > 0 ? (
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
 
             {ofertasFiltradas.map(
@@ -1112,6 +1187,91 @@ export default function DisponibilidadesCasaPage() {
             )}
 
           </div>
+        )}
+
+        {disponiveisFiltrados.length > 0 && (
+          <section className="mt-8">
+            <div className="mb-4">
+              <p className="text-xs font-black uppercase tracking-wider text-green-400">
+                ONLINE / DISPONÍVEL
+              </p>
+              <h2 className="mt-1 text-2xl font-black">
+                DJs disponíveis agora
+              </h2>
+              <p className="mt-1 text-sm text-zinc-500">
+                Estes DJs marcaram “Disponível para eventos”, mesmo sem uma publicação urgente aberta.
+              </p>
+            </div>
+
+            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {disponiveisFiltrados.map((artista) => (
+                <article
+                  key={artista.artist_id}
+                  className="rounded-2xl border border-green-900/40 bg-gradient-to-br from-zinc-950 to-green-950/10 p-5"
+                >
+                  <div className="flex items-center gap-4">
+                    <ProfileAvatar
+                      kind="artist"
+                      name={artista.stage_name}
+                      url={artista.avatar_url}
+                      sizeClassName="h-16 w-16"
+                      className="rounded-2xl"
+                    />
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="truncate text-lg font-black">
+                          {artista.stage_name}
+                        </h3>
+
+                        {artista.verification_status === "verified" && (
+                          <span className="rounded-full border border-blue-900 bg-blue-950/30 px-2 py-0.5 text-[10px] font-black text-blue-300">
+                            ✓ Verificado
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="mt-1 text-sm text-zinc-500">
+                        {artista.base_city || "Cidade não informada"}
+                        {artista.base_state ? `/${artista.base_state}` : ""}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-xl border border-green-900/30 bg-green-950/10 p-3">
+                    <p className="text-sm font-bold text-green-300">
+                      ● Disponível para eventos
+                    </p>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      Raio informado: até {artista.radius_km || 50} km
+                    </p>
+                  </div>
+
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        router.push(`/artistas/${artista.artist_id}`)
+                      }
+                      className="rounded-xl border border-zinc-700 px-4 py-3 text-sm font-bold text-zinc-300"
+                    >
+                      Ver perfil
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        router.push(`/oferta-direta/${artista.artist_id}`)
+                      }
+                      className="rounded-xl bg-green-600 px-4 py-3 text-sm font-black text-white hover:bg-green-500"
+                    >
+                      Solicitar DJ
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
         )}
 
         {ofertaSelecionada && (
