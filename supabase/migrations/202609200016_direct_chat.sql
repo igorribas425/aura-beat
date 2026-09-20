@@ -190,7 +190,7 @@ returns integer
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $$
 declare
   v_updated integer := 0;
 begin
@@ -216,7 +216,7 @@ begin
   get diagnostics v_updated = row_count;
   return v_updated;
 end;
-$;
+$$;
 
 revoke all on function public.mark_direct_conversation_read_v1(uuid) from public;
 grant execute on function public.mark_direct_conversation_read_v1(uuid) to authenticated;
