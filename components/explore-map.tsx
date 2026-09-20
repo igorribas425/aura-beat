@@ -97,7 +97,7 @@ function profileMarkerIcon(
     ? `<span
         class="aura-profile-marker-image"
         aria-hidden="true"
-        style="background-image:url('&quot;${escapeHtml(imageUrl)}&quot;')"
+        style="background-image:url(&quot;${escapeHtml(imageUrl)}&quot;)"
       ></span>`
     : `<span class="aura-profile-marker-fallback">${fallback}</span>`;
 
