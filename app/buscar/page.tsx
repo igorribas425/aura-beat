@@ -519,8 +519,8 @@ export default function ExplorePage() {
 
       try {
         const effectiveDistanceKm = filters.maximumDistanceKm;
-        const requestLimit = EXPLORE_PAGE_SIZE;
-        const requestOffset = (page - 1) * EXPLORE_PAGE_SIZE;
+        const requestLimit = view === "map" ? 48 : EXPLORE_PAGE_SIZE;
+        const requestOffset = view === "map" ? 0 : (page - 1) * EXPLORE_PAGE_SIZE;
 
         const { data, error: rpcError } = await supabase.rpc("explore_profiles_v1", {
           p_kind: filters.kind,
@@ -583,7 +583,7 @@ export default function ExplorePage() {
       active = false;
       window.clearTimeout(timer);
     };
-  }, [contextLoading, filters, location, ownArtistId, ownVenueId, page, reloadKey]);
+  }, [contextLoading, filters, location, ownArtistId, ownVenueId, page, reloadKey, view]);
 
   const favoriteKeys = useMemo(
     () =>
@@ -627,6 +627,7 @@ export default function ExplorePage() {
     setView(nextView);
 
     if (nextView === "map") {
+      setPage(1);
       window.requestAnimationFrame(() => {
         window.requestAnimationFrame(() => {
           document.getElementById("explore-results")?.scrollIntoView({
