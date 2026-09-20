@@ -325,6 +325,23 @@ export default function DirectChatPage() {
         },
       )
       .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "direct_messages",
+          filter: `conversation_id=eq.${selectedId}`,
+        },
+        (payload) => {
+          const updated = payload.new as DirectMessage;
+          setMessages((current) =>
+            current.map((message) =>
+              message.id === updated.id ? updated : message,
+            ),
+          );
+        },
+      )
+      .on(
         "broadcast",
         {
           event: "typing",
