@@ -436,7 +436,7 @@ export default function DirectChatPage() {
                 presence.user_id &&
                 presence.user_id !== userId &&
                 presence.typing === true &&
-                Date.now() - Number(presence.updated_at ?? 0) < 4000,
+                Date.now() - Number(presence.updated_at ?? 0) < 6000,
             );
 
           setOtherTyping(isOtherTyping);
@@ -464,7 +464,7 @@ export default function DirectChatPage() {
           if (status.typing) {
             hideTypingRef.current = setTimeout(() => {
               setOtherTyping(false);
-            }, 2600);
+            }, 4500);
           }
         },
       );
@@ -724,7 +724,7 @@ export default function DirectChatPage() {
     const typing = value.trim().length > 0;
     const now = Date.now();
 
-    if (!typing || now - lastTypingBroadcastRef.current > 700) {
+    if (!typing || now - lastTypingBroadcastRef.current > 500) {
       lastTypingBroadcastRef.current = now;
       void channel.send({
         type: "broadcast",
@@ -758,7 +758,7 @@ export default function DirectChatPage() {
           typing: false,
           updated_at: Date.now(),
         });
-      }, 1200);
+      }, 2800);
     }
   }
 
