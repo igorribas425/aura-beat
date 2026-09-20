@@ -500,122 +500,10 @@ export default function ConfiguracoesPage() {
         )}
 
         <section className="rounded-3xl border border-zinc-800 bg-zinc-950 p-6">
-          <p className="text-xs font-black text-red-500">CONTA</p>
-          <h2 className="mt-1 text-2xl font-black">Dados pessoais</h2>
-
-          <div className="mt-6 grid gap-5 md:grid-cols-2">
-            <div>
-              <label className="mb-2 block text-sm font-bold text-zinc-300">
-                Nome completo
-              </label>
-              <input
-                type="text"
-                value={nome}
-                onChange={(event) => setNome(event.target.value)}
-                placeholder="Seu nome"
-                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 outline-none focus:border-red-500"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-bold text-zinc-300">
-                Telefone
-              </label>
-              <input
-                type="tel"
-                value={telefone}
-                onChange={(event) => setTelefone(event.target.value)}
-                placeholder="(54) 99999-9999"
-                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 outline-none focus:border-red-500"
-              />
-            </div>
-
-            <div className={possuiDoisPerfis ? "" : "md:col-span-2"}>
-              <label className="mb-2 block text-sm font-bold text-zinc-300">
-                E-mail da conta
-              </label>
-              <input
-                type="email"
-                value={email}
-                disabled
-                className="w-full cursor-not-allowed rounded-xl border border-zinc-800 bg-black px-4 py-3 text-zinc-500"
-              />
-              <p className="mt-2 text-xs text-zinc-600">
-                Um único login pode administrar seus perfis da Aura Beat.
-              </p>
-            </div>
-
-            {possuiDoisPerfis && (
-              <div>
-                <label className="mb-2 block text-sm font-bold text-zinc-300">
-                  Modo padrão
-                </label>
-                <select
-                  value={modoPadrao}
-                  onChange={(event) =>
-                    setModoPadrao(event.target.value as ModoPerfil)
-                  }
-                  className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 outline-none focus:border-red-500"
-                >
-                  <option value="artist">🎧 Artista</option>
-                  <option value="venue">🏢 Casa</option>
-                </select>
-                <p className="mt-2 text-xs text-zinc-600">
-                  Essa opção só aparece porque esta conta possui os dois perfis.
-                </p>
-              </div>
-            )}
-
-            <div className="md:col-span-2">
-              <label className="mb-2 block text-sm font-bold text-zinc-300">
-                Aparência preferida
-              </label>
-
-              <div className="grid gap-3 sm:grid-cols-3">
-                {[
-                  { valor: "system" as Tema, titulo: "Sistema", icone: "💻" },
-                  { valor: "dark" as Tema, titulo: "Escuro", icone: "🌙" },
-                  { valor: "light" as Tema, titulo: "Claro", icone: "☀️" },
-                ].map((item) => (
-                  <button
-                    key={item.valor}
-                    type="button"
-                    aria-pressed={tema === item.valor}
-                    onClick={() => void alterarTema(item.valor)}
-                    className={`rounded-2xl border p-4 text-left transition ${
-                      tema === item.valor
-                        ? "border-red-500 bg-red-950/20"
-                        : "border-zinc-800 bg-black/30 hover:border-zinc-700"
-                    }`}
-                  >
-                    <p className="text-xl">{item.icone}</p>
-                    <p className="mt-2 font-black">{item.titulo}</p>
-                  </button>
-                ))}
-              </div>
-
-              <p className="mt-3 text-xs text-zinc-600">
-                A mudança é imediata. Em Sistema, o Aura Beat acompanha
-                automaticamente a aparência do aparelho.
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            disabled={salvando}
-            onClick={salvarPerfil}
-            className="mt-6 w-full rounded-2xl bg-red-500 py-4 font-black hover:bg-red-600 disabled:opacity-50"
-          >
-            {salvando ? "Salvando..." : "Salvar configurações"}
-          </button>
-        </section>
-
-        <section className="rounded-3xl border border-zinc-800 bg-zinc-950 p-6">
-          <p className="text-xs font-black text-red-500">PERFIL</p>
-          <h2 className="mt-1 text-2xl font-black">Meu perfil</h2>
+          <p className="text-xs font-black text-red-500">MEU PERFIL</p>
+          <h2 className="mt-1 text-2xl font-black">Foto e edição do perfil</h2>
           <p className="mt-2 text-sm text-zinc-500">
-            Mostrando o perfil do modo atual: {modoAtual === "venue" ? "Casa" : "Artista"}.
+            Altere sua foto principal e entre na edição completa do perfil.
           </p>
 
           <div className="mt-6 grid gap-4">
@@ -728,6 +616,118 @@ export default function ConfiguracoesPage() {
               </article>
             )}
           </div>
+        </section>
+
+        <section className="rounded-3xl border border-zinc-800 bg-zinc-950 p-6">
+          <p className="text-xs font-black text-red-500">CONTA</p>
+          <h2 className="mt-1 text-2xl font-black">Dados pessoais</h2>
+
+          <div className="mt-6 grid gap-5 md:grid-cols-2">
+            <div>
+              <label className="mb-2 block text-sm font-bold text-zinc-300">
+                Nome completo
+              </label>
+              <input
+                type="text"
+                value={nome}
+                onChange={(event) => setNome(event.target.value)}
+                placeholder="Seu nome"
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 outline-none focus:border-red-500"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-bold text-zinc-300">
+                Telefone
+              </label>
+              <input
+                type="tel"
+                value={telefone}
+                onChange={(event) => setTelefone(event.target.value)}
+                placeholder="(54) 99999-9999"
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 outline-none focus:border-red-500"
+              />
+            </div>
+
+            <div className={possuiDoisPerfis ? "" : "md:col-span-2"}>
+              <label className="mb-2 block text-sm font-bold text-zinc-300">
+                E-mail da conta
+              </label>
+              <input
+                type="email"
+                value={email}
+                disabled
+                className="w-full cursor-not-allowed rounded-xl border border-zinc-800 bg-black px-4 py-3 text-zinc-500"
+              />
+              <p className="mt-2 text-xs text-zinc-600">
+                Um único login pode administrar seus perfis da Aura Beat.
+              </p>
+            </div>
+
+            {possuiDoisPerfis && (
+              <div>
+                <label className="mb-2 block text-sm font-bold text-zinc-300">
+                  Modo padrão
+                </label>
+                <select
+                  value={modoPadrao}
+                  onChange={(event) =>
+                    setModoPadrao(event.target.value as ModoPerfil)
+                  }
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 outline-none focus:border-red-500"
+                >
+                  <option value="artist">🎧 Artista</option>
+                  <option value="venue">🏢 Casa</option>
+                </select>
+                <p className="mt-2 text-xs text-zinc-600">
+                  Essa opção só aparece porque esta conta possui os dois perfis.
+                </p>
+              </div>
+            )}
+
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-sm font-bold text-zinc-300">
+                Aparência preferida
+              </label>
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                {[
+                  { valor: "system" as Tema, titulo: "Sistema", icone: "💻" },
+                  { valor: "dark" as Tema, titulo: "Escuro", icone: "🌙" },
+                  { valor: "light" as Tema, titulo: "Claro", icone: "☀️" },
+                ].map((item) => (
+                  <button
+                    key={item.valor}
+                    type="button"
+                    aria-pressed={tema === item.valor}
+                    onClick={() => void alterarTema(item.valor)}
+                    className={`rounded-2xl border p-4 text-left transition ${
+                      tema === item.valor
+                        ? "border-red-500 bg-red-950/20"
+                        : "border-zinc-800 bg-black/30 hover:border-zinc-700"
+                    }`}
+                  >
+                    <p className="text-xl">{item.icone}</p>
+                    <p className="mt-2 font-black">{item.titulo}</p>
+                  </button>
+                ))}
+              </div>
+
+              <p className="mt-3 text-xs text-zinc-600">
+                A mudança é imediata. Em Sistema, o Aura Beat acompanha
+                automaticamente a aparência do aparelho.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            disabled={salvando}
+            onClick={salvarPerfil}
+            className="mt-6 w-full rounded-2xl bg-red-500 py-4 font-black hover:bg-red-600 disabled:opacity-50"
+          >
+            {salvando ? "Salvando..." : "Salvar configurações"}
+          </button>
         </section>
 
         <section className="rounded-3xl border border-zinc-800 bg-zinc-950 p-6">
