@@ -24,7 +24,7 @@ export type MiniPressKitTravelQuote = {
   distanceKm: number;
   roundTripKm: number;
   withinRadius: boolean;
-  calculationMode: "fixed" | "vehicle";
+  calculationMode: "fixed" | "vehicle" | "ticket";
   fuelLiters: number | null;
   estimatedAmount: number;
 };
