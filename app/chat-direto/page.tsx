@@ -29,6 +29,7 @@ type DirectMessage = {
 
 type ConversationView = DirectConversation & {
   otherUserId: string;
+  otherProfileId: string | null;
   otherKind: ProfileKind;
   otherName: string;
   otherAvatar: string | null;
@@ -62,6 +63,7 @@ export default function DirectChatPage() {
   const alertsEnabledRef = useRef(false);
 
   const [userId, setUserId] = useState("");
+  const [activeMode, setActiveMode] = useState<ProfileKind>("artist");
   const [conversations, setConversations] = useState<ConversationView[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
@@ -123,6 +125,15 @@ export default function DirectChatPage() {
       }
 
       setUserId(user.id);
+
+      const { data: accountProfile } = await supabase
+        .from("profiles")
+        .select("default_mode")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (!active) return;
+      setActiveMode(accountProfile?.default_mode === "venue" ? "venue" : "artist");
 
       const params = new URLSearchParams(window.location.search);
       const targetKind = params.get("targetKind");
@@ -203,13 +214,13 @@ export default function DirectChatPage() {
         artistUsers.length
           ? supabase
               .from("artist_profiles")
-              .select("user_id,stage_name,avatar_url")
+              .select("id,user_id,stage_name,avatar_url")
               .in("user_id", [...new Set(artistUsers)])
           : Promise.resolve({ data: [], error: null }),
         venueUsers.length
           ? supabase
               .from("venue_profiles")
-              .select("owner_user_id,trade_name,avatar_url")
+              .select("id,owner_user_id,trade_name,avatar_url")
               .in("owner_user_id", [...new Set(venueUsers)])
           : Promise.resolve({ data: [], error: null }),
       ]);
@@ -219,7 +230,11 @@ export default function DirectChatPage() {
           (item) =>
             [
               item.user_id,
-              { name: item.stage_name, avatar: item.avatar_url as string | null },
+              {
+                id: item.id as string,
+                name: item.stage_name,
+                avatar: item.avatar_url as string | null,
+              },
             ] as const,
         ),
       );
@@ -229,7 +244,11 @@ export default function DirectChatPage() {
           (item) =>
             [
               item.owner_user_id,
-              { name: item.trade_name, avatar: item.avatar_url as string | null },
+              {
+                id: item.id as string,
+                name: item.trade_name,
+                avatar: item.avatar_url as string | null,
+              },
             ] as const,
         ),
       );
@@ -246,6 +265,7 @@ export default function DirectChatPage() {
         return {
           ...conversation,
           otherUserId,
+          otherProfileId: profile?.id ?? null,
           otherKind,
           otherName:
             profile?.name ??
@@ -1063,8 +1083,8 @@ export default function DirectChatPage() {
                     sizeClassName="h-12 w-12"
                     className="rounded-2xl"
                   />
-                  <div>
-                    <p className="font-black">{selected.otherName}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-black">{selected.otherName}</p>
                     {otherTyping ? (
                       <p className="text-xs font-semibold text-sky-400">
                         Digitando<span className="animate-pulse">...</span>
@@ -1075,6 +1095,26 @@ export default function DirectChatPage() {
                       </p>
                     )}
                   </div>
+
+                  {activeMode === "venue" &&
+                    selected.otherKind === "artist" &&
+                    selected.otherProfileId && (
+                      <Link
+                        href={`/oferta-direta/${selected.otherProfileId}?conversation=${selected.id}`}
+                        className="ml-auto shrink-0 rounded-xl border border-green-500/40 bg-green-500/10 px-3 py-2 text-xs font-black text-green-300 transition hover:bg-green-500/20 sm:px-4 sm:text-sm"
+                      >
+                        📅 Fechar data
+                      </Link>
+                    )}
+
+                  {activeMode === "artist" && (
+                    <Link
+                      href="/agenda"
+                      className="ml-auto shrink-0 rounded-xl border border-zinc-700 px-3 py-2 text-xs font-bold text-zinc-300 sm:px-4 sm:text-sm"
+                    >
+                      🗓 Agenda
+                    </Link>
+                  )}
                 </div>
 
                 <div className="flex-1 space-y-3 overflow-y-auto bg-black/20 p-4 sm:p-6">
@@ -1087,7 +1127,7 @@ export default function DirectChatPage() {
                       <p className="text-3xl">👋</p>
                       <p className="mt-3 font-black">Comece a conversa</p>
                       <p className="mt-1 text-sm text-zinc-500">
-                        Esse chat é separado das contratações e pagamentos.
+                        Converse normalmente e use “Fechar data” quando chegarem a um acordo.
                       </p>
                     </div>
                   ) : (
