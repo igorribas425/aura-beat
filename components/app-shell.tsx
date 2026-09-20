@@ -202,7 +202,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     { href: "/buscar", icon: "explore", label: "Explorar" },
     { href: offers, icon: "offers", label: "Ofertas" },
     { href: events, icon: "events", label: "Eventos" },
-    { href: "/chat", icon: "chat", label: "Chat" },
+    { href: "/chat-direto", icon: "chat", label: "Chat" },
     { href: "/notificacoes", icon: "alerts", label: "Alertas" },
   ];
 
