@@ -297,38 +297,66 @@ export function MiniPressKit(
                 ))}
               </div>
             ) : media.length > 0 ? (
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                {media.slice(0, 3).map((item, index) => (
-                  <div
-                    key={item.id}
-                    className={`relative h-24 overflow-hidden rounded-xl border border-white/10 bg-zinc-900 ${index === 0 ? "col-span-2" : ""}`}
-                  >
-                    {item.media_type === "video" ? (
-                      <>
-                        <video
-                          src={item.public_url}
-                          muted
-                          playsInline
-                          preload="metadata"
-                          className="h-full w-full object-cover"
-                        />
-                        <span className="absolute inset-0 grid place-items-center text-xl text-white">
-                          ▶
-                        </span>
-                      </>
-                    ) : (
+              <div
+                className={`mt-3 grid gap-2 ${
+                  media.length === 1
+                    ? "grid-cols-1"
+                    : media.length === 2
+                      ? "grid-cols-2"
+                      : "grid-cols-3"
+                }`}
+              >
+                {media.slice(0, 3).map((item, index) => {
+                  const single = media.length === 1;
+
+                  return (
+                    <div
+                      key={item.id}
+                      className={`relative overflow-hidden rounded-xl border border-white/10 bg-black ${
+                        single
+                          ? "h-52"
+                          : media.length === 2
+                            ? "h-36"
+                            : index === 0
+                              ? "col-span-2 h-32"
+                              : "h-32"
+                      }`}
+                    >
                       <div
-                        className="h-full w-full bg-cover bg-center"
+                        className="absolute inset-0 scale-110 bg-cover bg-center opacity-25 blur-xl"
                         style={{ backgroundImage: `url(${item.public_url})` }}
+                        aria-hidden="true"
                       />
-                    )}
-                    {item.is_cover && (
-                      <span className="absolute left-2 top-2 rounded-full bg-purple-500/90 px-2 py-0.5 text-[9px] font-black uppercase text-white">
-                        Principal
-                      </span>
-                    )}
-                  </div>
-                ))}
+
+                      {item.media_type === "video" ? (
+                        <>
+                          <video
+                            src={item.public_url}
+                            muted
+                            playsInline
+                            preload="metadata"
+                            className="relative z-[1] h-full w-full object-contain"
+                          />
+                          <span className="absolute inset-0 z-[2] grid place-items-center text-xl text-white">
+                            ▶
+                          </span>
+                        </>
+                      ) : (
+                        <img
+                          src={item.public_url}
+                          alt={item.caption || "Mídia profissional do Artista"}
+                          className="relative z-[1] h-full w-full object-contain"
+                        />
+                      )}
+
+                      {item.is_cover && (
+                        <span className="absolute left-2 top-2 z-[3] rounded-full bg-purple-500/90 px-2 py-0.5 text-[9px] font-black uppercase text-white">
+                          Principal
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <p className="mt-3 text-xs leading-5 text-zinc-500">
