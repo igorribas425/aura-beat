@@ -154,6 +154,7 @@ end;
 $$;
 
 revoke all on function public.artist_travel_quote_v1(uuid,double precision,double precision) from public;
+revoke execute on function public.artist_travel_quote_v1(uuid,double precision,double precision) from anon;
 grant execute on function public.artist_travel_quote_v1(uuid,double precision,double precision) to authenticated;
 
 comment on function public.artist_travel_quote_v1(uuid,double precision,double precision)
