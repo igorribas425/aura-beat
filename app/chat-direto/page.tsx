@@ -54,6 +54,7 @@ export default function DirectChatPage() {
   const router = useRouter();
   const endRef = useRef<HTMLDivElement | null>(null);
   const stopTypingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingHeartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hideTypingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTypingWriteRef = useRef(0);
   const typingActiveRef = useRef(false);
@@ -361,7 +362,7 @@ export default function DirectChatPage() {
       const fresh =
         data.is_typing === true &&
         Number.isFinite(updatedAt) &&
-        Date.now() - updatedAt < 5000;
+        Date.now() - updatedAt < 6500;
 
       setOtherTyping(fresh);
 
@@ -372,7 +373,7 @@ export default function DirectChatPage() {
 
         hideTypingRef.current = setTimeout(() => {
           setOtherTyping(false);
-        }, 5000);
+        }, 6500);
       }
     }
 
@@ -465,14 +466,14 @@ export default function DirectChatPage() {
           const fresh =
             status.is_typing === true &&
             Number.isFinite(updatedAt) &&
-            Date.now() - updatedAt < 5000;
+            Date.now() - updatedAt < 6500;
 
           setOtherTyping(fresh);
 
           if (fresh) {
             hideTypingRef.current = setTimeout(() => {
               setOtherTyping(false);
-            }, 5000);
+            }, 6500);
           }
         },
       );
@@ -485,6 +486,11 @@ export default function DirectChatPage() {
       if (stopTypingRef.current) {
         clearTimeout(stopTypingRef.current);
         stopTypingRef.current = null;
+      }
+
+      if (typingHeartbeatRef.current) {
+        clearInterval(typingHeartbeatRef.current);
+        typingHeartbeatRef.current = null;
       }
 
       if (hideTypingRef.current) {
@@ -735,20 +741,28 @@ export default function DirectChatPage() {
     }
   }
 
+  function stopTypingHeartbeat() {
+    if (typingHeartbeatRef.current) {
+      clearInterval(typingHeartbeatRef.current);
+      typingHeartbeatRef.current = null;
+    }
+  }
+
   function broadcastTyping(value: string) {
     if (!selectedId || !userId) return;
+
+    const conversationId = selectedId;
 
     if (stopTypingRef.current) {
       clearTimeout(stopTypingRef.current);
       stopTypingRef.current = null;
     }
 
-    const typing = value.length > 0;
-
-    if (!typing) {
+    if (value.length === 0) {
       typingActiveRef.current = false;
       lastTypingWriteRef.current = 0;
-      void writeTypingStatus(selectedId, false);
+      stopTypingHeartbeat();
+      void writeTypingStatus(conversationId, false);
       return;
     }
 
@@ -756,20 +770,28 @@ export default function DirectChatPage() {
 
     if (
       !typingActiveRef.current ||
-      now - lastTypingWriteRef.current >= 700
+      now - lastTypingWriteRef.current >= 650
     ) {
       typingActiveRef.current = true;
       lastTypingWriteRef.current = now;
-      void writeTypingStatus(selectedId, true);
+      void writeTypingStatus(conversationId, true);
+    }
+
+    if (!typingHeartbeatRef.current) {
+      typingHeartbeatRef.current = setInterval(() => {
+        if (!typingActiveRef.current) return;
+
+        lastTypingWriteRef.current = Date.now();
+        void writeTypingStatus(conversationId, true);
+      }, 1200);
     }
 
     stopTypingRef.current = setTimeout(() => {
-      if (!selectedId) return;
-
       typingActiveRef.current = false;
       lastTypingWriteRef.current = 0;
-      void writeTypingStatus(selectedId, false);
-    }, 2200);
+      stopTypingHeartbeat();
+      void writeTypingStatus(conversationId, false);
+    }, 3200);
   }
 
   async function sendMessage(event?: FormEvent) {
@@ -1049,6 +1071,9 @@ export default function DirectChatPage() {
                         const value = event.target.value;
                         setText(value);
                         broadcastTyping(value);
+                      }}
+                      onInput={(event) => {
+                        broadcastTyping(event.currentTarget.value);
                       }}
                       onBlur={() => broadcastTyping("")}
                       onKeyDown={(event) => {
