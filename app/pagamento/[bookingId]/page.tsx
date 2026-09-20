@@ -447,26 +447,17 @@ export default function PagamentoPixPage() {
       );
     }, [booking]);
 
-  const taxaExibida =
-    useMemo(() => {
-      if (!booking) {
-        return 0;
-      }
+  const taxaAuraBeat =
+    Number(
+      booking?.platform_fee_venue ||
+        0
+    );
 
-      return (
-        Number(
-          booking.platform_fee_venue ||
-            0
-        ) +
-        Number(
-          pix?.providerFee ||
-            0
-        )
-      );
-    }, [
-      booking,
-      pix,
-    ]);
+  const taxaAsaas =
+    Number(
+      pix?.providerFee ||
+        0
+    );
 
   if (carregando) {
     return (
@@ -550,13 +541,25 @@ export default function PagamentoPixPage() {
 
               <div className="flex justify-between text-zinc-400">
                 <span>
-                  Taxa Aura Beat
+                  Comissão Aura Beat
+                </span>
+
+                <span>
+                  {money(
+                    taxaAuraBeat
+                  )}
+                </span>
+              </div>
+
+              <div className="flex justify-between text-zinc-400">
+                <span>
+                  Taxa ASAAS
                 </span>
 
                 <span>
                   {pix
                     ? money(
-                        taxaExibida
+                        taxaAsaas
                       )
                     : "calculada ao gerar o Pix"}
                 </span>
