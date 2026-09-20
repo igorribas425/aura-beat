@@ -89,7 +89,7 @@ function isBrazilProfile(profile: ExploreProfile) {
 }
 
 function defaultExploreKind(mode: Mode): ExploreKind {
-  return mode === "venue" ? "artist" : "venue";
+  return mode === "venue" ? "artist" : "all";
 }
 
 function optionalNumber(value: number | string | null | undefined) {
@@ -470,11 +470,11 @@ export default function ExplorePage() {
     [],
   );
 
-  const focusTitle = mode === "venue" ? "Encontre Artistas" : "Encontre Casas";
+  const focusTitle = mode === "venue" ? "Encontre DJs" : "Explore a comunidade";
   const focusDescription =
     mode === "venue"
-      ? "No modo Casa, o Aura Beat mostra Artistas primeiro. Você ainda pode explorar Casas para networking e referências."
-      : "No modo Artista, o Aura Beat mostra Casas primeiro. Você ainda pode explorar outros Artistas para networking e referências.";
+      ? "No modo Casa, o Explorar é o lugar para descobrir DJs, abrir perfis e iniciar conversas."
+      : "No modo Artista, você pode descobrir Casas e outros Artistas, abrir perfis e iniciar conversas.";
 
   function changeView(nextView: ViewMode) {
     setView(nextView);
@@ -603,11 +603,14 @@ export default function ExplorePage() {
 
         <section className="aura-card mt-6 rounded-3xl border p-4 sm:p-6" aria-label="Filtros do Explorar">
           <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Tipos de perfil">
-            {([
-              ["all", "Todos"],
-              ["artist", "Artistas"],
-              ["venue", "Casas"],
-            ] as Array<[ExploreKind, string]>).map(([kind, label]) => (
+            {(mode === "venue"
+              ? ([["artist", "Artistas"]] as Array<[ExploreKind, string]>)
+              : ([
+                  ["all", "Todos"],
+                  ["artist", "Artistas"],
+                  ["venue", "Casas"],
+                ] as Array<[ExploreKind, string]>)
+            ).map(([kind, label]) => (
               <button
                 key={kind}
                 type="button"
@@ -627,8 +630,8 @@ export default function ExplorePage() {
 
           <p className="mt-3 text-xs text-zinc-500">
             {mode === "venue"
-              ? "Casa → Artistas é o foco principal. Use as outras abas quando quiser explorar a comunidade."
-              : "Artista → Casas é o foco principal. Use as outras abas quando quiser explorar a comunidade."}
+              ? "Casas encontram DJs aqui. A busca começa sem limite de distância."
+              : "Artistas podem explorar Casas e outros Artistas. A busca começa sem limite de distância."}
           </p>
 
           <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
