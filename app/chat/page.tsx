@@ -1489,23 +1489,32 @@ export default function ChatPage() {
             </p>
 
             <p className="text-xs text-zinc-500">
-              Chat seguro
+              Chat da contratação
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() =>
-              router.push(
-                modo === "artist"
-                  ? "/home-artista"
-                  : "/home-casa"
-              )
-            }
-            className="rounded-xl border border-zinc-800 px-4 py-2 text-sm font-bold text-zinc-300 hover:bg-zinc-900"
-          >
-            ← Home
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => router.push("/chat-direto")}
+              className="rounded-xl border border-purple-500/40 bg-purple-500/10 px-4 py-2 text-sm font-bold text-purple-200 hover:bg-purple-500/20"
+            >
+              Chat Direto
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                router.push(
+                  modo === "artist"
+                    ? "/home-artista"
+                    : "/home-casa"
+                )
+              }
+              className="rounded-xl border border-zinc-800 px-4 py-2 text-sm font-bold text-zinc-300 hover:bg-zinc-900"
+            >
+              ← Home
+            </button>
+          </div>
         </div>
       </header>
 
