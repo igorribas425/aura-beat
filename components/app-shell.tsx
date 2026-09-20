@@ -383,7 +383,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <div className="pb-20 lg:pb-0">{children}</div>
+      <div key={pathname} className="pb-20 lg:pb-0">
+        {children}
+      </div>
 
       <nav
         className="aura-mobile-nav fixed inset-x-0 bottom-0 z-50 grid grid-cols-6 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
