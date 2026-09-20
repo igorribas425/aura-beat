@@ -306,15 +306,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
           <Link
             href={home}
-            className="flex items-center"
+            className="flex items-center gap-2"
             aria-label="Aura Beat — Home"
             title="Aura Beat"
           >
             <img
               src="/aura-beat-logo.webp"
-              alt="Aura Beat"
-              className="h-12 w-16 object-contain sm:h-14 sm:w-20"
+              alt=""
+              className="h-12 w-12 shrink-0 object-contain sm:h-14 sm:w-14"
             />
+            <span className="hidden leading-none sm:block">
+              <span className="block text-lg font-black tracking-[0.18em] text-white">
+                AURA
+              </span>
+              <span className="mt-1 block text-xs font-black tracking-[0.35em] text-red-500">
+                BEAT
+              </span>
+            </span>
           </Link>
 
           <nav className="hidden items-center gap-1 lg:flex" aria-label="Navegação principal">
