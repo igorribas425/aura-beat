@@ -60,6 +60,11 @@ type OfertaArtista = {
   expires_at: string | null;
 
   created_at: string;
+  transport_mode: string | null;
+  transport_type: string | null;
+  ticket_amount: number | null;
+  local_transport_amount: number | null;
+  transport_notes: string | null;
 };
 
 type OfertaVisual = OfertaArtista & {
@@ -332,7 +337,12 @@ export default function DisponibilidadesCasaPage() {
         is_urgent,
         status,
         expires_at,
-        created_at
+        created_at,
+        transport_mode,
+        transport_type,
+        ticket_amount,
+        local_transport_amount,
+        transport_notes
       `)
       .eq(
         "status",
@@ -504,7 +514,21 @@ export default function DisponibilidadesCasaPage() {
 
     setDuracao("2");
 
-    setDeslocamento("0");
+    const deslocamentoPadrao =
+      oferta.transport_mode === "ticket"
+        ? Number(oferta.ticket_amount || 0) +
+          Number(oferta.local_transport_amount || 0)
+        : oferta.transport_mode === "venue_pickup"
+          ? 0
+          : oferta.transport_mode === "other"
+            ? Number(oferta.local_transport_amount || 0)
+            : 0;
+
+    setDeslocamento(
+      String(
+        deslocamentoPadrao
+      )
+    );
     setPedagio("0");
     setHospedagem("0");
 
@@ -713,6 +737,27 @@ export default function DisponibilidadesCasaPage() {
           travel_amount:
             valorDeslocamento,
 
+          transport_mode:
+            ofertaSelecionada.transport_mode,
+
+          transport_type:
+            ofertaSelecionada.transport_type,
+
+          ticket_amount:
+            Number(
+              ofertaSelecionada.ticket_amount ||
+                0
+            ),
+
+          local_transport_amount:
+            Number(
+              ofertaSelecionada.local_transport_amount ||
+                0
+            ),
+
+          transport_notes:
+            ofertaSelecionada.transport_notes,
+
           toll_amount:
             valorPedagio,
 
@@ -812,7 +857,7 @@ export default function DisponibilidadesCasaPage() {
           </p>
 
           <h1 className="text-3xl font-bold">
-            DJs disponíveis
+            ⚡ Disponibilidade urgente
           </h1>
 
           <p className="mt-2 max-w-3xl text-zinc-400">
@@ -1166,6 +1211,28 @@ export default function DisponibilidadesCasaPage() {
                     }
                     className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-purple-600"
                   />
+                </div>
+
+                <div className="rounded-xl border border-cyan-900/40 bg-cyan-950/10 p-4">
+                  <p className="text-xs font-black uppercase text-cyan-300">
+                    Meio escolhido pelo DJ
+                  </p>
+                  <p className="mt-1 font-black">
+                    {ofertaSelecionada.transport_mode === "ticket"
+                      ? "🎫 Passagem"
+                      : ofertaSelecionada.transport_mode === "vehicle"
+                        ? "⛽ Veículo próprio"
+                        : ofertaSelecionada.transport_mode === "fixed"
+                          ? "🚗 Valor por km"
+                          : ofertaSelecionada.transport_mode === "venue_pickup"
+                            ? "🏠 Casa busca o DJ"
+                            : ofertaSelecionada.transport_mode === "other"
+                              ? "🚐 Outro"
+                              : "Não informado"}
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    Esse é o padrão publicado pelo DJ. Se precisar alterar, combine com ele antes da confirmação.
+                  </p>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-3">
