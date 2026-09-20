@@ -156,7 +156,8 @@ export default function HomeCasaPage() {
       label: "Disponibilidade urgente",
       detail: "Veja tudo que os DJs publicaram",
       href: "/disponibilidades-casa",
-      hover: "hover:border-amber-500/50",
+      hover: "hover:border-amber-400/70",
+      destaque: true,
     },
     {
       icon: "🔥",
@@ -282,11 +283,51 @@ export default function HomeCasaPage() {
                 key={atalho.href}
                 type="button"
                 onClick={() => router.push(atalho.href)}
-                className={`rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition ${atalho.hover}`}
+                className={`group relative overflow-hidden rounded-2xl border p-5 text-left transition duration-300 ${
+                  "destaque" in atalho && atalho.destaque
+                    ? "border-amber-400/50 bg-gradient-to-br from-amber-500/15 via-orange-500/10 to-red-500/10 shadow-[0_0_28px_rgba(245,158,11,0.18)] hover:-translate-y-1 hover:border-amber-300/80 hover:shadow-[0_0_42px_rgba(245,158,11,0.30)]"
+                    : `border-zinc-800 bg-zinc-950 ${atalho.hover}`
+                }`}
               >
-                <div className="text-2xl">{atalho.icon}</div>
-                <p className="mt-3 font-bold">{atalho.label}</p>
-                <p className="mt-1 text-xs text-zinc-500">{atalho.detail}</p>
+                {"destaque" in atalho && atalho.destaque && (
+                  <>
+                    <span className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-amber-300/30" />
+                    <span className="pointer-events-none absolute -right-8 -top-8 h-20 w-20 rounded-full bg-amber-400/20 blur-2xl" />
+                  </>
+                )}
+
+                <div
+                  className={`relative z-10 flex h-11 w-11 items-center justify-center rounded-xl text-2xl ${
+                    "destaque" in atalho && atalho.destaque
+                      ? "bg-amber-400/15 shadow-[0_0_22px_rgba(251,191,36,0.25)] ring-1 ring-amber-300/30"
+                      : ""
+                  }`}
+                >
+                  {"destaque" in atalho && atalho.destaque && (
+                    <span className="absolute inset-0 animate-ping rounded-xl bg-amber-400/10" />
+                  )}
+                  <span className="relative">{atalho.icon}</span>
+                </div>
+
+                <p
+                  className={`relative z-10 mt-3 font-bold ${
+                    "destaque" in atalho && atalho.destaque
+                      ? "text-amber-200"
+                      : ""
+                  }`}
+                >
+                  {atalho.label}
+                </p>
+
+                <p className="relative z-10 mt-1 text-xs text-zinc-500">
+                  {atalho.detail}
+                </p>
+
+                {"destaque" in atalho && atalho.destaque && (
+                  <span className="relative z-10 mt-3 inline-flex rounded-full border border-amber-400/30 bg-amber-400/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-amber-300">
+                    Destaque
+                  </span>
+                )}
               </button>
             ))}
           </div>
