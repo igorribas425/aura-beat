@@ -11,6 +11,15 @@ type ExploreProfileCardProps = {
   onToggleFavorite: (profile: ExploreProfile) => void;
 };
 
+export type MiniPressKitMedia = {
+  id: string;
+  media_type: "photo" | "video" | "flyer";
+  public_url: string;
+  caption: string | null;
+  sort_order: number;
+  is_cover: boolean;
+};
+
 function ProfileActions({
   profile,
   canSendOffer,
@@ -187,8 +196,18 @@ export function ExploreProfileCard(props: ExploreProfileCardProps) {
   );
 }
 
-export function MiniPressKit(props: ExploreProfileCardProps) {
-  const { profile, canSendOffer } = props;
+export function MiniPressKit(
+  props: ExploreProfileCardProps & {
+    media?: MiniPressKitMedia[];
+    mediaLoading?: boolean;
+  },
+) {
+  const {
+    profile,
+    canSendOffer,
+    media = [],
+    mediaLoading = false,
+  } = props;
   const isArtist = profile.kind === "artist";
 
   return (
@@ -237,6 +256,73 @@ export function MiniPressKit(props: ExploreProfileCardProps) {
               </span>
             ))}
           </div>
+        )}
+
+        {isArtist && (
+          <section className="rounded-2xl border border-white/10 bg-black/30 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-wider text-zinc-500">
+                  Mídia Kit
+                </p>
+                <p className="mt-1 text-sm font-bold text-zinc-200">
+                  Fotos, flyers e vídeos
+                </p>
+              </div>
+              {!mediaLoading && (
+                <span className="text-xs text-zinc-500">{media.length} mídia(s)</span>
+              )}
+            </div>
+
+            {mediaLoading ? (
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {Array.from({ length: 3 }, (_, index) => (
+                  <div
+                    key={index}
+                    className="h-24 animate-pulse rounded-xl bg-zinc-900"
+                  />
+                ))}
+              </div>
+            ) : media.length > 0 ? (
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {media.slice(0, 3).map((item, index) => (
+                  <div
+                    key={item.id}
+                    className={`relative h-24 overflow-hidden rounded-xl border border-white/10 bg-zinc-900 ${index === 0 ? "col-span-2" : ""}`}
+                  >
+                    {item.media_type === "video" ? (
+                      <>
+                        <video
+                          src={item.public_url}
+                          muted
+                          playsInline
+                          preload="metadata"
+                          className="h-full w-full object-cover"
+                        />
+                        <span className="absolute inset-0 grid place-items-center text-xl text-white">
+                          ▶
+                        </span>
+                      </>
+                    ) : (
+                      <div
+                        className="h-full w-full bg-cover bg-center"
+                        style={{ backgroundImage: `url(${item.public_url})` }}
+                      />
+                    )}
+                    {item.is_cover && (
+                      <span className="absolute left-2 top-2 rounded-full bg-purple-500/90 px-2 py-0.5 text-[9px] font-black uppercase text-white">
+                        Principal
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-3 text-xs leading-5 text-zinc-500">
+                Este Artista ainda não publicou mídia profissional.
+              </p>
+            )}
+          </section>
         )}
 
         <div className="grid grid-cols-2 gap-3">
