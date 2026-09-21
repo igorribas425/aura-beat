@@ -2,6 +2,8 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { SupportNotificationButton } from "../../components/support-notification-button";
+import { notifySupportIncoming } from "../../lib/support-alerts";
 import { supabase } from "../../lib/supabase";
 
 type ThreadRow = {
@@ -40,10 +42,12 @@ function dateTime(value: string) {
 export default function AuraTeamSupportPage() {
   const router = useRouter();
   const endRef = useRef<HTMLDivElement | null>(null);
+  const selectedIdRef = useRef<string | null>(null);
 
   const [threads, setThreads] = useState<ThreadRow[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [messages, setMessages] = useState<SupportMessage[]>([]);
+  const [unreadByThread, setUnreadByThread] = useState<Record<string, number>>({});
   const [text, setText] = useState("");
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -54,6 +58,10 @@ export default function AuraTeamSupportPage() {
     () => threads.find((thread) => thread.thread_id === selectedId) || null,
     [selectedId, threads],
   );
+
+  useEffect(() => {
+    selectedIdRef.current = selectedId;
+  }, [selectedId]);
 
   const filtered = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -74,7 +82,7 @@ export default function AuraTeamSupportPage() {
     );
   }, [query, threads]);
 
-  async function loadThreads() {
+  async function loadThreads(preferredId?: string | null) {
     const { data, error: threadError } = await supabase.rpc(
       "admin_support_threads_v1",
     );
@@ -82,13 +90,43 @@ export default function AuraTeamSupportPage() {
     if (threadError) throw threadError;
 
     const rows = (data || []) as ThreadRow[];
-
     setThreads(rows);
-    setSelectedId((current) =>
-      current && rows.some((thread) => thread.thread_id === current)
-        ? current
-        : rows[0]?.thread_id || null,
-    );
+
+    const ids = rows.map((thread) => thread.thread_id);
+
+    if (ids.length > 0) {
+      const { data: unreadRows, error: unreadError } = await supabase
+        .from("support_messages")
+        .select("thread_id")
+        .in("thread_id", ids)
+        .eq("sender_side", "customer")
+        .is("read_at", null);
+
+      if (!unreadError) {
+        const counts = (unreadRows || []).reduce<Record<string, number>>(
+          (accumulator, row) => {
+            const threadId = String(row.thread_id);
+            accumulator[threadId] = (accumulator[threadId] || 0) + 1;
+            return accumulator;
+          },
+          {},
+        );
+
+        setUnreadByThread(counts);
+      }
+    } else {
+      setUnreadByThread({});
+    }
+
+    setSelectedId((current) => {
+      const wanted = preferredId || current;
+
+      if (wanted && rows.some((thread) => thread.thread_id === wanted)) {
+        return wanted;
+      }
+
+      return rows[0]?.thread_id || null;
+    });
   }
 
   useEffect(() => {
@@ -119,7 +157,11 @@ export default function AuraTeamSupportPage() {
           return;
         }
 
-        await loadThreads();
+        const requestedThread = new URLSearchParams(
+          window.location.search,
+        ).get("thread");
+
+        await loadThreads(requestedThread);
       } catch (caught) {
         console.error(caught);
 
@@ -141,6 +183,65 @@ export default function AuraTeamSupportPage() {
       active = false;
     };
   }, [router]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("team-support-inbox")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "support_threads",
+        },
+        () => {
+          void loadThreads(selectedIdRef.current);
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "support_messages",
+        },
+        (payload) => {
+          const incoming = payload.new as SupportMessage;
+
+          if (incoming.sender_side !== "customer") return;
+
+          void notifySupportIncoming(
+            incoming.body,
+            "/equipe-aura?thread=" + incoming.thread_id,
+          );
+
+          void loadThreads(selectedIdRef.current);
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "support_messages",
+          filter: "thread_id=eq." + threadId,
+        },
+        (payload) => {
+          const updated = payload.new as SupportMessage;
+
+          setMessages((current) =>
+            current.map((message) =>
+              message.id === updated.id ? updated : message,
+            ),
+          );
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, []);
 
   useEffect(() => {
     if (!selectedId) {
@@ -169,9 +270,14 @@ export default function AuraTeamSupportPage() {
 
       setMessages((data || []) as SupportMessage[]);
 
-      await supabase.rpc("support_mark_read_v1", {
+      await supabase.rpc("support_mark_staff_read_v1", {
         p_thread_id: threadId,
       });
+
+      setUnreadByThread((current) => ({
+        ...current,
+        [threadId]: 0,
+      }));
     }
 
     void loadMessages();
@@ -195,10 +301,18 @@ export default function AuraTeamSupportPage() {
               : [...current, incoming],
           );
 
-          void loadThreads();
-          void supabase.rpc("support_mark_read_v1", {
-            p_thread_id: threadId,
-          });
+          void loadThreads(threadId);
+
+          if (incoming.sender_side === "customer") {
+            void supabase.rpc("support_mark_staff_read_v1", {
+              p_thread_id: threadId,
+            });
+
+            setUnreadByThread((current) => ({
+              ...current,
+              [threadId]: 0,
+            }));
+          }
         },
       )
       .subscribe();
@@ -233,7 +347,7 @@ export default function AuraTeamSupportPage() {
       if (sendError) throw sendError;
 
       setText("");
-      await loadThreads();
+      await loadThreads(selectedId);
     } catch (caught) {
       console.error(caught);
 
@@ -264,7 +378,7 @@ export default function AuraTeamSupportPage() {
 
       if (closeError) throw closeError;
 
-      await loadThreads();
+      await loadThreads(selectedId);
     } catch (caught) {
       console.error(caught);
 
@@ -307,9 +421,12 @@ export default function AuraTeamSupportPage() {
               </p>
             </div>
 
-            <span className="w-fit rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-xs font-black text-cyan-300">
-              ACESSO LIMITADO AO SUPORTE
-            </span>
+            <div className="flex flex-col gap-3 sm:items-end">
+              <SupportNotificationButton />
+              <span className="w-fit rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-xs font-black text-cyan-300">
+                ACESSO LIMITADO AO SUPORTE
+              </span>
+            </div>
           </div>
         </section>
 
@@ -336,11 +453,21 @@ export default function AuraTeamSupportPage() {
                   Nenhum atendimento encontrado.
                 </p>
               ) : (
-                filtered.map((thread) => (
+                filtered.map((thread) => {
+                  const unread = unreadByThread[thread.thread_id] || 0;
+
+                  return (
                   <button
                     key={thread.thread_id}
                     type="button"
-                    onClick={() => setSelectedId(thread.thread_id)}
+                    onClick={() => {
+                      setSelectedId(thread.thread_id);
+                      window.history.replaceState(
+                        null,
+                        "",
+                        "/equipe-aura?thread=" + thread.thread_id,
+                      );
+                    }}
                     className={
                       "w-full border-b border-zinc-900 p-4 text-left " +
                       (selectedId === thread.thread_id
@@ -349,9 +476,17 @@ export default function AuraTeamSupportPage() {
                     }
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <p className="truncate font-black">
-                        {thread.requester_name}
-                      </p>
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        <p className="min-w-0 flex-1 truncate font-black">
+                          {thread.requester_name}
+                        </p>
+
+                        {unread > 0 && (
+                          <span className="grid h-6 min-w-6 place-items-center rounded-full bg-cyan-400 px-1.5 text-[11px] font-black text-black">
+                            {unread > 99 ? "99+" : unread}
+                          </span>
+                        )}
+                      </div>
 
                       <span className="text-[10px] font-black uppercase text-zinc-500">
                         {thread.audience === "artist" ? "Artista" : "Casa"}
@@ -384,7 +519,8 @@ export default function AuraTeamSupportPage() {
                       </span>
                     </div>
                   </button>
-                ))
+                  );
+                })
               )}
             </div>
           </aside>
@@ -471,9 +607,17 @@ export default function AuraTeamSupportPage() {
                               {message.body}
                             </p>
 
-                            <p className="mt-1 text-right text-[10px] opacity-60">
-                              {dateTime(message.created_at)}
-                            </p>
+                            <div className="mt-1 flex items-center justify-end gap-1 text-[10px] opacity-60">
+                              <span>{dateTime(message.created_at)}</span>
+                              {support && !message.is_automatic && (
+                                <span
+                                  className={message.read_at ? "font-black text-sky-700" : "font-black"}
+                                  title={message.read_at ? "Visualizada" : "Enviada"}
+                                >
+                                  {message.read_at ? "✓✓" : "✓"}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       );
