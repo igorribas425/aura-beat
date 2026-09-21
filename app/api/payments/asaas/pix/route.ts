@@ -16,6 +16,9 @@ import {
   getAsaasPayment,
   mapAsaasStatus,
 } from "../../../../../lib/asaas";
+import {
+  normalizeBillingDocument,
+} from "../../../../../lib/billing-document";
 
 export const runtime = "nodejs";
 
@@ -262,6 +265,7 @@ export async function POST(request: NextRequest) {
       (await request.json()) as {
         bookingId?: string;
         payerType?: PayerType;
+        cpfCnpj?: string;
       };
 
     const bookingId = body.bookingId?.trim();
@@ -335,6 +339,70 @@ export async function POST(request: NextRequest) {
         },
         { status: 409 }
       );
+    }
+
+    let billingDocument =
+      normalizeBillingDocument(
+        payer.customer.cpfCnpj
+      );
+
+    if (payerType === "artist") {
+      const { data: billingProfile } =
+        await admin
+          .from("billing_customer_profiles")
+          .select("cpf_cnpj")
+          .eq("user_id", userData.user.id)
+          .maybeSingle();
+
+      billingDocument =
+        normalizeBillingDocument(
+          body.cpfCnpj
+        ) ||
+        normalizeBillingDocument(
+          billingProfile?.cpf_cnpj
+        );
+
+      if (!billingDocument) {
+        return NextResponse.json(
+          {
+            error:
+              "Informe um CPF válido para gerar o Pix da taxa.",
+            code:
+              "BILLING_DOCUMENT_REQUIRED",
+          },
+          { status: 422 }
+        );
+      }
+
+      payer.customer.cpfCnpj =
+        billingDocument;
+    } else if (!billingDocument) {
+      return NextResponse.json(
+        {
+          error:
+            "O CNPJ da Casa precisa estar válido para gerar o Pix.",
+          code:
+            "BILLING_DOCUMENT_REQUIRED",
+        },
+        { status: 422 }
+      );
+    }
+
+    const { error: billingSaveError } =
+      await admin
+        .from("billing_customer_profiles")
+        .upsert(
+          {
+            user_id: userData.user.id,
+            cpf_cnpj: billingDocument,
+            updated_at:
+              new Date().toISOString(),
+          },
+          { onConflict: "user_id" }
+        );
+
+    if (billingSaveError) {
+      throw billingSaveError;
     }
 
     const { data: existing, error: existingError } =
