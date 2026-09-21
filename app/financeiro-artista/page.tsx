@@ -12,58 +12,15 @@ import { supabase } from "../../lib/supabase";
 type FinanceRow = {
   booking_id: string;
   starts_at: string;
-
   venue_name: string;
-
   booking_status: string;
   payment_status: string | null;
-
   agreed_fee: number;
   platform_fee_artist: number;
-
   travel_amount: number;
   toll_amount: number;
   lodging_amount: number;
-
   artist_total: number;
-
-  release_kind:
-    | "performance"
-    | "travel"
-    | null;
-
-  release_amount: number | null;
-
-  release_status:
-    | "pending"
-    | "eligible"
-    | "released"
-    | "held"
-    | "cancelled"
-    | null;
-
-  eligible_at: string | null;
-  released_at: string | null;
-};
-
-type BookingFinance = {
-  booking_id: string;
-  starts_at: string;
-  venue_name: string;
-
-  booking_status: string;
-  payment_status: string | null;
-
-  agreed_fee: number;
-  platform_fee_artist: number;
-
-  travel_amount: number;
-  toll_amount: number;
-  lodging_amount: number;
-
-  artist_total: number;
-
-  releases: FinanceRow[];
 };
 
 function dinheiro(valor: number) {
@@ -94,82 +51,66 @@ function dataHora(valor: string) {
 }
 
 function statusEvento(status: string) {
-  switch (status) {
-    case "awaiting_payment":
-      return "Aguardando pagamento";
+  const nomes: Record<string, string> = {
+    awaiting_payment: "Aguardando taxas",
+    confirmed: "Confirmado",
+    in_transit: "DJ a caminho",
+    arrived: "DJ chegou",
+    in_event: "Evento acontecendo",
+    completed: "Finalizado",
+    cancelled: "Cancelado",
+    disputed: "Em análise",
+  };
 
-    case "confirmed":
-      return "Confirmado";
-
-    case "in_transit":
-      return "DJ a caminho";
-
-    case "arrived":
-      return "DJ chegou";
-
-    case "in_event":
-      return "Evento acontecendo";
-
-    case "completed":
-      return "Finalizado";
-
-    case "cancelled":
-      return "Cancelado";
-
-    case "disputed":
-      return "Em análise";
-
-    default:
-      return status;
-  }
+  return nomes[status] || status;
 }
 
-function statusRepasse(
-  status: FinanceRow["release_status"]
+function statusTaxa(
+  taxa: number,
+  status: string | null
 ) {
-  switch (status) {
-    case "pending":
-      return {
-        texto: "Pendente",
-        classe:
-          "border-yellow-800 bg-yellow-950/30 text-yellow-300",
-      };
-
-    case "eligible":
-      return {
-        texto: "Disponível para repasse",
-        classe:
-          "border-green-800 bg-green-950/30 text-green-300",
-      };
-
-    case "released":
-      return {
-        texto: "Pago",
-        classe:
-          "border-blue-800 bg-blue-950/30 text-blue-300",
-      };
-
-    case "held":
-      return {
-        texto: "Retido",
-        classe:
-          "border-orange-800 bg-orange-950/30 text-orange-300",
-      };
-
-    case "cancelled":
-      return {
-        texto: "Cancelado",
-        classe:
-          "border-zinc-700 bg-zinc-900 text-zinc-500",
-      };
-
-    default:
-      return {
-        texto: "Sem pagamento",
-        classe:
-          "border-zinc-800 bg-zinc-950 text-zinc-500",
-      };
+  if (taxa <= 0) {
+    return {
+      texto:
+        "Sem taxa do Artista",
+      classe:
+        "border-zinc-800 bg-zinc-900 text-zinc-400",
+    };
   }
+
+  if (status === "paid") {
+    return {
+      texto:
+        "Taxa Aura Beat paga",
+      classe:
+        "border-green-800 bg-green-950/30 text-green-300",
+    };
+  }
+
+  if (status === "processing") {
+    return {
+      texto:
+        "Taxa em processamento",
+      classe:
+        "border-blue-800 bg-blue-950/30 text-blue-300",
+    };
+  }
+
+  if (status === "failed") {
+    return {
+      texto:
+        "Pagamento falhou",
+      classe:
+        "border-red-800 bg-red-950/30 text-red-300",
+    };
+  }
+
+  return {
+    texto:
+      "Taxa de 3% pendente",
+    classe:
+      "border-yellow-800 bg-yellow-950/30 text-yellow-300",
+  };
 }
 
 export default function FinanceiroArtistaPage() {
@@ -195,10 +136,6 @@ export default function FinanceiroArtistaPage() {
     setErro,
   ] = useState("");
 
-  useEffect(() => {
-    void carregarFinanceiro();
-  }, []);
-
   async function carregarFinanceiro() {
     try {
       setCarregando(true);
@@ -223,10 +160,7 @@ export default function FinanceiroArtistaPage() {
         error: artistaError,
       } = await supabase
         .from("artist_profiles")
-        .select(`
-          id,
-          stage_name
-        `)
+        .select("id,stage_name")
         .eq(
           "user_id",
           authData.user.id
@@ -241,7 +175,6 @@ export default function FinanceiroArtistaPage() {
         setErro(
           "Perfil de artista não encontrado."
         );
-
         return;
       }
 
@@ -261,8 +194,30 @@ export default function FinanceiroArtistaPage() {
       }
 
       setDados(
-        (data ||
-          []) as FinanceRow[]
+        ((data || []) as FinanceRow[])
+          .map((linha) => ({
+            ...linha,
+            agreed_fee: Number(
+              linha.agreed_fee || 0
+            ),
+            platform_fee_artist:
+              Number(
+                linha.platform_fee_artist ||
+                  0
+              ),
+            travel_amount: Number(
+              linha.travel_amount || 0
+            ),
+            toll_amount: Number(
+              linha.toll_amount || 0
+            ),
+            lodging_amount: Number(
+              linha.lodging_amount || 0
+            ),
+            artist_total: Number(
+              linha.artist_total || 0
+            ),
+          }))
       );
     } catch (error) {
       console.error(error);
@@ -277,138 +232,47 @@ export default function FinanceiroArtistaPage() {
     }
   }
 
+  useEffect(() => {
+    void carregarFinanceiro();
+  }, []);
+
   const totais =
     useMemo(() => {
-      let pendente = 0;
-      let disponivel = 0;
-      let pago = 0;
+      let caches = 0;
+      let taxaPendente = 0;
+      let taxaPaga = 0;
 
-      for (
-        const linha of dados
-      ) {
-        const valor =
+      for (const linha of dados) {
+        caches +=
           Number(
-            linha.release_amount ||
+            linha.agreed_fee || 0
+          );
+
+        const taxa =
+          Number(
+            linha.platform_fee_artist ||
               0
           );
 
-        if (
-          linha.release_status ===
-          "pending"
-        ) {
-          pendente += valor;
+        if (taxa <= 0) {
+          continue;
         }
 
         if (
-          linha.release_status ===
-          "eligible"
+          linha.payment_status ===
+          "paid"
         ) {
-          disponivel += valor;
-        }
-
-        if (
-          linha.release_status ===
-          "released"
-        ) {
-          pago += valor;
+          taxaPaga += taxa;
+        } else {
+          taxaPendente += taxa;
         }
       }
 
       return {
-        pendente,
-        disponivel,
-        pago,
+        caches,
+        taxaPendente,
+        taxaPaga,
       };
-    }, [dados]);
-
-  const bookings =
-    useMemo(() => {
-      const mapa =
-        new Map<
-          string,
-          BookingFinance
-        >();
-
-      for (
-        const linha of dados
-      ) {
-        const existente =
-          mapa.get(
-            linha.booking_id
-          );
-
-        if (existente) {
-          existente.releases.push(
-            linha
-          );
-
-          continue;
-        }
-
-        mapa.set(
-          linha.booking_id,
-          {
-            booking_id:
-              linha.booking_id,
-
-            starts_at:
-              linha.starts_at,
-
-            venue_name:
-              linha.venue_name,
-
-            booking_status:
-              linha.booking_status,
-
-            payment_status:
-              linha.payment_status,
-
-            agreed_fee:
-              Number(
-                linha.agreed_fee ||
-                  0
-              ),
-
-            platform_fee_artist:
-              Number(
-                linha.platform_fee_artist ||
-                  0
-              ),
-
-            travel_amount:
-              Number(
-                linha.travel_amount ||
-                  0
-              ),
-
-            toll_amount:
-              Number(
-                linha.toll_amount ||
-                  0
-              ),
-
-            lodging_amount:
-              Number(
-                linha.lodging_amount ||
-                  0
-              ),
-
-            artist_total:
-              Number(
-                linha.artist_total ||
-                  0
-              ),
-
-            releases: [
-              linha,
-            ],
-          }
-        );
-      }
-
-      return Array.from(
-        mapa.values()
-      );
     }, [dados]);
 
   if (carregando) {
@@ -421,25 +285,39 @@ export default function FinanceiroArtistaPage() {
 
   return (
     <main className="min-h-screen bg-black px-4 py-8 text-white">
-
       <div className="mx-auto max-w-6xl">
+        <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+          <div>
+            <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-purple-400">
+              Aura Beat
+            </p>
 
-        <div className="mb-8">
+            <h1 className="text-3xl font-bold">
+              Financeiro do Artista
+            </h1>
 
-          <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-purple-400">
-            Aura Beat
-          </p>
+            <p className="mt-2 text-zinc-400">
+              {nomeArtista
+                ? `${nomeArtista}, acompanhe seus cachês combinados e as taxas do Aura Beat.`
+                : "Acompanhe seus cachês combinados e as taxas do Aura Beat."}
+            </p>
+          </div>
 
-          <h1 className="text-3xl font-bold">
-            Financeiro
-          </h1>
+          <button
+            type="button"
+            onClick={() =>
+              void carregarFinanceiro()
+            }
+            className="rounded-xl border border-zinc-800 px-4 py-2 text-sm font-bold text-zinc-300 hover:bg-zinc-900"
+          >
+            Atualizar
+          </button>
+        </div>
 
-          <p className="mt-2 text-zinc-400">
-            {nomeArtista
-              ? `${nomeArtista}, acompanhe seus cachês e repasses.`
-              : "Acompanhe seus cachês e repasses."}
-          </p>
-
+        <div className="mb-6 rounded-2xl border border-purple-900/50 bg-purple-950/10 p-4 text-sm leading-6 text-purple-100/80">
+          O Aura Beat não recebe nem repassa o cachê do DJ. Cachê, deslocamento,
+          pedágio e hospedagem são pagos diretamente entre Casa e Artista.
+          Em contratação urgente, o Artista paga 3% ao Aura Beat.
         </div>
 
         {erro && (
@@ -449,480 +327,216 @@ export default function FinanceiroArtistaPage() {
         )}
 
         <div className="mb-8 grid gap-4 md:grid-cols-3">
-
-          <div className="rounded-2xl border border-yellow-900/60 bg-yellow-950/10 p-5">
-
-            <div className="text-sm text-yellow-300">
-              A receber
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
+            <div className="text-sm text-zinc-400">
+              Cachês combinados
             </div>
 
             <div className="mt-2 text-3xl font-bold">
               {dinheiro(
-                totais.pendente
+                totais.caches
               )}
             </div>
 
-            <p className="mt-2 text-xs text-zinc-500">
-              Pagamentos confirmados aguardando conclusão do evento.
+            <p className="mt-2 text-xs text-zinc-600">
+              Pagos diretamente pelas Casas.
             </p>
+          </div>
 
+          <div className="rounded-2xl border border-yellow-900/60 bg-yellow-950/10 p-5">
+            <div className="text-sm text-yellow-300">
+              Taxas pendentes
+            </div>
+
+            <div className="mt-2 text-3xl font-bold">
+              {dinheiro(
+                totais.taxaPendente
+              )}
+            </div>
           </div>
 
           <div className="rounded-2xl border border-green-900/60 bg-green-950/10 p-5">
-
             <div className="text-sm text-green-300">
-              Disponível para repasse
+              Taxas pagas
             </div>
 
             <div className="mt-2 text-3xl font-bold text-green-400">
               {dinheiro(
-                totais.disponivel
+                totais.taxaPaga
               )}
             </div>
-
-            <p className="mt-2 text-xs text-zinc-500">
-              Eventos finalizados e valores liberados.
-            </p>
-
           </div>
-
-          <div className="rounded-2xl border border-blue-900/60 bg-blue-950/10 p-5">
-
-            <div className="text-sm text-blue-300">
-              Já pago
-            </div>
-
-            <div className="mt-2 text-3xl font-bold text-blue-400">
-              {dinheiro(
-                totais.pago
-              )}
-            </div>
-
-            <p className="mt-2 text-xs text-zinc-500">
-              Repasses efetivamente concluídos.
-            </p>
-
-          </div>
-
         </div>
 
-        <div className="mb-5 flex items-center justify-between">
+        <div className="mb-5">
+          <h2 className="text-xl font-bold">
+            Histórico
+          </h2>
 
-          <div>
-
-            <h2 className="text-xl font-bold">
-              Histórico
-            </h2>
-
-            <p className="text-sm text-zinc-500">
-              Detalhes das suas contratações.
-            </p>
-
-          </div>
-
-          <button
-            type="button"
-            onClick={() =>
-              void carregarFinanceiro()
-            }
-            className="rounded-xl border border-zinc-800 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-900"
-          >
-            Atualizar
-          </button>
-
+          <p className="text-sm text-zinc-500">
+            Detalhes das suas contratações.
+          </p>
         </div>
 
-        {bookings.length ===
-        0 ? (
-
+        {dados.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-zinc-800 p-12 text-center text-zinc-500">
             Nenhuma movimentação financeira ainda.
           </div>
-
         ) : (
-
           <div className="space-y-5">
-
-            {bookings.map(
-              (booking) => {
-                const principal =
-                  booking.releases.find(
-                    (release) =>
-                      release.release_kind ===
-                      "performance"
-                  ) ||
-                  booking.releases[0];
-
-                const pagamentoConfirmado =
-                  booking.payment_status ===
-                  "paid";
-
-                const status =
-                  pagamentoConfirmado &&
-                  principal?.release_status ===
-                    "pending"
-                    ? {
-                        texto:
-                          "Pagamento garantido",
-                        classe:
-                          "border-green-800 bg-green-950/30 text-green-300",
-                      }
-                    : statusRepasse(
-                        principal
-                          ?.release_status ||
-                          null
-                      );
+            {dados.map(
+              (linha) => {
+                const taxa =
+                  Number(
+                    linha.platform_fee_artist ||
+                      0
+                  );
 
                 const extras =
-                  booking.travel_amount +
-                  booking.toll_amount +
-                  booking.lodging_amount;
+                  Number(
+                    linha.travel_amount ||
+                      0
+                  ) +
+                  Number(
+                    linha.toll_amount ||
+                      0
+                  ) +
+                  Number(
+                    linha.lodging_amount ||
+                      0
+                  );
 
-                const tituloValor =
-                  pagamentoConfirmado
-                    ? "líquido do artista"
-                    : "valor previsto";
-
-                const tituloTotal =
-                  pagamentoConfirmado
-                    ? "Total líquido"
-                    : "Valor previsto";
-
-                const releasesVisiveis =
-                  booking.releases.filter(
-                    (release) => {
-                      if (
-                        release.release_kind ===
-                        "performance"
-                      ) {
-                        return true;
-                      }
-
-                      return (
-                        Number(
-                          release.release_amount ||
-                            0
-                        ) > 0
-                      );
-                    }
+                const status =
+                  statusTaxa(
+                    taxa,
+                    linha.payment_status
                   );
 
                 return (
                   <article
                     key={
-                      booking.booking_id
+                      linha.booking_id
                     }
                     className="rounded-2xl border border-zinc-800 bg-zinc-950 p-6"
                   >
-
-                    <div className="flex flex-col justify-between gap-4 md:flex-row">
-
+                    <div className="flex flex-col justify-between gap-5 md:flex-row">
                       <div>
-
-                        <div className="mb-3 flex flex-wrap items-center gap-2">
-
+                        <div className="mb-3 flex flex-wrap gap-2">
                           <span
                             className={`rounded-full border px-3 py-1 text-xs font-semibold ${status.classe}`}
                           >
-                            {
-                              status.texto
-                            }
+                            {status.texto}
                           </span>
 
                           <span className="rounded-full border border-zinc-800 px-3 py-1 text-xs text-zinc-400">
                             {statusEvento(
-                              booking.booking_status
+                              linha.booking_status
                             )}
                           </span>
-
                         </div>
 
                         <h3 className="text-xl font-bold">
                           {
-                            booking.venue_name
+                            linha.venue_name
                           }
                         </h3>
 
                         <p className="mt-1 text-sm text-zinc-500">
                           {dataHora(
-                            booking.starts_at
+                            linha.starts_at
                           )}
                         </p>
-
                       </div>
 
-                      <div className="text-left md:text-right">
+                      <div className="md:text-right">
+                        <p className="text-xs uppercase text-zinc-600">
+                          Cachê combinado
+                        </p>
 
-                        <div
-                          className={`text-2xl font-bold ${
-                            pagamentoConfirmado
-                              ? "text-green-400"
-                              : "text-zinc-300"
-                          }`}
-                        >
+                        <p className="mt-1 text-2xl font-bold text-green-400">
                           {dinheiro(
-                            booking.artist_total
+                            linha.agreed_fee
                           )}
-                        </div>
-
-                        <div className="text-xs text-zinc-500">
-                          {
-                            tituloValor
-                          }
-                        </div>
-
+                        </p>
                       </div>
-
                     </div>
 
-                    {!pagamentoConfirmado && (
-                      <div className="mt-5 rounded-xl border border-yellow-900/60 bg-yellow-950/20 p-4 text-sm text-yellow-300">
-                        ⏳ Este valor é uma previsão. O pagamento da Casa ainda não foi confirmado.
-                      </div>
-                    )}
-
                     <div className="mt-5 rounded-xl border border-zinc-800 bg-black p-4">
-
                       <div className="flex justify-between text-sm text-zinc-400">
-
                         <span>
                           Cachê
                         </span>
-
                         <span>
                           {dinheiro(
-                            booking.agreed_fee
+                            linha.agreed_fee
                           )}
                         </span>
-
                       </div>
 
-                      {booking.platform_fee_artist >
-                        0 && (
-
+                      {extras > 0 && (
                         <div className="mt-2 flex justify-between text-sm text-zinc-400">
-
                           <span>
-                            Taxa Aura Beat
+                            Extras combinados
                           </span>
+                          <span>
+                            +{" "}
+                            {dinheiro(
+                              extras
+                            )}
+                          </span>
+                        </div>
+                      )}
 
+                      {taxa > 0 && (
+                        <div className="mt-2 flex justify-between text-sm text-red-300">
+                          <span>
+                            Taxa Aura Beat · 3%
+                          </span>
                           <span>
                             -{" "}
                             {dinheiro(
-                              booking.platform_fee_artist
+                              taxa
                             )}
                           </span>
-
                         </div>
-
-                      )}
-
-                      {booking.travel_amount >
-                        0 && (
-
-                        <div className="mt-2 flex justify-between text-sm text-zinc-400">
-
-                          <span>
-                            Deslocamento
-                          </span>
-
-                          <span>
-                            +{" "}
-                            {dinheiro(
-                              booking.travel_amount
-                            )}
-                          </span>
-
-                        </div>
-
-                      )}
-
-                      {booking.toll_amount >
-                        0 && (
-
-                        <div className="mt-2 flex justify-between text-sm text-zinc-400">
-
-                          <span>
-                            Pedágio
-                          </span>
-
-                          <span>
-                            +{" "}
-                            {dinheiro(
-                              booking.toll_amount
-                            )}
-                          </span>
-
-                        </div>
-
-                      )}
-
-                      {booking.lodging_amount >
-                        0 && (
-
-                        <div className="mt-2 flex justify-between text-sm text-zinc-400">
-
-                          <span>
-                            Hospedagem
-                          </span>
-
-                          <span>
-                            +{" "}
-                            {dinheiro(
-                              booking.lodging_amount
-                            )}
-                          </span>
-
-                        </div>
-
                       )}
 
                       <div className="mt-3 flex justify-between border-t border-zinc-800 pt-3 font-bold">
-
                         <span>
-                          {
-                            tituloTotal
-                          }
+                          Resultado após taxa
                         </span>
-
-                        <span
-                          className={
-                            pagamentoConfirmado
-                              ? "text-green-400"
-                              : "text-zinc-300"
-                          }
-                        >
+                        <span>
                           {dinheiro(
-                            booking.artist_total
+                            linha.artist_total
                           )}
                         </span>
-
                       </div>
-
                     </div>
 
-                    {pagamentoConfirmado &&
-                      releasesVisiveis.length >
-                        0 && (
-
-                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-
-                        {releasesVisiveis.map(
-                          (
-                            release,
-                            index
-                          ) => {
-                            if (
-                              !release.release_kind
-                            ) {
-                              return null;
-                            }
-
-                            const releaseStatus =
-                              pagamentoConfirmado &&
-                              release.release_status ===
-                                "pending"
-                                ? {
-                                    texto:
-                                      "Pagamento garantido",
-                                    classe:
-                                      "border-green-800 bg-green-950/30 text-green-300",
-                                  }
-                                : statusRepasse(
-                                    release.release_status
-                                  );
-
-                            return (
-                              <div
-                                key={`${booking.booking_id}-${release.release_kind}-${index}`}
-                                className="rounded-xl bg-black p-4"
-                              >
-
-                                <div className="flex items-center justify-between gap-3">
-
-                                  <div>
-
-                                    <div className="text-sm font-semibold">
-                                      {release.release_kind ===
-                                      "performance"
-                                        ? "Cachê"
-                                        : "Extras"}
-                                    </div>
-
-                                    <div className="mt-1 text-xs text-zinc-500">
-                                      {
-                                        releaseStatus.texto
-                                      }
-                                    </div>
-
-                                  </div>
-
-                                  <div className="font-semibold">
-                                    {dinheiro(
-                                      Number(
-                                        release.release_amount ||
-                                          0
-                                      )
-                                    )}
-                                  </div>
-
-                                </div>
-
-                              </div>
-                            );
+                    {taxa > 0 &&
+                      linha.payment_status !==
+                        "paid" &&
+                      linha.booking_status ===
+                        "awaiting_payment" && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            router.push(
+                              `/pagamento/${linha.booking_id}?payer=artist`
+                            )
                           }
-                        )}
-
-                      </div>
-                    )}
-
-                    {extras === 0 && (
-                      <p className="mt-4 text-xs text-zinc-600">
-                        Nenhum valor adicional de deslocamento,
-                        pedágio ou hospedagem nesta contratação.
-                      </p>
-                    )}
-
-                    {pagamentoConfirmado &&
-                      principal?.release_status ===
-                        "pending" && (
-
-                      <div className="mt-5 rounded-xl border border-green-900/60 bg-green-950/20 p-4 text-sm text-green-300">
-                        ✓ Pagamento garantido. A Casa já realizou
-                        o pagamento. Você receberá{" "}
-                        <strong>
-                          {dinheiro(
-                            booking.artist_total
-                          )}
-                        </strong>{" "}
-                        após a conclusão do evento.
-                      </div>
-
-                    )}
-
-                    {pagamentoConfirmado &&
-                      principal?.release_status ===
-                        "eligible" && (
-
-                      <div className="mt-5 rounded-xl border border-green-900/60 bg-green-950/20 p-4 text-sm text-green-300">
-                        ✓ Este valor está liberado para repasse.
-                        Ele só será marcado como pago quando a
-                        transferência financeira for realmente
-                        confirmada.
-                      </div>
-
-                    )}
-
+                          className="mt-4 w-full rounded-xl bg-green-600 py-3 font-black hover:bg-green-500"
+                        >
+                          Pagar taxa de 3%
+                        </button>
+                      )}
                   </article>
                 );
               }
             )}
-
           </div>
         )}
-
       </div>
-
     </main>
   );
 }
