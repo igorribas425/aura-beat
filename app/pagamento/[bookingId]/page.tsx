@@ -800,24 +800,17 @@ export default function PagamentoPixPage() {
               </span>
 
               <h2 className="mt-4 text-xl font-black">
-                Escaneie o QR Code
+                Pix copia e cola
               </h2>
+              <p className="mt-2 text-sm leading-6 text-zinc-400">
+                Copie o código abaixo e cole na opção Pix copia e cola do seu banco.
+              </p>
             </div>
-
-            {pix.pix?.encodedImage && (
-              <div className="mt-6 flex justify-center">
-                <img
-                  src={`data:image/png;base64,${pix.pix.encodedImage}`}
-                  alt="QR Code Pix"
-                  className="h-64 w-64 rounded-2xl bg-white p-3"
-                />
-              </div>
-            )}
 
             {pix.pix?.payload && (
               <div className="mt-6">
                 <p className="mb-2 text-sm font-bold text-zinc-300">
-                  Pix copia e cola
+                  Código Pix
                 </p>
 
                 <div className="rounded-2xl border border-zinc-800 bg-black p-4">
