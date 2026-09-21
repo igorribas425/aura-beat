@@ -7,10 +7,46 @@ export type OwnerAccessResult = {
   email: string;
 };
 
-export async function getOwnerAccessFast(): Promise<OwnerAccessResult> {
+export async function ensureFreshSession() {
   const {
     data: { session },
+    error: sessionError,
   } = await supabase.auth.getSession();
+
+  if (sessionError || !session) {
+    return null;
+  }
+
+  const expiresAtMs =
+    Number(session.expires_at || 0) * 1000;
+
+  const shouldRefresh =
+    !expiresAtMs ||
+    expiresAtMs <= Date.now() + 2 * 60 * 1000;
+
+  if (!shouldRefresh) {
+    return session;
+  }
+
+  const {
+    data: refreshed,
+    error: refreshError,
+  } = await supabase.auth.refreshSession();
+
+  if (refreshError || !refreshed.session) {
+    await supabase.auth.signOut({
+      scope: "local",
+    });
+
+    return null;
+  }
+
+  return refreshed.session;
+}
+
+export async function getOwnerAccessFast(): Promise<OwnerAccessResult> {
+  const session =
+    await ensureFreshSession();
 
   const user = session?.user;
 
