@@ -4,6 +4,12 @@ import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ProfileAvatar } from "../../components/profile-avatar";
 import { formatBRL } from "../../lib/finance";
+import {
+  getMyPlanAccess,
+  hasPlanBenefit,
+  planBenefitText,
+  type PlanAccess,
+} from "../../lib/plan-access";
 import { supabase } from "../../lib/supabase";
 
 type Artista = {
@@ -92,6 +98,9 @@ export default function HomeArtistaPage() {
 
   const [plano, setPlano] =
     useState("Sem plano ativo");
+
+  const [planAccess, setPlanAccess] =
+    useState<PlanAccess | null>(null);
 
   const [avaliacao, setAvaliacao] =
     useState(0);
@@ -508,46 +517,40 @@ export default function HomeArtistaPage() {
         setGanhos(totalGanhos);
       }
 
-      const {
-        data: assinatura,
-      } = await supabase
-        .from("subscriptions")
-        .select(
-          "plan_id, status"
-        )
-        .eq(
-          "artist_id",
-          perfil.id
-        )
-        .in("status", [
-          "trialing",
-          "active",
-        ])
-        .order("created_at", {
-          ascending: false,
-        })
-        .limit(1)
-        .maybeSingle();
+      try {
+        const acessoPlano =
+          await getMyPlanAccess(
+            "artist"
+          );
 
-      if (assinatura?.plan_id) {
-        const {
-          data: planoEncontrado,
-        } = await supabase
-          .from("plans")
-          .select("name")
-          .eq(
-            "id",
-            assinatura.plan_id
-          )
-          .maybeSingle();
+        setPlanAccess(
+          acessoPlano
+        );
 
         if (
-          planoEncontrado?.name
+          acessoPlano.active &&
+          acessoPlano.planName
         ) {
           setPlano(
-            planoEncontrado.name
+            acessoPlano.unlimited
+              ? `${acessoPlano.planName} · Ilimitado`
+              : acessoPlano.planName
+          );
+        } else {
+          setPlano(
+            "Sem plano ativo"
           );
         }
+      } catch (planError) {
+        console.warn(
+          "Não foi possível carregar o plano do Artista:",
+          planError
+        );
+
+        setPlanAccess(null);
+        setPlano(
+          "Sem plano ativo"
+        );
       }
 
       const {
@@ -773,6 +776,15 @@ export default function HomeArtistaPage() {
                     </span>
                   )}
 
+                  {hasPlanBenefit(
+                    planAccess,
+                    "pro_badge"
+                  ) && (
+                    <span className="rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1 text-xs font-black text-amber-300 shadow-[0_0_18px_rgba(251,191,36,0.15)]">
+                      ✦ PRO
+                    </span>
+                  )}
+
                 </div>
 
                 <p className="mt-1 text-sm text-zinc-400">
@@ -786,9 +798,20 @@ export default function HomeArtistaPage() {
 
                 </p>
 
-                <span className="mt-3 inline-block rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-1 text-xs font-bold text-purple-300">
-                  Plano {plano}
-                </span>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className="inline-block rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-1 text-xs font-bold text-purple-300">
+                    Plano {plano}
+                  </span>
+
+                  {hasPlanBenefit(
+                    planAccess,
+                    "priority_support"
+                  ) && (
+                    <span className="inline-block rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1 text-xs font-bold text-green-300">
+                      ⚡ Suporte prioritário
+                    </span>
+                  )}
+                </div>
 
                 <div className="mt-4 flex flex-wrap gap-2">
 
@@ -1053,6 +1076,117 @@ export default function HomeArtistaPage() {
           </div>
 
         </section>
+
+        {hasPlanBenefit(
+          planAccess,
+          "analytics"
+        ) ? (
+          <section className="rounded-3xl border border-purple-500/20 bg-purple-500/5 p-5 sm:p-6">
+            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-purple-300">
+                  ANALYTICS
+                </p>
+                <h2 className="mt-2 text-xl font-black">
+                  Análise de desempenho
+                </h2>
+              </div>
+
+              <span className="w-fit rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1 text-xs font-black text-green-300">
+                ✓ Liberado pelo plano {planAccess?.planName}
+              </span>
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-zinc-800 bg-black/30 p-4">
+                <p className="text-xs text-zinc-500">
+                  Líquido médio por evento
+                </p>
+                <p className="mt-2 text-xl font-black text-green-400">
+                  {dinheiro(
+                    eventosConcluidos > 0
+                      ? ganhos / eventosConcluidos
+                      : 0
+                  )}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-zinc-800 bg-black/30 p-4">
+                <p className="text-xs text-zinc-500">
+                  Avaliações por evento
+                </p>
+                <p className="mt-2 text-xl font-black">
+                  {eventosConcluidos > 0
+                    ? `${Math.min(
+                        100,
+                        (quantidadeAvaliacoes /
+                          eventosConcluidos) *
+                          100
+                      ).toFixed(0)}%`
+                    : "--"}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-zinc-800 bg-black/30 p-4">
+                <p className="text-xs text-zinc-500">
+                  Nível de visibilidade
+                </p>
+                <p className="mt-2 text-xl font-black text-purple-300">
+                  {(() => {
+                    const visibility =
+                      planBenefitText(
+                        planAccess,
+                        "visibility"
+                      );
+
+                    if (
+                      visibility === "high"
+                    ) {
+                      return "Alta";
+                    }
+
+                    if (
+                      visibility === "enhanced"
+                    ) {
+                      return "Ampliada";
+                    }
+
+                    return "Padrão";
+                  })()}
+                </p>
+              </div>
+            </div>
+          </section>
+        ) : (
+          <section className="rounded-3xl border border-zinc-800 bg-zinc-950 p-5 sm:p-6">
+            <div className="flex gap-4">
+              <div className="text-3xl">
+                🔒
+              </div>
+
+              <div>
+                <h2 className="font-black">
+                  Analytics avançado
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-zinc-500">
+                  Disponível nos planos Intermediário e Pro.
+                  O painel básico continua funcionando normalmente.
+                </p>
+                <button
+                  type="button"
+                  onClick={() =>
+                    router.push(
+                      "/planos-artista"
+                    )
+                  }
+                  className="mt-4 rounded-xl border border-purple-500/40 bg-purple-500/10 px-4 py-2 text-sm font-black text-purple-300"
+                >
+                  Ver planos
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
 
         <section>
 
