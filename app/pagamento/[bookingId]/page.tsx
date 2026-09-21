@@ -14,6 +14,9 @@ import {
 } from "next/navigation";
 
 import {
+  normalizeBillingDocument,
+} from "../../../lib/billing-document";
+import {
   supabase,
 } from "../../../lib/supabase";
 
@@ -121,6 +124,21 @@ export default function PagamentoPixPage() {
     useState(false);
 
   const [
+    billingDocument,
+    setBillingDocument,
+  ] = useState("");
+
+  const [
+    hasBillingDocument,
+    setHasBillingDocument,
+  ] = useState(false);
+
+  const [
+    billingLast4,
+    setBillingLast4,
+  ] = useState<string | null>(null);
+
+  const [
     erro,
     setErro,
   ] =
@@ -186,6 +204,43 @@ export default function PagamentoPixPage() {
           setBooking(
             data as Booking
           );
+
+          if (payerType === "artist") {
+            const {
+              data: { session },
+            } =
+              await supabase.auth.getSession();
+
+            if (session?.access_token) {
+              const billingResponse =
+                await fetch(
+                  "/api/billing/profile",
+                  {
+                    headers: {
+                      authorization:
+                        `Bearer ${session.access_token}`,
+                    },
+                    cache: "no-store",
+                  }
+                );
+
+              if (billingResponse.ok) {
+                const billingData =
+                  (await billingResponse.json()) as {
+                    hasDocument?: boolean;
+                    last4?: string | null;
+                  };
+
+                setHasBillingDocument(
+                  billingData.hasDocument === true
+                );
+
+                setBillingLast4(
+                  billingData.last4 || null
+                );
+              }
+            }
+          }
         } catch (error) {
           console.error(
             error
@@ -259,6 +314,8 @@ export default function PagamentoPixPage() {
             body: JSON.stringify({
               bookingId,
               payerType,
+              cpfCnpj:
+                billingDocument || undefined,
             }),
           }
         );
@@ -669,27 +726,72 @@ export default function PagamentoPixPage() {
             </button>
           </section>
         ) : !pix ? (
-          <button
-            type="button"
-            onClick={() =>
-              void gerarPix()
-            }
-            disabled={
-              gerando ||
-              !booking ||
-              ![
-                "awaiting_payment",
-                "confirmed",
-              ].includes(
-                booking.status
-              )
-            }
-            className="mt-6 w-full rounded-2xl bg-green-600 px-5 py-4 text-lg font-black transition hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {gerando
-              ? "Gerando Pix..."
-              : "Gerar Pix da taxa"}
-          </button>
+          <section className="mt-6 rounded-3xl border border-zinc-800 bg-zinc-950 p-6">
+            {payerType === "artist" && (
+              <div className="mb-5">
+                <label className="text-sm font-black text-zinc-200">
+                  CPF do titular da cobrança
+                </label>
+
+                {hasBillingDocument ? (
+                  <div className="mt-2 rounded-xl border border-green-900 bg-green-950/20 px-4 py-3 text-sm text-green-300">
+                    CPF de cobrança já cadastrado
+                    {billingLast4
+                      ? ` · final ${billingLast4}`
+                      : ""}.
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      value={billingDocument}
+                      onChange={(event) =>
+                        setBillingDocument(
+                          event.target.value
+                        )
+                      }
+                      inputMode="numeric"
+                      autoComplete="off"
+                      placeholder="000.000.000-00"
+                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 text-white outline-none focus:border-green-500"
+                    />
+
+                    <p className="mt-2 text-xs leading-5 text-zinc-600">
+                      O ASAAS exige CPF ou CNPJ para gerar a cobrança.
+                      Esse documento fica somente no cadastro privado de pagamento
+                      e não aparece no perfil público.
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() =>
+                void gerarPix()
+              }
+              disabled={
+                gerando ||
+                !booking ||
+                (payerType === "artist" &&
+                  !hasBillingDocument &&
+                  !normalizeBillingDocument(
+                    billingDocument
+                  )) ||
+                ![
+                  "awaiting_payment",
+                  "confirmed",
+                ].includes(
+                  booking.status
+                )
+              }
+              className="w-full rounded-2xl bg-green-600 px-5 py-4 text-lg font-black transition hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {gerando
+                ? "Gerando Pix..."
+                : "Gerar Pix da taxa"}
+            </button>
+          </section>
         ) : (
           <section className="mt-6 rounded-3xl border border-zinc-800 bg-zinc-950 p-6">
             <div className="text-center">
