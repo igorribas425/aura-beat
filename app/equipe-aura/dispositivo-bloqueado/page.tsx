@@ -1,12 +1,40 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 
 export default function SupportDeviceBlockedPage() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [reason, setReason] = useState<"device" | "suspended" | "unauthorized">("device");
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadReason() {
+      const [{ data: identity }, { data: enabled }] = await Promise.all([
+        supabase.rpc("is_support_identity_v1"),
+        supabase.rpc("is_support_account_v1"),
+      ]);
+
+      if (!active) return;
+
+      if (identity !== true) {
+        setReason("unauthorized");
+      } else if (enabled !== true) {
+        setReason("suspended");
+      } else {
+        setReason("device");
+      }
+    }
+
+    void loadReason();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function signOut() {
     try {
@@ -29,18 +57,27 @@ export default function SupportDeviceBlockedPage() {
             EQUIPE AURA
           </p>
           <h1 className="mt-2 text-3xl font-black">
-            Dispositivo não autorizado
+            {reason === "suspended"
+              ? "Acesso suspenso"
+              : reason === "unauthorized"
+                ? "Acesso não autorizado"
+                : "Dispositivo não autorizado"}
           </h1>
           <p className="mt-3 text-sm leading-6 text-zinc-400">
-            Esta conta de trabalho está vinculada ao dispositivo usado no primeiro cadastro.
-            Para trocar de computador ou celular, o administrador da Aura Beat precisa
-            liberar um novo dispositivo.
+            {reason === "suspended"
+              ? "Seu acesso à Equipe Aura foi suspenso pelo administrador. O chat fica bloqueado até uma nova liberação."
+              : reason === "unauthorized"
+                ? "Esta conta não possui acesso ativo à Equipe Aura."
+                : "Esta conta de trabalho está vinculada ao dispositivo autorizado. Para trocar de computador ou celular, o administrador da Aura Beat precisa liberar um novo dispositivo."}
           </p>
         </div>
 
         <div className="mt-6 rounded-2xl border border-zinc-800 bg-black/30 p-4 text-sm leading-6 text-zinc-400">
-          Mesmo com e-mail e senha corretos, outro dispositivo não recebe acesso ao chat
-          da Equipe Aura.
+          {reason === "suspended"
+            ? "Ao reativar o atendente, o administrador enviará um novo convite para vincular o dispositivo novamente."
+            : reason === "unauthorized"
+              ? "Entre com uma conta autorizada ou peça acesso ao administrador da Aura Beat."
+              : "Mesmo com e-mail e senha corretos, outro dispositivo não recebe acesso ao chat da Equipe Aura."}
         </div>
 
         <button
