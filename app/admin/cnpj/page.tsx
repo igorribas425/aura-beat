@@ -97,15 +97,12 @@ export default function AdminCnpjPage() {
         return;
       }
 
-      const { data: admin, error: adminError } = await supabase
-        .from("aura_admins")
-        .select("role,is_active")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      const { data: ownerAccess, error: ownerAccessError } =
+        await supabase.rpc("owner_access_v1");
 
-      if (adminError) throw adminError;
+      if (ownerAccessError) throw ownerAccessError;
 
-      if (!admin?.is_active) {
+      if (ownerAccess !== true) {
         setAccessDenied(true);
         setRows([]);
         return;
