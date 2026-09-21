@@ -203,7 +203,7 @@ export async function POST(
   } = await admin
     .from("payments")
     .select(
-      "id,booking_id,status,gross_amount"
+      "id,booking_id,status,gross_amount,charge_type,metadata"
     )
     .eq(
       "provider",
@@ -241,15 +241,30 @@ export async function POST(
     });
   }
 
+  if (
+    payment.charge_type ===
+    "legacy_booking_total"
+  ) {
+    return NextResponse.json({
+      received: true,
+      ignored: true,
+      reason:
+        "Legacy full-booking charge disabled",
+    });
+  }
+
   const externalReference =
     event.payment
       ?.externalReference
       ?.trim();
 
+  const expectedReference =
+    `${payment.booking_id}:${payment.charge_type}`;
+
   if (
     externalReference &&
     externalReference !==
-      payment.booking_id
+      expectedReference
   ) {
     return NextResponse.json(
       {
@@ -290,6 +305,13 @@ export async function POST(
   const now =
     new Date().toISOString();
 
+  const oldMetadata =
+    payment.metadata &&
+    typeof payment.metadata ===
+      "object"
+      ? payment.metadata
+      : {};
+
   const updateData: {
     status:
       | "paid"
@@ -299,9 +321,20 @@ export async function POST(
     updated_at: string;
     paid_at?: string;
     refunded_at?: string;
+    metadata: Record<
+      string,
+      unknown
+    >;
   } = {
     status,
     updated_at: now,
+    metadata: {
+      ...oldMetadata,
+      webhook_event:
+        eventName,
+      webhook_received_at:
+        now,
+    },
   };
 
   if (status === "paid") {
@@ -344,5 +377,7 @@ export async function POST(
     received: true,
     event: eventName,
     status,
+    chargeType:
+      payment.charge_type,
   });
 }
