@@ -87,24 +87,41 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      setAuthenticated(true);
-
-      const [{ data: profile }, { data: isSupportAccount }] = await Promise.all([
+      const [{ data: profile }, { data: isSupportIdentity }] = await Promise.all([
         supabase
           .from("profiles")
           .select("default_mode,theme")
           .eq("id", data.user.id)
           .maybeSingle(),
-        supabase.rpc("is_support_account_v1"),
+        supabase.rpc("is_support_identity_v1"),
       ]);
 
       if (!alive) return;
 
-      const supportOnly = isSupportAccount === true;
+      const supportOnly = isSupportIdentity === true;
       setSupportAccount(supportOnly);
+      setAuthenticated(true);
 
       if (supportOnly && !pathname.startsWith("/equipe-aura")) {
-        router.replace("/equipe-aura");
+        const storedSecret = window.localStorage.getItem(
+          "aura_support_device_secret",
+        );
+
+        if (storedSecret) {
+          await supabase.rpc("support_rebind_device_v1", {
+            p_device_secret: storedSecret,
+          });
+        }
+
+        const { data: allowed } = await supabase.rpc("support_portal_only_v1");
+
+        if (!alive) return;
+
+        router.replace(
+          allowed === true
+            ? "/equipe-aura"
+            : "/equipe-aura/dispositivo-bloqueado",
+        );
         return;
       }
 
@@ -124,7 +141,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => {
       alive = false;
     };
-  }, [pathname]);
+  }, [pathname, router]);
 
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
