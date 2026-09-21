@@ -161,7 +161,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         ownerOnly &&
         ownerEntryPaths.has(pathname)
       ) {
-        router.replace("/admin");
+        router.replace("/acesso");
         return;
       }
 
@@ -440,6 +440,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const supportPortalPath = pathname.startsWith("/equipe-aura");
   const adminPath = pathname.startsWith("/admin");
+  const accessChoicePath = pathname === "/acesso";
   const ownerEntryPaths = new Set([
     "/",
     "/login",
@@ -449,7 +450,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     "/perfil-casa",
   ]);
 
-  if (supportPortalPath || adminPath) return <>{children}</>;
+  if (supportPortalPath || adminPath || accessChoicePath) return <>{children}</>;
   if (supportAccount) return null;
 
   const billingPath =
@@ -580,6 +581,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="flex items-center gap-2">
+            {ownerAccount && (
+              <Link
+                href="/admin"
+                className="rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs font-black text-red-300"
+              >
+                Admin
+              </Link>
+            )}
+
             <button
               onClick={switchMode}
               aria-label={`Alternar do modo ${mode === "venue" ? "Casa" : "Artista"}`}
