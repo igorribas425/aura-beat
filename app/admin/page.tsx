@@ -132,6 +132,19 @@ export default function AdminHomePage() {
           </Link>
 
           <Link
+            href="/admin/planos"
+            className="rounded-3xl border border-amber-900/50 bg-amber-950/10 p-6 transition hover:border-amber-500/60"
+          >
+            <div className="text-3xl">💎</div>
+            <h2 className="mt-4 text-xl font-black">
+              Planos e assinaturas
+            </h2>
+            <p className="mt-2 text-sm text-zinc-500">
+              Valores, benefícios, planos de DJs/Casas e cancelamentos.
+            </p>
+          </Link>
+
+          <Link
             href="/admin/cnpj"
             className="rounded-3xl border border-purple-900/50 bg-purple-950/10 p-6 transition hover:border-purple-500/60"
           >
