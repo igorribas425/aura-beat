@@ -79,6 +79,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     let alive = true;
 
     async function loadSessionContext() {
+      if (pathname.startsWith("/admin")) {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (!alive) return;
+
+        if (!session?.user) {
+          setAuthenticated(false);
+          router.replace("/login");
+          return;
+        }
+
+        setAuthenticated(true);
+        setOwnerAccount(
+          isOwnerEmail(session.user.email),
+        );
+        setSupportAccount(false);
+        setPlanLocked(false);
+        setPlanExpiresAt(null);
+        setPlanDaysRemaining(null);
+        setPlanName(null);
+        return;
+      }
+
       const { data } = await supabase.auth.getUser();
       if (!alive) return;
 
