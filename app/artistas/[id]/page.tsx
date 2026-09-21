@@ -105,7 +105,7 @@ export default function PublicArtistPage() {
             profileResult.data?.default_mode === "venue" && Boolean(venueResult.data);
           setCanSendOffer(isVenue);
           setCanViewFee(isVenue || ownArtistResult.data?.id === id);
-          setCanChat(ownArtistResult.data?.id !== id);
+          setCanChat(isVenue && ownArtistResult.data?.id !== id);
         }
       }
 
@@ -217,7 +217,7 @@ export default function PublicArtistPage() {
               <div className="mt-6 flex flex-wrap gap-3">
                 {canChat && (
                   <Link
-                    href={`/chat-direto?targetKind=artist&targetId=${artist.id}`}
+                    href={`/chat-direto?sourceKind=venue&targetKind=artist&targetId=${artist.id}`}
                     className="rounded-xl border border-purple-500/40 bg-purple-500/10 px-6 py-3 font-black text-purple-200 hover:bg-purple-500/20"
                   >
                     Conversar
