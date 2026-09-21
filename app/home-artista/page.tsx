@@ -1152,6 +1152,20 @@ export default function HomeArtistaPage() {
               type="button"
               onClick={() =>
                 router.push(
+                  "/planos-artista"
+                )
+              }
+              className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-purple-500/50"
+            >
+              <div className="text-2xl">💎</div>
+              <p className="mt-3 font-bold">Meu plano</p>
+              <p className="mt-1 text-xs text-zinc-500">Plano, benefícios e validade</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                router.push(
                   "/agenda"
                 )
               }
