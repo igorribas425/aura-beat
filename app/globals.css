@@ -598,6 +598,131 @@ html[data-theme="light"] .aura-explore-map .aura-map-tiles {
   line-height: 1.2;
 }
 
+.aura-profile-marker--intermediate .aura-profile-marker-photo {
+  border-color: #a855f7;
+  box-shadow:
+    0 0 0 3px rgba(168,85,247,.18),
+    0 0 0 5px rgba(59,130,246,.08),
+    0 0 22px rgba(168,85,247,.44),
+    0 10px 30px rgba(0,0,0,.38);
+}
+
+.aura-profile-marker--pro .aura-profile-marker-photo {
+  width: 62px !important;
+  height: 62px !important;
+  min-width: 62px !important;
+  min-height: 62px !important;
+  max-width: 62px !important;
+  max-height: 62px !important;
+  border-color: #fbbf24;
+  background:
+    linear-gradient(#0b0b11,#0b0b11) padding-box,
+    linear-gradient(135deg,#fbbf24,#a855f7) border-box;
+  box-shadow:
+    0 0 0 3px rgba(251,191,36,.14),
+    0 0 0 6px rgba(168,85,247,.08),
+    0 0 20px rgba(251,191,36,.5),
+    0 0 36px rgba(168,85,247,.28),
+    0 12px 34px rgba(0,0,0,.42);
+}
+
+.aura-profile-marker--pro .aura-profile-marker-image {
+  width: 56px !important;
+  height: 56px !important;
+  min-width: 56px !important;
+  min-height: 56px !important;
+  max-width: 56px !important;
+  max-height: 56px !important;
+}
+
+.aura-profile-marker-plan {
+  position: absolute;
+  right: -13px;
+  top: -12px;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 18px;
+  border-radius: 999px;
+  padding: 2px 6px;
+  font-size: 7px;
+  font-weight: 950;
+  letter-spacing: .06em;
+  white-space: nowrap;
+  box-shadow: 0 5px 14px rgba(0,0,0,.28);
+}
+
+.aura-profile-marker-plan-intermediate {
+  border: 1px solid rgba(196,181,253,.55);
+  background: #6d28d9;
+  color: #fff;
+}
+
+.aura-profile-marker-plan-pro {
+  border: 1px solid rgba(253,230,138,.72);
+  background: linear-gradient(135deg,#fbbf24,#a855f7);
+  color: #09090b;
+}
+
+.aura-profile-card[data-plan="intermediate"]::before {
+  height: 3px;
+  background: linear-gradient(90deg,transparent,#a855f7,#60a5fa,transparent);
+  opacity: 1;
+}
+
+.aura-profile-card[data-plan="pro"]::before {
+  height: 3px;
+  background: linear-gradient(90deg,transparent,#fbbf24,#a855f7,#fbbf24,transparent);
+  opacity: 1;
+}
+
+.aura-profile-card[data-plan="pro"] {
+  border-color: rgba(251,191,36,.38) !important;
+}
+
+.aura-profile-card[data-plan="intermediate"] {
+  border-color: rgba(168,85,247,.34) !important;
+}
+
+.aura-mini-presskit[data-plan="intermediate"] .aura-mini-presskit-cover {
+  background:
+    radial-gradient(circle at 85% 15%, rgba(168,85,247,.28), transparent 26%),
+    linear-gradient(135deg,#32125a,#0d0a13 72%);
+}
+
+.aura-mini-presskit[data-plan="pro"] .aura-mini-presskit-cover {
+  background:
+    radial-gradient(circle at 86% 15%, rgba(251,191,36,.26), transparent 24%),
+    radial-gradient(circle at 14% 88%, rgba(168,85,247,.24), transparent 30%),
+    linear-gradient(135deg,#3a2910,#170d24 72%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .aura-profile-marker--pro .aura-profile-marker-photo {
+    animation: aura-pro-marker-glow 2.8s ease-in-out infinite;
+  }
+}
+
+@keyframes aura-pro-marker-glow {
+  0%,100% {
+    box-shadow:
+      0 0 0 3px rgba(251,191,36,.12),
+      0 0 0 6px rgba(168,85,247,.07),
+      0 0 18px rgba(251,191,36,.42),
+      0 0 32px rgba(168,85,247,.22),
+      0 12px 34px rgba(0,0,0,.42);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px rgba(251,191,36,.18),
+      0 0 0 7px rgba(168,85,247,.10),
+      0 0 26px rgba(251,191,36,.58),
+      0 0 42px rgba(168,85,247,.32),
+      0 12px 34px rgba(0,0,0,.42);
+  }
+}
+
 .aura-self-location-marker {
   position: relative;
   display: grid;
