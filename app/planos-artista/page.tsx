@@ -33,7 +33,9 @@ const BENEFIT_LABELS: Record<string, string> = {
   analytics: "Analytics avançado",
   profile_highlight: "Destaque visual do perfil",
   pro_badge: "Selo exclusivo PRO",
-  priority_support: "Suporte prioritário",
+  support_chat: "Chat com a Equipe Aura",
+  ai_chat: "Aura IA",
+  priority_support: "Atendimento prioritário",
 };
 
 function money(value: number) {
