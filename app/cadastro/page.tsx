@@ -72,6 +72,7 @@ export default function CadastroPage() {
   const [mensagem, setMensagem] = useState("");
   const [usuarioJaExiste, setUsuarioJaExiste] = useState(false);
   const [aceitouTermos, setAceitouTermos] = useState(false);
+  const [leuPrivacidade, setLeuPrivacidade] = useState(false);
 
   const [nomeCasa, setNomeCasa] = useState("");
   const [razaoSocial, setRazaoSocial] = useState("");
@@ -126,8 +127,8 @@ export default function CadastroPage() {
       return;
     }
 
-    if (!aceitouTermos) {
-      setMensagem("Leia e aceite os Termos de Uso e a Política de Privacidade para criar a conta.");
+    if (!aceitouTermos || !leuPrivacidade) {
+      setMensagem("Confirme os Termos de Uso e a Política de Privacidade para criar a conta.");
       return;
     }
 
@@ -175,6 +176,7 @@ export default function CadastroPage() {
           data: {
             full_name: nome.trim(),
             terms_accepted_at: new Date().toISOString(),
+            privacy_acknowledged_at: new Date().toISOString(),
             terms_version: "2026-09-21",
             privacy_version: "2026-09-21",
           },
@@ -550,28 +552,74 @@ export default function CadastroPage() {
                 🔒 Contratações formais no Aura Beat exigem verificação dos dois lados. Documentos e dados sensíveis nunca devem aparecer no perfil público.
               </div>
 
-              <label className="flex items-start gap-3 rounded-2xl border border-zinc-800 bg-black/30 p-4 text-xs leading-5 text-zinc-400">
-                <input
-                  type="checkbox"
-                  checked={aceitouTermos}
-                  onChange={(event) => setAceitouTermos(event.target.checked)}
-                  className="mt-1 h-4 w-4 shrink-0 accent-red-500"
-                />
-                <span>
-                  Li e aceito os{" "}
-                  <Link href="/termos" target="_blank" className="font-bold text-zinc-200 underline">
-                    Termos de Uso
-                  </Link>{" "}
-                  e a{" "}
-                  <Link href="/privacidade" target="_blank" className="font-bold text-zinc-200 underline">
-                    Política de Privacidade
-                  </Link>
-                  .
-                </span>
-              </label>
+              <div className="rounded-2xl border border-zinc-800 bg-black/30 p-4">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-300">
+                  Antes de criar sua conta
+                </p>
+                <p className="mt-1 text-xs leading-5 text-zinc-500">
+                  Confirme os itens abaixo. Os documentos abrem em uma nova aba.
+                </p>
+
+                <div className="mt-4 space-y-3">
+                  <label className="flex items-start gap-3 rounded-xl border border-zinc-800 bg-zinc-950/70 p-3 text-xs leading-5 text-zinc-400">
+                    <input
+                      type="checkbox"
+                      checked={aceitouTermos}
+                      onChange={(event) => setAceitouTermos(event.target.checked)}
+                      className="mt-1 h-4 w-4 shrink-0 accent-red-500"
+                    />
+                    <span>
+                      Li e aceito os{" "}
+                      <Link
+                        href="/termos"
+                        target="_blank"
+                        className="font-bold text-zinc-200 underline"
+                      >
+                        Termos de Uso
+                      </Link>
+                      .
+                    </span>
+                  </label>
+
+                  <label className="flex items-start gap-3 rounded-xl border border-zinc-800 bg-zinc-950/70 p-3 text-xs leading-5 text-zinc-400">
+                    <input
+                      type="checkbox"
+                      checked={leuPrivacidade}
+                      onChange={(event) => setLeuPrivacidade(event.target.checked)}
+                      className="mt-1 h-4 w-4 shrink-0 accent-red-500"
+                    />
+                    <span>
+                      Li e estou ciente da{" "}
+                      <Link
+                        href="/privacidade"
+                        target="_blank"
+                        className="font-bold text-zinc-200 underline"
+                      >
+                        Política de Privacidade
+                      </Link>
+                      .
+                    </span>
+                  </label>
+
+                  <div className="flex items-start gap-3 rounded-xl border border-zinc-800 bg-zinc-950/70 p-3 text-xs leading-5 text-zinc-500">
+                    <span className="mt-0.5 text-green-400">✓</span>
+                    <span>
+                      A exclusão da conta pode ser solicitada em{" "}
+                      <Link
+                        href="/excluir-conta"
+                        target="_blank"
+                        className="font-bold text-zinc-300 underline"
+                      >
+                        Exclusão de conta
+                      </Link>
+                      {" "}ou nas Configurações.
+                    </span>
+                  </div>
+                </div>
+              </div>
 
               <button
-                disabled={carregando}
+                disabled={carregando || !aceitouTermos || !leuPrivacidade}
                 type="submit"
                 className={`w-full rounded-2xl py-4 font-black text-white shadow-lg transition disabled:opacity-50 ${
                   tipo === "artist"
