@@ -7,6 +7,7 @@ import { PASSWORD_REQUIREMENTS_TEXT, passwordMeetsRequirements } from "../../lib
 import { supabase } from "../../lib/supabase";
 import { setThemePreference, type ThemePreference } from "../../lib/theme";
 import { ProfilePhotoEditor } from "../../components/profile-photo-editor";
+import { InstallAppCard } from "../../components/install-app-card";
 
 type ModoPerfil = "artist" | "venue";
 type Tema = ThemePreference;
@@ -852,6 +853,8 @@ export default function ConfiguracoesPage() {
             ))}
           </div>
         </section>
+
+        <InstallAppCard />
 
         <section className="rounded-3xl border border-zinc-800 bg-zinc-950 p-6">
           <p className="text-xs font-black text-red-500">SEGURANÇA</p>
