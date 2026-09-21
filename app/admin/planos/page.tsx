@@ -91,16 +91,17 @@ export default function AdminPlansPage() {
         return;
       }
 
-      const { data: adminData } = await supabase
-        .from("aura_admins")
-        .select("role,is_active")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      const { data: ownerAccess, error: ownerAccessError } =
+        await supabase.rpc("owner_access_v1");
 
-      if (!adminData?.is_active || adminData.role !== "owner") {
+      if (ownerAccessError) throw ownerAccessError;
+
+      if (ownerAccess !== true) {
         setAccessDenied(true);
         return;
       }
+
+      setAccessDenied(false);
 
       const [planResult, subscriptionResult, artistResult, venueResult] =
         await Promise.all([
