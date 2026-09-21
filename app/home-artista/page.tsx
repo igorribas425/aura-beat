@@ -2,6 +2,7 @@
 
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PlanStatusCard } from "../../components/plan-status-card";
 import { ProfileAvatar } from "../../components/profile-avatar";
 import { formatBRL } from "../../lib/finance";
 import {
@@ -1004,6 +1005,12 @@ export default function HomeArtistaPage() {
           )}
 
         </section>
+
+        <PlanStatusCard
+          audience="artist"
+          access={planAccess}
+          onViewPlans={() => router.push("/planos-artista")}
+        />
 
         <section
           className="grid grid-cols-2 gap-3 lg:grid-cols-4"
