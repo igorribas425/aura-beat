@@ -31,6 +31,23 @@ function deviceLabel() {
   return platform + " · " + browser;
 }
 
+function isSamePasswordError(caught: unknown) {
+  if (
+    typeof caught === "object" &&
+    caught !== null &&
+    "code" in caught &&
+    (caught as { code?: unknown }).code === "same_password"
+  ) {
+    return true;
+  }
+
+  const message = errorMessage(caught, "").toLowerCase();
+  return (
+    message.includes("new password should be different from the old password") ||
+    message.includes("new password should be different from old password")
+  );
+}
+
 function errorMessage(caught: unknown, fallback: string) {
   if (caught instanceof Error && caught.message) return caught.message;
 
@@ -114,14 +131,24 @@ export default function ActivateAuraTeamInvitePage() {
       setBusy(true);
       setError("");
 
-      const { error: passwordError } = await supabase.auth.updateUser({
-        password,
+      const { error: profileError } = await supabase.auth.updateUser({
         data: {
           full_name: name.trim(),
         },
       });
 
-      if (passwordError) throw passwordError;
+      if (profileError) throw profileError;
+
+      const { error: passwordError } = await supabase.auth.updateUser({
+        password,
+      });
+
+      // Se esta conta já existia e a pessoa digitou a senha que já usa,
+      // o Supabase rejeita a "troca" por ser igual. Para o convite da
+      // Equipe Aura isso é válido: mantemos a senha existente e seguimos.
+      if (passwordError && !isSamePasswordError(passwordError)) {
+        throw passwordError;
+      }
 
       const secret = createDeviceSecret();
 
@@ -208,13 +235,13 @@ export default function ActivateAuraTeamInvitePage() {
 
             <div>
               <label className="mb-2 block text-sm font-bold text-zinc-300">
-                Crie sua senha
+                Senha de acesso
               </label>
               <input
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder="Mínimo 6 caracteres"
+                placeholder="Use sua senha atual ou crie uma nova"
                 minLength={6}
                 required
                 autoComplete="new-password"
