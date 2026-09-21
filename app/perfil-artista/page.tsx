@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ArtistMediaManager } from "../../components/artist-media-manager";
 import { ProfileAvatar } from "../../components/profile-avatar";
 import { PublicLocationControl } from "../../components/public-location-control";
@@ -64,6 +65,7 @@ function verificationInfo(status: VerificationStatus) {
 }
 
 export default function PerfilArtistaPage() {
+  const router = useRouter();
   const [stageName, setStageName] = useState("");
   const [bio, setBio] = useState("");
   const [city, setCity] = useState("");
@@ -102,6 +104,13 @@ export default function PerfilArtistaPage() {
 
       if (!user) {
         setMessage("❌ Você precisa estar logado.");
+        return;
+      }
+
+      const { data: isOwner } = await supabase.rpc("owner_access_v1");
+
+      if (isOwner === true) {
+        router.replace("/admin");
         return;
       }
 
@@ -149,7 +158,7 @@ export default function PerfilArtistaPage() {
     }
 
     carregarPerfil();
-  }, []);
+  }, [router]);
 
   async function salvar(e: FormEvent) {
     e.preventDefault();
