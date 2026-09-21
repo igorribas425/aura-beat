@@ -14,6 +14,9 @@ import {
   getAsaasPixQrCode,
   mapAsaasStatus,
 } from "../../../../../lib/asaas";
+import {
+  normalizeBillingDocument,
+} from "../../../../../lib/billing-document";
 
 export const runtime = "nodejs";
 
@@ -88,6 +91,7 @@ export async function POST(request: NextRequest) {
 
     const body = (await request.json()) as {
       planId?: string;
+      cpfCnpj?: string;
     };
 
     const planId = body.planId?.trim();
@@ -150,11 +154,46 @@ export async function POST(request: NextRequest) {
         .eq("id", userData.user.id)
         .maybeSingle();
 
+      const { data: billingProfile } = await admin
+        .from("billing_customer_profiles")
+        .select("cpf_cnpj")
+        .eq("user_id", userData.user.id)
+        .maybeSingle();
+
+      const billingDocument =
+        normalizeBillingDocument(body.cpfCnpj) ||
+        normalizeBillingDocument(billingProfile?.cpf_cnpj);
+
+      if (!billingDocument) {
+        return NextResponse.json(
+          {
+            error:
+              "Informe um CPF válido para gerar o Pix da mensalidade.",
+            code: "BILLING_DOCUMENT_REQUIRED",
+          },
+          { status: 422 },
+        );
+      }
+
+      const { error: billingSaveError } = await admin
+        .from("billing_customer_profiles")
+        .upsert(
+          {
+            user_id: userData.user.id,
+            cpf_cnpj: billingDocument,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id" },
+        );
+
+      if (billingSaveError) throw billingSaveError;
+
       customer = {
         name:
-          artist.stage_name ||
           profile?.full_name ||
+          artist.stage_name ||
           "Artista Aura Beat",
+        cpfCnpj: billingDocument,
         email: userData.user.email || null,
         phone: profile?.phone || null,
       };
@@ -178,12 +217,39 @@ export async function POST(request: NextRequest) {
 
       venueId = venue.id;
 
+      const billingDocument =
+        normalizeBillingDocument(venue.cnpj);
+
+      if (!billingDocument) {
+        return NextResponse.json(
+          {
+            error:
+              "O CNPJ da Casa precisa estar válido para gerar o Pix.",
+            code: "BILLING_DOCUMENT_REQUIRED",
+          },
+          { status: 422 },
+        );
+      }
+
+      const { error: billingSaveError } = await admin
+        .from("billing_customer_profiles")
+        .upsert(
+          {
+            user_id: userData.user.id,
+            cpf_cnpj: billingDocument,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id" },
+        );
+
+      if (billingSaveError) throw billingSaveError;
+
       customer = {
         name:
           venue.legal_name ||
           venue.trade_name ||
           "Casa Aura Beat",
-        cpfCnpj: venue.cnpj,
+        cpfCnpj: billingDocument,
         email: venue.email || userData.user.email || null,
         phone: venue.phone,
       };
