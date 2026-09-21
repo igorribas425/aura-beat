@@ -12,6 +12,9 @@ import {
 } from "next/navigation";
 
 import {
+  normalizeBillingDocument,
+} from "../../../lib/billing-document";
+import {
   formatBRL,
 } from "../../../lib/finance";
 import {
@@ -55,6 +58,9 @@ export default function SubscriptionCheckoutPage() {
   const [creating, setCreating] = useState(false);
   const [checking, setChecking] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [billingDocument, setBillingDocument] = useState("");
+  const [hasBillingDocument, setHasBillingDocument] = useState(false);
+  const [billingLast4, setBillingLast4] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
@@ -83,7 +89,42 @@ export default function SubscriptionCheckoutPage() {
         throw new Error("Plano indisponível.");
       }
 
-      setPlan(data as Plan);
+      const typedPlan = data as Plan;
+      setPlan(typedPlan);
+
+      if (typedPlan.audience === "artist") {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (session?.access_token) {
+          const billingResponse = await fetch(
+            "/api/billing/profile",
+            {
+              headers: {
+                authorization:
+                  `Bearer ${session.access_token}`,
+              },
+              cache: "no-store",
+            },
+          );
+
+          if (billingResponse.ok) {
+            const billingData =
+              (await billingResponse.json()) as {
+                hasDocument?: boolean;
+                last4?: string | null;
+              };
+
+            setHasBillingDocument(
+              billingData.hasDocument === true,
+            );
+            setBillingLast4(
+              billingData.last4 || null,
+            );
+          }
+        }
+      }
     } catch (caught) {
       console.error(caught);
       setError(
@@ -127,7 +168,11 @@ export default function SubscriptionCheckoutPage() {
             "content-type": "application/json",
             authorization: `Bearer ${accessToken}`,
           },
-          body: JSON.stringify({ planId }),
+          body: JSON.stringify({
+            planId,
+            cpfCnpj:
+              billingDocument || undefined,
+          }),
         },
       );
 
@@ -315,9 +360,52 @@ export default function SubscriptionCheckoutPage() {
               O valor exibido no plano é o valor do Pix. A renovação seguinte
               pode ser feita novamente pela tela de planos.
             </p>
+
+            {plan?.audience === "artist" && (
+              <div className="mt-5 rounded-2xl border border-zinc-800 bg-black/40 p-4">
+                <label className="text-sm font-black text-zinc-200">
+                  CPF do titular da cobrança
+                </label>
+
+                {hasBillingDocument ? (
+                  <div className="mt-2 rounded-xl border border-green-900 bg-green-950/20 px-4 py-3 text-sm text-green-300">
+                    CPF de cobrança já cadastrado
+                    {billingLast4 ? ` · final ${billingLast4}` : ""}.
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      value={billingDocument}
+                      onChange={(event) =>
+                        setBillingDocument(
+                          event.target.value,
+                        )
+                      }
+                      inputMode="numeric"
+                      autoComplete="off"
+                      placeholder="000.000.000-00"
+                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white outline-none focus:border-green-500"
+                    />
+                    <p className="mt-2 text-xs leading-5 text-zinc-600">
+                      O ASAAS exige CPF ou CNPJ para gerar a cobrança.
+                      Esse documento fica somente no cadastro privado de pagamento
+                      e não aparece no seu perfil público.
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+
             <button
               type="button"
-              disabled={creating}
+              disabled={
+                creating ||
+                (plan?.audience === "artist" &&
+                  !hasBillingDocument &&
+                  !normalizeBillingDocument(
+                    billingDocument,
+                  ))
+              }
               onClick={() => void createPix()}
               className="mt-5 w-full rounded-2xl bg-green-600 px-5 py-4 text-lg font-black hover:bg-green-500 disabled:opacity-50"
             >
