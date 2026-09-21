@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { ensureFreshSession } from "../lib/admin-access";
 import { isOwnerEmail } from "../lib/owner-account";
 import { supabase } from "../lib/supabase";
 import {
@@ -80,9 +81,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
     async function loadSessionContext() {
       if (pathname.startsWith("/admin")) {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+        const session =
+          await ensureFreshSession();
 
         if (!alive) return;
 
