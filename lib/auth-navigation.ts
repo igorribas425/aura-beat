@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { isOwnerEmail } from "./owner-account";
 
 export type AuthenticatedDestination =
   | "/admin"
@@ -12,6 +13,16 @@ export type AuthenticatedDestination =
 export async function getAuthenticatedDestination(
   userId: string,
 ): Promise<AuthenticatedDestination> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (
+    user?.id === userId &&
+    isOwnerEmail(user.email)
+  ) {
+    return "/admin";
+  }
   const [ownerAccessResult, supportAccountResult, profileResult, artistResult, venueResult] = await Promise.all([
     supabase.rpc("owner_access_v1"),
     supabase.rpc("is_support_account_v1"),
