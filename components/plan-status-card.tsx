@@ -105,13 +105,11 @@ export function PlanStatusCard({
           },
           {
             key: "support_chat",
-            label: "Chat com a Equipe Aura",
+            label:
+              value(access, "support_priority") === "priority"
+                ? "Suporte Aura prioritário"
+                : "Chat com a Equipe Aura",
             available: value(access, "support_chat") === true,
-          },
-          {
-            key: "ai_chat",
-            label: "Aura IA",
-            available: value(access, "ai_chat") === true,
           },
         ]
       : [
@@ -142,13 +140,11 @@ export function PlanStatusCard({
           },
           {
             key: "support_chat",
-            label: "Chat com a Equipe Aura",
+            label:
+              value(access, "support_priority") === "priority"
+                ? "Suporte Aura prioritário"
+                : "Chat com a Equipe Aura",
             available: value(access, "support_chat") === true,
-          },
-          {
-            key: "ai_chat",
-            label: "Aura IA",
-            available: value(access, "ai_chat") === true,
           },
         ];
 
