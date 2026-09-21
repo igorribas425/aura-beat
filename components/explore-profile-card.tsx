@@ -5,6 +5,7 @@ import { ProfileAvatar } from "./profile-avatar";
 
 type ExploreProfileCardProps = {
   profile: ExploreProfile;
+  sourceKind: "artist" | "venue";
   canSendOffer: boolean;
   favorite: boolean;
   favoriteBusy: boolean;
@@ -32,6 +33,7 @@ export type MiniPressKitTravelQuote = {
 function ProfileActions({
   profile,
   canSendOffer,
+  sourceKind,
   favorite,
   favoriteBusy,
   onToggleFavorite,
@@ -45,10 +47,10 @@ function ProfileActions({
       >
         {profile.kind === "artist" ? "Ver perfil completo" : "Ver perfil"}
       </Link>
-      {!profile.isOwnProfile && (
+      {!profile.isOwnProfile && profile.kind !== sourceKind && (
         <>
           <Link
-            href={`/chat-direto?targetKind=${profile.kind}&targetId=${profile.id}`}
+            href={`/chat-direto?sourceKind=${sourceKind}&targetKind=${profile.kind}&targetId=${profile.id}`}
             className="rounded-xl border border-purple-500/40 bg-purple-500/10 px-4 py-2.5 text-center text-sm font-black text-purple-200 transition hover:bg-purple-500/20"
           >
             Conversar
