@@ -128,7 +128,64 @@ function fromRpc(row: RpcProfile, ownArtistId: string | null, ownVenueId: string
     isOwnProfile:
       (kind === "artist" && row.profile_id === ownArtistId) ||
       (kind === "venue" && row.profile_id === ownVenueId),
+    planCode: null,
+    planName: null,
   } satisfies ExploreProfile;
+}
+
+type PublicPlanLevelRow = {
+  profile_kind: "artist" | "venue";
+  profile_id: string;
+  plan_code: "normal" | "intermediate" | "pro" | null;
+  plan_name: string | null;
+};
+
+async function attachPublicPlanLevels(
+  profiles: ExploreProfile[],
+): Promise<ExploreProfile[]> {
+  if (profiles.length === 0) return profiles;
+
+  const artistIds = profiles
+    .filter((profile) => profile.kind === "artist")
+    .map((profile) => profile.id);
+  const venueIds = profiles
+    .filter((profile) => profile.kind === "venue")
+    .map((profile) => profile.id);
+
+  const { data, error } = await supabase.rpc(
+    "get_public_plan_levels_v1",
+    {
+      p_artist_ids: artistIds,
+      p_venue_ids: venueIds,
+    },
+  );
+
+  if (error) {
+    console.warn("Não foi possível carregar níveis públicos dos planos:", error);
+    return profiles;
+  }
+
+  const levels = new Map(
+    ((data || []) as PublicPlanLevelRow[]).map((row) => [
+      `${row.profile_kind}:${row.profile_id}`,
+      row,
+    ]),
+  );
+
+  return profiles.map((profile) => {
+    const level = levels.get(`${profile.kind}:${profile.id}`);
+
+    return {
+      ...profile,
+      planCode:
+        level?.plan_code === "normal" ||
+        level?.plan_code === "intermediate" ||
+        level?.plan_code === "pro"
+          ? level.plan_code
+          : null,
+      planName: level?.plan_name ?? null,
+    };
+  });
 }
 
 async function loadFallbackProfiles(
@@ -228,6 +285,8 @@ async function loadFallbackProfiles(
       locationPrecisionKm: null,
       distanceKm: null,
       isOwnProfile: artist.id === ownArtistId,
+      planCode: null,
+      planName: null,
     };
   });
 
@@ -252,6 +311,8 @@ async function loadFallbackProfiles(
     locationPrecisionKm: null,
     distanceKm: null,
     isOwnProfile: venue.id === ownVenueId,
+    planCode: null,
+    planName: null,
   }));
 
   const filtered = [...artistProfiles, ...venueProfiles]
@@ -603,6 +664,8 @@ export default function ExplorePage() {
           nextTotal = fallback.totalCount;
           setUsingFallback(true);
         }
+
+        nextProfiles = await attachPublicPlanLevels(nextProfiles);
 
         const located = withDistances(nextProfiles, location);
         const effectiveFilters: ExploreFilters = {
