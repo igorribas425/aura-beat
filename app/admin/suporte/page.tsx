@@ -24,7 +24,15 @@ type SupportMessage = {
   sender_side: "customer" | "support";
   body: string;
   read_at: string | null;
+  is_automatic: boolean;
   created_at: string;
+};
+
+type SupportSettings = {
+  away_enabled: boolean;
+  away_message: string;
+  ai_enabled: boolean;
+  updated_at: string;
 };
 
 function dateTime(value: string) {
@@ -48,6 +56,11 @@ export default function AdminSupportPage() {
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
+  const [awayEnabled, setAwayEnabled] = useState(false);
+  const [awayMessage, setAwayMessage] = useState(
+    "Recebemos sua mensagem. A Equipe Aura está ausente no momento e responderá assim que possível.",
+  );
+  const [settingsUpdatedAt, setSettingsUpdatedAt] = useState<string | null>(null);
 
   const selected = useMemo(
     () => threads.find((thread) => thread.thread_id === selectedId) || null,
@@ -88,6 +101,24 @@ export default function AdminSupportPage() {
     );
   }
 
+  async function loadSettings() {
+    const { data, error: settingsError } = await supabase.rpc(
+      "admin_support_settings_v1",
+    );
+
+    if (settingsError) throw settingsError;
+
+    const row = Array.isArray(data)
+      ? ((data[0] || null) as SupportSettings | null)
+      : null;
+
+    if (!row) return;
+
+    setAwayEnabled(row.away_enabled === true);
+    setAwayMessage(row.away_message);
+    setSettingsUpdatedAt(row.updated_at);
+  }
+
   useEffect(() => {
     let active = true;
 
@@ -116,7 +147,7 @@ export default function AdminSupportPage() {
           return;
         }
 
-        await loadThreads();
+        await Promise.all([loadThreads(), loadSettings()]);
       } catch (caught) {
         console.error(caught);
         if (active) {
@@ -150,7 +181,7 @@ export default function AdminSupportPage() {
     async function loadMessages() {
       const { data, error: messageError } = await supabase
         .from("support_messages")
-        .select("id,thread_id,sender_user_id,sender_side,body,read_at,created_at")
+        .select("id,thread_id,sender_user_id,sender_side,body,read_at,is_automatic,created_at")
         .eq("thread_id", threadId)
         .order("created_at", { ascending: true });
 
@@ -236,6 +267,40 @@ export default function AdminSupportPage() {
     }
   }
 
+  async function saveSettings() {
+    if (awayMessage.trim().length < 5) {
+      setError("Escreva uma mensagem automática com pelo menos 5 caracteres.");
+      return;
+    }
+
+    try {
+      setBusy("settings");
+      setError("");
+
+      const { error: settingsError } = await supabase.rpc(
+        "admin_update_support_settings_v1",
+        {
+          p_away_enabled: awayEnabled,
+          p_away_message: awayMessage.trim(),
+          p_ai_enabled: false,
+        },
+      );
+
+      if (settingsError) throw settingsError;
+
+      await loadSettings();
+    } catch (caught) {
+      console.error(caught);
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Não foi possível salvar o modo ausente.",
+      );
+    } finally {
+      setBusy("");
+    }
+  }
+
   async function closeThread() {
     if (!selectedId) return;
     if (!window.confirm("Encerrar este atendimento?")) return;
@@ -281,6 +346,94 @@ export default function AdminSupportPage() {
           <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
             Atendimentos de Artistas e Casas dos planos Intermediário e Pro.
           </p>
+        </section>
+
+        <section className="grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
+          <article
+            className={
+              "rounded-3xl border p-5 sm:p-6 " +
+              (awayEnabled
+                ? "border-amber-400/40 bg-amber-400/5"
+                : "border-zinc-800 bg-zinc-950")
+            }
+          >
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-300">
+                  MODO AUSENTE
+                </p>
+                <h2 className="mt-2 text-xl font-black">
+                  Resposta automática da Equipe Aura
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">
+                  Ative quando você estiver ausente. O cliente recebe uma resposta automática,
+                  e o chamado continua disponível para você responder depois.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setAwayEnabled((current) => !current)}
+                className={
+                  "rounded-full border px-4 py-2 text-xs font-black " +
+                  (awayEnabled
+                    ? "border-green-500/30 bg-green-500/10 text-green-300"
+                    : "border-zinc-700 bg-black/30 text-zinc-400")
+                }
+              >
+                {awayEnabled ? "● ATIVO" : "○ DESATIVADO"}
+              </button>
+            </div>
+
+            <label className="mt-5 block text-xs font-bold text-zinc-500">
+              Mensagem automática
+              <textarea
+                rows={3}
+                value={awayMessage}
+                onChange={(event) => setAwayMessage(event.target.value)}
+                className="mt-2 w-full resize-y rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white outline-none focus:border-amber-400"
+              />
+            </label>
+
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <button
+                type="button"
+                disabled={busy === "settings"}
+                onClick={() => void saveSettings()}
+                className="rounded-xl bg-amber-400 px-5 py-3 text-sm font-black text-black disabled:opacity-50"
+              >
+                {busy === "settings" ? "Salvando…" : "Salvar modo ausente"}
+              </button>
+
+              {settingsUpdatedAt && (
+                <span className="text-xs text-zinc-600">
+                  Última atualização: {dateTime(settingsUpdatedAt)}
+                </span>
+              )}
+            </div>
+          </article>
+
+          <article className="rounded-3xl border border-zinc-800 bg-zinc-950 p-5 sm:p-6">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-purple-300">
+              AUTOMAÇÃO FUTURA
+            </p>
+            <h2 className="mt-2 text-xl font-black">
+              IA no atendimento
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-zinc-500">
+              A IA fica somente no Admin. Quando um modelo real for conectado,
+              você poderá ativá-la aqui apenas quando quiser.
+            </p>
+
+            <div className="mt-5 rounded-2xl border border-zinc-800 bg-black/30 px-4 py-3">
+              <p className="text-xs font-black text-zinc-400">
+                ○ IA DESATIVADA
+              </p>
+              <p className="mt-1 text-xs text-zinc-600">
+                Motor de IA ainda não conectado.
+              </p>
+            </div>
+          </article>
         </section>
 
         {error && (
@@ -410,6 +563,19 @@ export default function AdminSupportPage() {
                                 : "rounded-bl-md border border-zinc-800 bg-zinc-900 text-zinc-200")
                             }
                           >
+                            <p
+                              className={
+                                "mb-1 text-[10px] font-black uppercase tracking-wide " +
+                                (support ? "text-black/60" : "text-zinc-500")
+                              }
+                            >
+                              {support
+                                ? message.is_automatic
+                                  ? "Equipe Aura · automática"
+                                  : "Equipe Aura"
+                                : "Cliente"}
+                            </p>
+
                             <p className="whitespace-pre-wrap break-words text-sm leading-6">
                               {message.body}
                             </p>
