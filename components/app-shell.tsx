@@ -26,6 +26,8 @@ const publicPaths = new Set([
   "/privacidade",
   "/termos",
   "/excluir-conta",
+  "/recuperar-senha",
+  "/redefinir-senha",
 ]);
 
 function NavigationIcon({ name }: { name: NavIcon }) {
