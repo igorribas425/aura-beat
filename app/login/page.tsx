@@ -148,6 +148,13 @@ export default function LoginPage() {
               {carregando ? "Entrando..." : "Entrar"}
             </button>
 
+            <Link
+              href="/recuperar-senha"
+              className="block text-center text-sm font-bold text-zinc-400 transition hover:text-white"
+            >
+              Esqueci minha senha
+            </Link>
+
             {mensagem && (
               <div className="rounded-xl bg-zinc-900 p-3 text-sm">
                 {mensagem}
