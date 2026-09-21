@@ -347,6 +347,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   const supportPortalPath = pathname.startsWith("/equipe-aura");
+  const adminPath = pathname.startsWith("/admin");
   const ownerEntryPaths = new Set([
     "/",
     "/login",
@@ -356,7 +357,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     "/perfil-casa",
   ]);
 
-  if (supportPortalPath) return <>{children}</>;
+  if (supportPortalPath || adminPath) return <>{children}</>;
   if (supportAccount) return null;
   if (
     ownerAccount &&
