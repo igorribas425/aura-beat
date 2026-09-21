@@ -218,24 +218,6 @@ export default function AuraTeamSupportPage() {
           void loadThreads(selectedIdRef.current);
         },
       )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "support_messages",
-          filter: "thread_id=eq." + threadId,
-        },
-        (payload) => {
-          const updated = payload.new as SupportMessage;
-
-          setMessages((current) =>
-            current.map((message) =>
-              message.id === updated.id ? updated : message,
-            ),
-          );
-        },
-      )
       .subscribe();
 
     return () => {
@@ -313,6 +295,24 @@ export default function AuraTeamSupportPage() {
               [threadId]: 0,
             }));
           }
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "support_messages",
+          filter: "thread_id=eq." + threadId,
+        },
+        (payload) => {
+          const updated = payload.new as SupportMessage;
+
+          setMessages((current) =>
+            current.map((message) =>
+              message.id === updated.id ? updated : message,
+            ),
+          );
         },
       )
       .subscribe();
