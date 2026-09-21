@@ -25,12 +25,15 @@ type Subscription = {
 };
 
 const BENEFIT_LABELS: Record<string, string> = {
-  analytics: "Estatísticas avançadas",
-  pro_badge: "Selo Pro",
+  core_profile: "Perfil profissional completo",
+  presskit: "Press Kit público",
+  chat: "Chat direto com Casas",
+  offers: "Acesso a ofertas",
+  agenda: "Agenda profissional",
+  analytics: "Analytics avançado",
+  profile_highlight: "Destaque visual do perfil",
+  pro_badge: "Selo exclusivo PRO",
   priority_support: "Suporte prioritário",
-  advanced_filters: "Filtros avançados",
-  reports: "Relatórios",
-  team: "Equipe",
 };
 
 function money(value: number) {
@@ -244,14 +247,42 @@ export default function ArtistPlansPage() {
               return (
                 <article
                   key={plan.id}
-                  className={`rounded-3xl border p-6 ${
+                  className={`relative rounded-3xl border p-6 ${
+                    plan.code === "pro"
+                      ? "border-amber-400/50 bg-gradient-to-b from-amber-500/10 via-zinc-950 to-purple-500/5 shadow-[0_0_45px_rgba(251,191,36,0.10)]"
+                      : plan.code === "intermediate"
+                        ? "border-purple-500/40 bg-gradient-to-b from-purple-500/10 to-zinc-950"
+                        : "border-zinc-800 bg-zinc-950"
+                  } ${
                     current
-                      ? "border-purple-500/60 bg-purple-950/10 shadow-[0_0_30px_rgba(168,85,247,0.12)]"
-                      : "border-zinc-800 bg-zinc-950"
+                      ? "ring-1 ring-green-500/30"
+                      : ""
                   }`}
                 >
+                  {plan.code === "pro" && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full border border-amber-400/30 bg-black px-4 py-1.5 text-[10px] font-black tracking-[0.18em] text-amber-300">
+                      ✦ EXPERIÊNCIA PREMIUM
+                    </div>
+                  )}
                   <div className="flex items-center justify-between gap-3">
-                    <h3 className="text-2xl font-black">{plan.name}</h3>
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
+                        {plan.code === "pro"
+                          ? "MAIS COMPLETO"
+                          : plan.code === "intermediate"
+                            ? "PROFISSIONAL"
+                            : "ESSENCIAL"}
+                      </p>
+                      <h3 className={`mt-2 text-2xl font-black ${
+                        plan.code === "pro"
+                          ? "text-amber-200"
+                          : plan.code === "intermediate"
+                            ? "text-purple-200"
+                            : "text-white"
+                      }`}>
+                        {plan.name}
+                      </h3>
+                    </div>
                     {current && (
                       <span className="rounded-full bg-purple-500/15 px-3 py-1 text-xs font-black text-purple-300">
                         SEU PLANO
@@ -272,9 +303,15 @@ export default function ArtistPlansPage() {
                     ))}
                   </div>
 
+                  {plan.code === "pro" && (
+                    <div className="mt-5 rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4 text-sm font-bold text-amber-200">
+                      ✦ Para Artistas que querem o nível mais completo e destacado do Aura Beat.
+                    </div>
+                  )}
+
                   {!current && (
                     <div className="mt-6 rounded-xl border border-zinc-800 bg-black/30 p-3 text-xs leading-5 text-zinc-500">
-                      A contratação automática deste plano pelo ASAAS será habilitada na próxima etapa.
+                      A assinatura automática pelo ASAAS será conectada ao fluxo de pagamento. O Admin já pode liberar este plano manualmente.
                     </div>
                   )}
                 </article>
