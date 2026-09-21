@@ -170,11 +170,6 @@ export default function FinanceiroCasaPage() {
     for (const linha of dados) {
       const total = Number(linha.gross_amount || 0);
 
-      const adicionais =
-        Number(linha.travel_amount || 0) +
-        Number(linha.toll_amount || 0) +
-        Number(linha.lodging_amount || 0);
-
       if (linha.payment_status === "paid") {
         totalPago += total;
         taxaAsaas +=
