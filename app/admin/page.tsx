@@ -180,7 +180,7 @@ export default function AdminHomePage() {
           </Link>
 
           <Link
-            href="/admin/suporte#ia"
+            href="/admin/ia-suporte"
             className="rounded-3xl border border-cyan-900/50 bg-cyan-950/10 p-6 transition hover:border-cyan-500/60"
           >
             <div className="text-3xl">🤖</div>
