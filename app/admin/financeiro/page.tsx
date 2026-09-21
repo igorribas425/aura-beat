@@ -10,6 +10,22 @@ import {
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 
+type PlanPaymentRow = {
+  payment_id: string;
+  user_id: string;
+  audience: "artist" | "venue";
+  profile_name: string;
+  plan_name: string;
+  plan_code: string;
+  status: string;
+  amount: number;
+  provider: string | null;
+  provider_payment_id: string | null;
+  paid_at: string | null;
+  refunded_at: string | null;
+  created_at: string;
+};
+
 type FinanceRow = {
   payment_id: string;
   booking_id: string;
@@ -231,6 +247,11 @@ export default function AdminFinanceiroPage() {
   ] = useState<FinanceRow[]>([]);
 
   const [
+    planPayments,
+    setPlanPayments,
+  ] = useState<PlanPaymentRow[]>([]);
+
+  const [
     busca,
     setBusca,
   ] = useState("");
@@ -288,22 +309,43 @@ export default function AdminFinanceiroPage() {
             return;
           }
 
-          const {
-            data,
-            error,
-          } = await supabase.rpc(
-            "get_admin_finance"
-          );
+          const [
+            financeResult,
+            planPaymentsResult,
+          ] = await Promise.all([
+            supabase.rpc(
+              "get_admin_finance"
+            ),
+            supabase.rpc(
+              "owner_plan_payments_v1"
+            ),
+          ]);
 
-          if (error) {
-            throw error;
+          if (financeResult.error) {
+            throw financeResult.error;
+          }
+
+          if (planPaymentsResult.error) {
+            throw planPaymentsResult.error;
           }
 
           setDados(
             (
-              (data ||
+              (financeResult.data ||
                 []) as FinanceRow[]
             ).map(normalizar)
+          );
+
+          setPlanPayments(
+            (
+              (planPaymentsResult.data ||
+                []) as PlanPaymentRow[]
+            ).map((row) => ({
+              ...row,
+              amount: Number(
+                row.amount || 0
+              ),
+            }))
           );
         } catch (caught) {
           console.error(caught);
@@ -369,6 +411,31 @@ export default function AdminFinanceiroPage() {
         pixRecebidos,
       };
     }, [dados]);
+
+  const planTotals =
+    useMemo(() => {
+      let recebidas = 0;
+      let pendentes = 0;
+
+      for (const payment of planPayments) {
+        if (payment.status === "paid") {
+          recebidas += payment.amount;
+        }
+
+        if (
+          ["pending", "processing"].includes(
+            payment.status
+          )
+        ) {
+          pendentes += payment.amount;
+        }
+      }
+
+      return {
+        recebidas,
+        pendentes,
+      };
+    }, [planPayments]);
 
   const filtrados =
     useMemo(() => {
@@ -537,6 +604,82 @@ export default function AdminFinanceiroPage() {
             </div>
           </div>
         </div>
+
+        <section className="mb-8 rounded-3xl border border-purple-900/40 bg-purple-950/10 p-5 sm:p-6">
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-purple-300">
+                MENSALIDADES
+              </p>
+              <h2 className="mt-2 text-xl font-black">
+                Planos pagos pelo ASAAS
+              </h2>
+              <p className="mt-2 text-sm text-zinc-500">
+                Pagamentos de Artistas e Casas ativam o plano automaticamente por 1 mês.
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <div className="rounded-2xl border border-green-900/60 bg-green-950/20 px-4 py-3">
+                <p className="text-xs text-green-300">Recebido</p>
+                <p className="mt-1 text-lg font-black text-green-400">
+                  {dinheiro(planTotals.recebidas)}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-yellow-900/60 bg-yellow-950/20 px-4 py-3">
+                <p className="text-xs text-yellow-300">Pendente</p>
+                <p className="mt-1 text-lg font-black">
+                  {dinheiro(planTotals.pendentes)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {planPayments.length === 0 ? (
+            <div className="mt-5 rounded-2xl border border-dashed border-zinc-800 p-6 text-center text-sm text-zinc-500">
+              Nenhuma mensalidade gerada ainda.
+            </div>
+          ) : (
+            <div className="mt-5 space-y-3">
+              {planPayments.slice(0, 12).map((payment) => {
+                const visual = statusPagamento(payment.status);
+
+                return (
+                  <div
+                    key={payment.payment_id}
+                    className="flex flex-col justify-between gap-3 rounded-2xl border border-zinc-800 bg-black/40 p-4 sm:flex-row sm:items-center"
+                  >
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <strong>{payment.profile_name}</strong>
+                        <span className="rounded-full border border-zinc-800 px-2 py-0.5 text-[10px] uppercase text-zinc-500">
+                          {payment.audience === "venue" ? "Casa" : "Artista"}
+                        </span>
+                        <span className={"rounded-full border px-2 py-0.5 text-[10px] " + visual.classe}>
+                          {visual.texto}
+                        </span>
+                      </div>
+
+                      <p className="mt-1 text-sm text-zinc-400">
+                        {payment.plan_name} · {dataHora(payment.created_at)}
+                      </p>
+                    </div>
+
+                    <div className="sm:text-right">
+                      <p className="text-lg font-black text-green-400">
+                        {dinheiro(payment.amount)}
+                      </p>
+                      <p className="text-xs text-zinc-600">
+                        {payment.provider || "ASAAS"}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
         <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <input
