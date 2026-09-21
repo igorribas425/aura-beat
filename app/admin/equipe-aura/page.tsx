@@ -14,6 +14,10 @@ type SupportAgent = {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  device_label: string | null;
+  device_activated_at: string | null;
+  device_last_seen_at: string | null;
+  device_revoked_at: string | null;
 };
 
 type SupportInvite = {
@@ -89,7 +93,7 @@ export default function AdminAuraTeamPage() {
 
   async function loadTeamData() {
     const [agentsResult, invitesResult] = await Promise.all([
-      supabase.rpc("owner_support_team_list_v1"),
+      supabase.rpc("owner_support_team_list_v2"),
       supabase.rpc("owner_support_invite_list_v1"),
     ]);
 
@@ -265,6 +269,104 @@ export default function AdminAuraTeamPage() {
     } catch (caught) {
       console.error(caught);
       setError(errorMessage(caught, "Não foi possível cancelar o convite."));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function blockDevice(agent: SupportAgent) {
+    const name = agent.full_name || agent.email || "este atendente";
+
+    if (
+      !window.confirm(
+        "Bloquear o dispositivo atual de " +
+          name +
+          "? O acesso ao chat será interrompido.",
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setBusy(agent.user_id);
+      setError("");
+      setMessage("");
+
+      const { error: resetError } = await supabase.rpc(
+        "owner_support_device_reset_v1",
+        {
+          p_user_id: agent.user_id,
+        },
+      );
+
+      if (resetError) throw resetError;
+
+      setMessage("Dispositivo bloqueado. O atendente não consegue mais abrir o chat.");
+      await loadTeamData();
+    } catch (caught) {
+      console.error(caught);
+      setError(errorMessage(caught, "Não foi possível bloquear o dispositivo."));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function moveDevice(agent: SupportAgent) {
+    const name = agent.full_name || agent.email || "este atendente";
+
+    if (
+      !window.confirm(
+        "Transferir o acesso de " +
+          name +
+          " para outro dispositivo? O dispositivo atual será bloqueado e um novo convite será enviado.",
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setBusy(agent.user_id);
+      setError("");
+      setMessage("");
+
+      const { data: invitedEmail, error: prepareError } = await supabase.rpc(
+        "owner_support_device_reinvite_v1",
+        {
+          p_user_id: agent.user_id,
+        },
+      );
+
+      if (prepareError) throw prepareError;
+
+      const targetEmail =
+        typeof invitedEmail === "string" ? invitedEmail : agent.email;
+
+      if (!targetEmail) {
+        throw new Error("E-mail do atendente indisponível.");
+      }
+
+      const { error: emailError } = await supabase.auth.signInWithOtp({
+        email: targetEmail,
+        options: {
+          shouldCreateUser: false,
+          emailRedirectTo:
+            window.location.origin + "/equipe-aura/ativar",
+        },
+      });
+
+      if (emailError) throw emailError;
+
+      setMessage(
+        "Dispositivo antigo bloqueado e novo convite enviado para " +
+          targetEmail +
+          ".",
+      );
+      await loadTeamData();
+    } catch (caught) {
+      console.error(caught);
+      setError(
+        errorMessage(caught, "Não foi possível transferir o dispositivo."),
+      );
     } finally {
       setBusy("");
     }
@@ -581,9 +683,55 @@ export default function AdminAuraTeamPage() {
                       <p className="mt-1 text-[11px] text-zinc-600">
                         Liberado em {dateTime(agent.created_at)}
                       </p>
+
+                      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
+                        <span
+                          className={
+                            agent.device_revoked_at
+                              ? "font-bold text-red-300"
+                              : agent.device_label
+                                ? "font-bold text-green-300"
+                                : "text-zinc-600"
+                          }
+                        >
+                          {agent.device_revoked_at
+                            ? "🔒 Dispositivo bloqueado"
+                            : agent.device_label
+                              ? "💻 " + agent.device_label
+                              : "⌛ Aguardando ativação do dispositivo"}
+                        </span>
+
+                        {agent.device_last_seen_at && !agent.device_revoked_at && (
+                          <span className="text-zinc-500">
+                            Último acesso: {dateTime(agent.device_last_seen_at)}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex flex-wrap gap-2">
+                      {agent.is_active && agent.device_label && !agent.device_revoked_at && (
+                        <button
+                          type="button"
+                          disabled={busy === agent.user_id}
+                          onClick={() => void blockDevice(agent)}
+                          className="rounded-xl border border-amber-800 px-4 py-2 text-sm font-black text-amber-300 disabled:opacity-50"
+                        >
+                          Bloquear dispositivo
+                        </button>
+                      )}
+
+                      {agent.is_active && (
+                        <button
+                          type="button"
+                          disabled={busy === agent.user_id}
+                          onClick={() => void moveDevice(agent)}
+                          className="rounded-xl border border-cyan-800 px-4 py-2 text-sm font-black text-cyan-300 disabled:opacity-50"
+                        >
+                          Trocar dispositivo
+                        </button>
+                      )}
+
                       <button
                         type="button"
                         disabled={busy === agent.user_id}
@@ -621,10 +769,11 @@ export default function AdminAuraTeamPage() {
             🔐 Como funciona o acesso
           </p>
           <p className="mt-2 text-sm leading-6 text-zinc-500">
-            Cada atendente recebe seu próprio acesso de trabalho. O cargo de suporte só
-            libera o portal <strong>/equipe-aura</strong> e o chat de atendimento.
-            Ele não libera <strong>/admin</strong>, Financeiro, Planos ou Verificações.
-            Suspender ou remover aqui corta o acesso ao trabalho sem apagar a conta.
+            Cada atendente recebe um convite individual e o link é de uso único. No primeiro
+            cadastro, o acesso fica vinculado ao dispositivo usado pela pessoa. Mesmo com
+            e-mail e senha, outro dispositivo não consegue abrir o chat sem você usar
+            <strong> Trocar dispositivo</strong>. O cargo de suporte não libera{" "}
+            <strong>/admin</strong>, Financeiro, Planos ou Verificações.
           </p>
         </section>
       </div>
