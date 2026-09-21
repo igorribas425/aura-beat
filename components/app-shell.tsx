@@ -56,6 +56,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [ownerAccount, setOwnerAccount] = useState(false);
   const [planLocked, setPlanLocked] = useState(false);
   const [planExpiresAt, setPlanExpiresAt] = useState<string | null>(null);
+  const [planDaysRemaining, setPlanDaysRemaining] = useState<number | null>(null);
   const [planName, setPlanName] = useState<string | null>(null);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [unreadAlertCount, setUnreadAlertCount] = useState(0);
@@ -87,6 +88,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         setOwnerAccount(false);
         setPlanLocked(false);
         setPlanExpiresAt(null);
+        setPlanDaysRemaining(null);
         setPlanName(null);
         setMode(null);
 
@@ -195,6 +197,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           setPlanLocked(locked);
           setPlanExpiresAt(access.current_period_end ?? null);
           setPlanName(access.plan_name ?? null);
+
+          if (access.current_period_end) {
+            const expiryMs = new Date(
+              access.current_period_end,
+            ).getTime();
+            const currentMs = new Date().getTime();
+
+            setPlanDaysRemaining(
+              Math.ceil(
+                (expiryMs - currentMs) /
+                  (1000 * 60 * 60 * 24),
+              ),
+            );
+          } else {
+            setPlanDaysRemaining(null);
+          }
 
           const billingPath =
             pathname.startsWith("/planos-") ||
@@ -439,10 +457,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const daysUntilExpiry =
     planExpiresAt
-      ? Math.ceil(
-          (new Date(planExpiresAt).getTime() - Date.now()) /
-            (1000 * 60 * 60 * 24),
-        )
+      ? planDaysRemaining
       : null;
 
   const showRenewalWarning =
