@@ -123,7 +123,7 @@ export default function AdminHomePage() {
               Financeiro Aura Beat
             </h2>
             <p className="mt-2 text-sm text-zinc-500">
-              Comissões, ASAAS, pagamentos e repasses.
+              Taxas da plataforma, ASAAS e pagamentos.
             </p>
           </Link>
 
