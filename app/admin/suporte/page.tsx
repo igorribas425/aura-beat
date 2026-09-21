@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SupportNotificationButton } from "../../../components/support-notification-button";
+import { ensureFreshSession } from "../../../lib/admin-access";
 import { notifySupportIncoming } from "../../../lib/support-alerts";
 import { supabase } from "../../../lib/supabase";
 
@@ -167,11 +168,10 @@ export default function AdminSupportPage() {
         setLoading(true);
         setError("");
 
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+        const session =
+          await ensureFreshSession();
 
-        if (!user) {
+        if (!session?.user) {
           router.replace("/login");
           return;
         }
