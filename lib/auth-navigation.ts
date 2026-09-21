@@ -1,6 +1,7 @@
 import { supabase } from "./supabase";
 
 export type AuthenticatedDestination =
+  | "/admin"
   | "/home-artista"
   | "/home-casa"
   | "/perfil-artista"
@@ -11,12 +12,17 @@ export type AuthenticatedDestination =
 export async function getAuthenticatedDestination(
   userId: string,
 ): Promise<AuthenticatedDestination> {
-  const [supportAccountResult, profileResult, artistResult, venueResult] = await Promise.all([
+  const [ownerAccessResult, supportAccountResult, profileResult, artistResult, venueResult] = await Promise.all([
+    supabase.rpc("owner_access_v1"),
     supabase.rpc("is_support_account_v1"),
     supabase.from("profiles").select("default_mode").eq("id", userId).maybeSingle(),
     supabase.from("artist_profiles").select("id").eq("user_id", userId).maybeSingle(),
     supabase.from("venue_profiles").select("id").eq("owner_user_id", userId).maybeSingle(),
   ]);
+
+  if (ownerAccessResult.data === true) {
+    return "/admin";
+  }
 
   if (supportAccountResult.data === true) {
     const deviceSecret =
