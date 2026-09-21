@@ -29,6 +29,7 @@ type SupportMessage = {
   sender_side: "customer" | "support";
   body: string;
   read_at: string | null;
+  is_automatic: boolean;
   created_at: string;
 };
 
@@ -51,7 +52,6 @@ export default function SupportAuraPage() {
   const router = useRouter();
   const endRef = useRef<HTMLDivElement | null>(null);
 
-  const [userId, setUserId] = useState("");
   const [audience, setAudience] = useState<Audience>("artist");
   const [access, setAccess] = useState<PlanAccess | null>(null);
   const [threads, setThreads] = useState<SupportThread[]>([]);
@@ -146,7 +146,6 @@ export default function SupportAuraPage() {
 
         if (!active) return;
 
-        setUserId(user.id);
         setAudience(resolved);
         setAccess(plan);
 
@@ -188,7 +187,7 @@ export default function SupportAuraPage() {
 
       const { data, error: messagesError } = await supabase
         .from("support_messages")
-        .select("id,thread_id,sender_user_id,sender_side,body,read_at,created_at")
+        .select("id,thread_id,sender_user_id,sender_side,body,read_at,is_automatic,created_at")
         .eq("thread_id", threadId)
         .order("created_at", { ascending: true });
 
@@ -513,7 +512,7 @@ export default function SupportAuraPage() {
                     </div>
                   ) : (
                     messages.map((message) => {
-                      const mine = message.sender_user_id === userId;
+                      const mine = message.sender_side === "customer";
 
                       return (
                         <div
@@ -534,7 +533,11 @@ export default function SupportAuraPage() {
                                 (mine ? "text-purple-100" : "text-amber-300")
                               }
                             >
-                              {mine ? "Você" : "Equipe Aura"}
+                              {mine
+                                ? "Você"
+                                : message.is_automatic
+                                  ? "Equipe Aura · automática"
+                                  : "Equipe Aura"}
                             </p>
 
                             <p className="whitespace-pre-wrap break-words text-sm leading-6">
