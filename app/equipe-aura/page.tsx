@@ -153,12 +153,12 @@ export default function AuraTeamSupportPage() {
         if (accessError) throw accessError;
 
         if (allowed !== true) {
-          const { data: supportAccount } = await supabase.rpc(
-            "is_support_account_v1",
+          const { data: supportIdentity } = await supabase.rpc(
+            "is_support_identity_v1",
           );
 
           router.replace(
-            supportAccount === true
+            supportIdentity === true
               ? "/equipe-aura/dispositivo-bloqueado"
               : "/home",
           );
@@ -195,12 +195,32 @@ export default function AuraTeamSupportPage() {
   }, [router]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      void supabase.rpc("support_device_touch_v1");
-    }, 5 * 60 * 1000);
+    let active = true;
 
-    return () => window.clearInterval(timer);
-  }, []);
+    async function verifyLiveAccess() {
+      const { data: allowed } = await supabase.rpc(
+        "is_aura_support_agent_v1",
+      );
+
+      if (!active) return;
+
+      if (allowed !== true) {
+        router.replace("/equipe-aura/dispositivo-bloqueado");
+        return;
+      }
+
+      await supabase.rpc("support_device_touch_v1");
+    }
+
+    const timer = window.setInterval(() => {
+      void verifyLiveAccess();
+    }, 10 * 1000);
+
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [router]);
 
   useEffect(() => {
     const channel = supabase
