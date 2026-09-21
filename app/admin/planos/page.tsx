@@ -387,13 +387,19 @@ export default function AdminPlansPage() {
     setPlanId(validPlan?.id || "");
     setQuery("");
 
-    const firstTarget =
-      audience === "artist"
-        ? artists[0]?.id
-        : venues[0]?.id;
+    setTargetId((current) => {
+      const currentIsValid =
+        audience === "artist"
+          ? artists.some((artist) => artist.id === current)
+          : venues.some((venue) => venue.id === current);
 
-    setTargetId(firstTarget || "");
-  }, [audience]);
+      if (currentIsValid) return current;
+
+      return audience === "artist"
+        ? artists[0]?.id || ""
+        : venues[0]?.id || "";
+    });
+  }, [audience, artists, plans, venues]);
 
   const planMap = useMemo(
     () => new Map(plans.map((plan) => [plan.id, plan])),
