@@ -16,6 +16,14 @@ type SupportAgent = {
   updated_at: string;
 };
 
+type SupportInvite = {
+  invite_id: string;
+  email: string;
+  status: "pending" | "accepted" | "expired";
+  created_at: string;
+  expires_at: string;
+};
+
 function initials(value: string) {
   return (
     value
@@ -57,6 +65,7 @@ function errorMessage(caught: unknown, fallback: string) {
 export default function AdminAuraTeamPage() {
   const router = useRouter();
   const [agents, setAgents] = useState<SupportAgent[]>([]);
+  const [invites, setInvites] = useState<SupportInvite[]>([]);
   const [email, setEmail] = useState("");
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -78,14 +87,17 @@ export default function AdminAuraTeamPage() {
     );
   }, [agents, query]);
 
-  async function loadAgents() {
-    const { data, error: listError } = await supabase.rpc(
-      "owner_support_team_list_v1",
-    );
+  async function loadTeamData() {
+    const [agentsResult, invitesResult] = await Promise.all([
+      supabase.rpc("owner_support_team_list_v1"),
+      supabase.rpc("owner_support_invite_list_v1"),
+    ]);
 
-    if (listError) throw listError;
+    if (agentsResult.error) throw agentsResult.error;
+    if (invitesResult.error) throw invitesResult.error;
 
-    setAgents((data || []) as SupportAgent[]);
+    setAgents((agentsResult.data || []) as SupportAgent[]);
+    setInvites((invitesResult.data || []) as SupportInvite[]);
   }
 
   useEffect(() => {
@@ -116,7 +128,7 @@ export default function AdminAuraTeamPage() {
           return;
         }
 
-        await loadAgents();
+        await loadTeamData();
       } catch (caught) {
         console.error(caught);
 
@@ -137,37 +149,122 @@ export default function AdminAuraTeamPage() {
     };
   }, [router]);
 
-  async function addAgent(event: FormEvent) {
+  async function sendInvite(event: FormEvent) {
     event.preventDefault();
 
-    if (!email.trim()) {
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!cleanEmail) {
       setError("Informe o e-mail da pessoa.");
       return;
     }
 
     try {
-      setBusy("add");
+      setBusy("invite");
       setError("");
       setMessage("");
 
-      const { error: addError } = await supabase.rpc(
-        "owner_support_team_add_v1",
+      const { error: inviteError } = await supabase.rpc(
+        "owner_support_invite_create_v1",
         {
-          p_email: email.trim(),
+          p_email: cleanEmail,
         },
       );
 
-      if (addError) throw addError;
+      if (inviteError) throw inviteError;
+
+      const { error: emailError } = await supabase.auth.signInWithOtp({
+        email: cleanEmail,
+        options: {
+          shouldCreateUser: true,
+          emailRedirectTo:
+            window.location.origin + "/equipe-aura/ativar",
+        },
+      });
+
+      if (emailError) {
+        throw new Error(
+          "O convite foi criado, mas o e-mail não pôde ser enviado: " +
+            emailError.message,
+        );
+      }
 
       setEmail("");
-      setMessage("Atendente adicionado com acesso somente ao Suporte Aura.");
-      await loadAgents();
+      setMessage(
+        "Convite enviado. A pessoa receberá um link por e-mail para criar o acesso de trabalho.",
+      );
+      await loadTeamData();
     } catch (caught) {
       console.error(caught);
-
       setError(
-        errorMessage(caught, "Não foi possível adicionar o atendente."),
+        errorMessage(caught, "Não foi possível enviar o convite."),
       );
+      await loadTeamData().catch(() => undefined);
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function resendInvite(invite: SupportInvite) {
+    try {
+      setBusy(invite.invite_id);
+      setError("");
+      setMessage("");
+
+      const { error: inviteError } = await supabase.rpc(
+        "owner_support_invite_create_v1",
+        {
+          p_email: invite.email,
+        },
+      );
+
+      if (inviteError) throw inviteError;
+
+      const { error: emailError } = await supabase.auth.signInWithOtp({
+        email: invite.email,
+        options: {
+          shouldCreateUser: true,
+          emailRedirectTo:
+            window.location.origin + "/equipe-aura/ativar",
+        },
+      });
+
+      if (emailError) throw emailError;
+
+      setMessage("Convite reenviado para " + invite.email + ".");
+      await loadTeamData();
+    } catch (caught) {
+      console.error(caught);
+      setError(errorMessage(caught, "Não foi possível reenviar o convite."));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function cancelInvite(invite: SupportInvite) {
+    if (!window.confirm("Cancelar o convite de " + invite.email + "?")) {
+      return;
+    }
+
+    try {
+      setBusy(invite.invite_id);
+      setError("");
+      setMessage("");
+
+      const { error: cancelError } = await supabase.rpc(
+        "owner_support_invite_cancel_v1",
+        {
+          p_invite_id: invite.invite_id,
+        },
+      );
+
+      if (cancelError) throw cancelError;
+
+      setMessage("Convite cancelado.");
+      await loadTeamData();
+    } catch (caught) {
+      console.error(caught);
+      setError(errorMessage(caught, "Não foi possível cancelar o convite."));
     } finally {
       setBusy("");
     }
@@ -205,7 +302,7 @@ export default function AdminAuraTeamPage() {
           : "Acesso da equipe suspenso imediatamente.",
       );
 
-      await loadAgents();
+      await loadTeamData();
     } catch (caught) {
       console.error(caught);
 
@@ -245,7 +342,7 @@ export default function AdminAuraTeamPage() {
       if (removeError) throw removeError;
 
       setMessage("Atendente removido da Equipe Aura.");
-      await loadAgents();
+      await loadTeamData();
     } catch (caught) {
       console.error(caught);
 
@@ -312,13 +409,14 @@ export default function AdminAuraTeamPage() {
             Liberar acesso ao Suporte Aura
           </h2>
           <p className="mt-2 text-sm leading-6 text-zinc-500">
-            A pessoa precisa já ter uma conta cadastrada no Aura Beat. Depois de adicionada,
-            ela entra pelo endereço <strong className="text-zinc-300">/equipe-aura</strong>.
-            O proprietário e administradores já podem acessar esse portal sem serem adicionados à equipe.
+            Digite o e-mail da pessoa. Ela receberá um link para criar o acesso de trabalho
+            e, ao concluir o cadastro, entrará somente pelo endereço{" "}
+            <strong className="text-zinc-300">/equipe-aura</strong>.
+            O proprietário e administradores já podem acessar esse portal sem convite.
           </p>
 
           <form
-            onSubmit={addAgent}
+            onSubmit={sendInvite}
             className="mt-5 flex flex-col gap-3 sm:flex-row"
           >
             <input
@@ -331,12 +429,74 @@ export default function AdminAuraTeamPage() {
 
             <button
               type="submit"
-              disabled={busy === "add"}
+              disabled={busy === "invite"}
               className="rounded-xl bg-cyan-400 px-5 py-3 text-sm font-black text-black disabled:opacity-50"
             >
-              {busy === "add" ? "Adicionando…" : "+ Adicionar à equipe"}
+              {busy === "invite" ? "Enviando…" : "✉ Enviar convite"}
             </button>
           </form>
+        </section>
+
+        <section className="rounded-3xl border border-zinc-800 bg-zinc-950 p-6">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-300">
+                CONVITES
+              </p>
+              <h2 className="mt-2 text-xl font-black">Convites enviados</h2>
+              <p className="mt-2 text-sm text-zinc-500">
+                O link vale por 7 dias. Depois de aceito, a pessoa aparece na equipe atual.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            {invites.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-zinc-800 p-6 text-sm text-zinc-500">
+                Nenhum convite pendente.
+              </div>
+            ) : (
+              invites.map((invite) => (
+                <article
+                  key={invite.invite_id}
+                  className="flex flex-col gap-3 rounded-2xl border border-zinc-800 bg-black/30 p-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-black">{invite.email}</p>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      {invite.status === "accepted"
+                        ? "Aceito"
+                        : invite.status === "expired"
+                          ? "Expirado"
+                          : "Aguardando cadastro"}{" "}
+                      · enviado em {dateTime(invite.created_at)}
+                    </p>
+                  </div>
+
+                  {invite.status === "pending" && (
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={busy === invite.invite_id}
+                        onClick={() => void resendInvite(invite)}
+                        className="rounded-xl border border-cyan-800 px-4 py-2 text-sm font-black text-cyan-300 disabled:opacity-50"
+                      >
+                        Reenviar
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy === invite.invite_id}
+                        onClick={() => void cancelInvite(invite)}
+                        className="rounded-xl border border-red-900 px-4 py-2 text-sm font-black text-red-300 disabled:opacity-50"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  )}
+                </article>
+              ))
+            )}
+          </div>
         </section>
 
         <section className="rounded-3xl border border-zinc-800 bg-zinc-950 p-6">
@@ -366,7 +526,7 @@ export default function AdminAuraTeamPage() {
                   Nenhum atendente encontrado
                 </p>
                 <p className="mt-2 text-sm text-zinc-500">
-                  Adicione alguém pelo e-mail quando quiser montar a equipe.
+                  Envie um convite por e-mail para montar a equipe.
                 </p>
               </div>
             ) : (
@@ -461,9 +621,10 @@ export default function AdminAuraTeamPage() {
             🔐 Como funciona o acesso
           </p>
           <p className="mt-2 text-sm leading-6 text-zinc-500">
-            O cargo de suporte só libera o portal <strong>/equipe-aura</strong>.
-            Ele não libera <strong>/admin</strong>. Suspender ou remover aqui corta
-            o acesso da equipe, mas não apaga a conta pessoal do usuário no Aura Beat.
+            Cada atendente recebe seu próprio acesso de trabalho. O cargo de suporte só
+            libera o portal <strong>/equipe-aura</strong> e o chat de atendimento.
+            Ele não libera <strong>/admin</strong>, Financeiro, Planos ou Verificações.
+            Suspender ou remover aqui corta o acesso ao trabalho sem apagar a conta.
           </p>
         </section>
       </div>
