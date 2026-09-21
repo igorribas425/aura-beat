@@ -623,11 +623,6 @@ export default function ConfiguracoesPage() {
           <p className="text-xs font-black text-red-500">CONTA</p>
           <h2 className="mt-1 text-2xl font-black">Dados pessoais</h2>
 
-          <p className="mt-2 text-sm text-zinc-500">
-            Use pelo menos 8 caracteres, com letra maiúscula, letra minúscula,
-            número e símbolo.
-          </p>
-
           <div className="mt-6 grid gap-5 md:grid-cols-2">
             <div>
               <label className="mb-2 block text-sm font-bold text-zinc-300">
@@ -861,6 +856,10 @@ export default function ConfiguracoesPage() {
         <section className="rounded-3xl border border-zinc-800 bg-zinc-950 p-6">
           <p className="text-xs font-black text-red-500">SEGURANÇA</p>
           <h2 className="mt-1 text-2xl font-black">Alterar senha</h2>
+          <p className="mt-2 text-sm text-zinc-500">
+            Use pelo menos 8 caracteres, com letra maiúscula, letra minúscula,
+            número e símbolo.
+          </p>
 
           <div className="mt-6 grid gap-5 md:grid-cols-2">
             <div>
