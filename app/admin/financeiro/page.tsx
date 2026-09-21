@@ -8,6 +8,7 @@ import {
 } from "react";
 
 import { useRouter } from "next/navigation";
+import { getOwnerAccessFast } from "../../../lib/admin-access";
 import { supabase } from "../../../lib/supabase";
 
 type PlanPaymentRow = {
@@ -279,30 +280,17 @@ export default function AdminFinanceiroPage() {
           setCarregando(true);
           setErro("");
 
-          const {
-            data: { user },
-          } =
-            await supabase.auth.getUser();
+          const ownerAccess =
+            await getOwnerAccessFast();
 
-          if (!user) {
+          if (!ownerAccess.authenticated) {
             router.replace(
               "/login"
             );
             return;
           }
 
-          const {
-            data: owner,
-            error: ownerError,
-          } = await supabase.rpc(
-            "owner_access_v1"
-          );
-
-          if (ownerError) {
-            throw ownerError;
-          }
-
-          if (owner !== true) {
+          if (!ownerAccess.allowed) {
             router.replace(
               "/home"
             );
