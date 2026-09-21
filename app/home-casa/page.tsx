@@ -6,6 +6,7 @@ import { PlanStatusCard } from "../../components/plan-status-card";
 import { ProfileAvatar } from "../../components/profile-avatar";
 import {
   getMyPlanAccess,
+  hasPlanBenefit,
   type PlanAccess,
 } from "../../lib/plan-access";
 import { supabase } from "../../lib/supabase";
@@ -204,6 +205,27 @@ export default function HomeCasaPage() {
       hover: "hover:border-red-500/50",
     },
     {
+      icon: "📊",
+      label: "Relatórios",
+      detail: hasPlanBenefit(planAccess, "reports")
+        ? "Análises liberadas"
+        : "Intermediário / Pro",
+      href: "/relatorios-casa",
+      hover: "hover:border-purple-500/50",
+      locked: !hasPlanBenefit(planAccess, "reports"),
+    },
+    {
+      icon: "👥",
+      label: "Equipe",
+      detail: hasPlanBenefit(planAccess, "team")
+        ? "Gestão liberada"
+        : "Exclusivo Pro",
+      href: "/equipe-casa",
+      hover: "hover:border-amber-400/50",
+      locked: !hasPlanBenefit(planAccess, "team"),
+      pro: true,
+    },
+    {
       icon: "💎",
       label: "Meu plano",
       detail: "Benefícios e nível atual",
@@ -299,7 +321,7 @@ export default function HomeCasaPage() {
         <section>
           <h2 className="mb-3 text-lg font-black">Acesso rápido</h2>
 
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-8">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
             {atalhos.map((atalho) => (
               <button
                 key={atalho.href}
@@ -344,6 +366,18 @@ export default function HomeCasaPage() {
                 <p className="relative z-10 mt-1 text-xs text-zinc-500">
                   {atalho.detail}
                 </p>
+
+                {"locked" in atalho && atalho.locked && (
+                  <span className="relative z-10 mt-3 inline-flex rounded-full border border-zinc-700 bg-black/30 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-zinc-400">
+                    🔒 Bloqueado
+                  </span>
+                )}
+
+                {"pro" in atalho && atalho.pro && !("locked" in atalho && atalho.locked) && (
+                  <span className="relative z-10 mt-3 inline-flex rounded-full border border-amber-400/30 bg-amber-400/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-amber-300">
+                    ✦ PRO
+                  </span>
+                )}
 
                 {"destaque" in atalho && atalho.destaque && (
                   <span className="relative z-10 mt-3 inline-flex rounded-full border border-amber-400/30 bg-amber-400/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-amber-300">
