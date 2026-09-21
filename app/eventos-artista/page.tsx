@@ -266,11 +266,6 @@ export default function EventosArtistaPage() {
       null
     );
 
-  const simulacaoIntervalRef =
-    useRef<ReturnType<typeof setInterval> | null>(
-      null
-    );
-
   const [artista, setArtista] =
     useState<Artista | null>(null);
 
@@ -312,16 +307,12 @@ export default function EventosArtistaPage() {
   const [ultimaLocalizacao, setUltimaLocalizacao] =
     useState<Coordenadas | null>(null);
 
-  const [simulando, setSimulando] =
-    useState(false);
-
   const carregarPaginaEffect = useEffectEvent(() => {
     void carregarPagina();
   });
 
   const limparMonitoramentoEffect = useEffectEvent(() => {
     pararGpsContinuo();
-    pararSimulacao();
   });
 
   useEffect(() => {
@@ -793,7 +784,6 @@ export default function EventosArtistaPage() {
         statusConfirmado === "completed"
       ) {
         pararGpsContinuo();
-        pararSimulacao();
       }
 
       setBookings((anteriores) =>
@@ -966,106 +956,6 @@ export default function EventosArtistaPage() {
     } finally {
       setEnviandoAvaliacao(null);
     }
-  }
-
-  function pararSimulacao() {
-    if (
-      simulacaoIntervalRef.current
-    ) {
-      clearInterval(
-        simulacaoIntervalRef.current
-      );
-
-      simulacaoIntervalRef.current =
-        null;
-    }
-
-    setSimulando(false);
-  }
-
-  function simularTrajeto(
-    booking: Booking
-  ) {
-    pararSimulacao();
-
-    const inicio = {
-      lat: -28.2834,
-      lng: -52.7864,
-    };
-
-    const destino = {
-      lat: -28.2628,
-      lng: -52.4066,
-    };
-
-    const totalPassos = 12;
-
-    let passo = 0;
-
-    setSimulando(true);
-
-    async function enviarPonto() {
-      const progresso =
-        passo / totalPassos;
-
-      const lat =
-        inicio.lat +
-        (destino.lat - inicio.lat) *
-          progresso;
-
-      const lng =
-        inicio.lng +
-        (destino.lng - inicio.lng) *
-          progresso;
-
-      const coordenadas = {
-        lat,
-        lng,
-        accuracy: 8,
-      };
-
-      setUltimaLocalizacao(
-        coordenadas
-      );
-
-      try {
-        await gravarTracking(
-          booking,
-          "location",
-          coordenadas,
-          {
-            source:
-              "simulation",
-            step: passo,
-            total_steps:
-              totalPassos,
-          }
-        );
-      } catch (error) {
-        console.error(error);
-      }
-
-      passo += 1;
-
-      if (
-        passo >
-        totalPassos
-      ) {
-        pararSimulacao();
-
-        setMensagem(
-          "Simulação de trajeto concluída."
-        );
-      }
-    }
-
-    enviarPonto();
-
-    simulacaoIntervalRef.current =
-      setInterval(
-        enviarPonto,
-        2500
-      );
   }
 
   if (carregando) {
@@ -1587,52 +1477,6 @@ export default function EventosArtistaPage() {
                         </div>
                       </div>
 
-                      {[
-                        "confirmed",
-                        "in_transit",
-                        "arrived",
-                        "in_event",
-                      ].includes(
-                        booking.status
-                      ) && (
-                        <div className="rounded-2xl border border-purple-900/50 bg-purple-950/10 p-5">
-                          <p className="text-xs font-black text-purple-400">
-                            TESTE DE GPS
-                          </p>
-
-                          <p className="mt-2 text-sm leading-6 text-zinc-500">
-                            Simula um trajeto
-                            Carazinho →
-                            Passo Fundo para
-                            testar o mapa da
-                            Casa.
-                          </p>
-
-                          {!simulando ? (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                simularTrajeto(
-                                  booking
-                                )
-                              }
-                              className="mt-4 w-full rounded-xl border border-purple-800 py-3 text-sm font-bold text-purple-300 hover:bg-purple-950/30"
-                            >
-                              🧪 Simular trajeto
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={
-                                pararSimulacao
-                              }
-                              className="mt-4 w-full rounded-xl border border-red-800 py-3 text-sm font-bold text-red-400"
-                            >
-                              Parar simulação
-                            </button>
-                          )}
-                        </div>
-                      )}
                     </div>
                   </div>
 
