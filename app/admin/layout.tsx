@@ -8,6 +8,7 @@ const items = [
   { href: "/admin/suporte", label: "Suporte" },
   { href: "/admin/equipe-aura", label: "Equipe Aura" },
   { href: "/admin/cnpj", label: "CNPJ" },
+  { href: "/admin/exclusoes", label: "Exclusões" },
 ];
 
 export default function AdminLayout({
