@@ -96,14 +96,14 @@ function benefitLines(plan: Plan) {
       emphasis: false,
     },
     {
-      label: "Gestão de equipe",
-      available: benefits.team === true,
-      emphasis: benefits.team === true,
+      label: "Chat com a Equipe Aura",
+      available: benefits.support_chat === true,
+      emphasis: benefits.support_priority === "priority",
     },
     {
-      label: "Suporte prioritário",
-      available: benefits.priority_support === true,
-      emphasis: benefits.priority_support === true,
+      label: "Aura IA",
+      available: benefits.ai_chat === true,
+      emphasis: benefits.ai_chat === true,
     },
   ];
 }
