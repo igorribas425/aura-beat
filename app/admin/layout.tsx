@@ -35,10 +35,18 @@ export default function AdminLayout({
             </div>
           </Link>
 
-          <nav
-            className="hidden items-center gap-1 xl:flex"
-            aria-label="Navegação administrativa"
-          >
+          <div className="flex items-center gap-3">
+            <Link
+              href="/home-artista"
+              className="rounded-xl border border-purple-500/30 bg-purple-500/10 px-3 py-2 text-xs font-black text-purple-300 transition hover:bg-purple-500/20"
+            >
+              Modo DJ
+            </Link>
+
+            <nav
+              className="hidden items-center gap-1 xl:flex"
+              aria-label="Navegação administrativa"
+            >
             {items.map((item) => (
               <Link
                 key={item.href}
@@ -48,7 +56,8 @@ export default function AdminLayout({
                 {item.label}
               </Link>
             ))}
-          </nav>
+            </nav>
+          </div>
 
           <Link
             href="/admin"
