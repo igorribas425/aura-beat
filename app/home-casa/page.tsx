@@ -2,7 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PlanStatusCard } from "../../components/plan-status-card";
 import { ProfileAvatar } from "../../components/profile-avatar";
+import {
+  getMyPlanAccess,
+  type PlanAccess,
+} from "../../lib/plan-access";
 import { supabase } from "../../lib/supabase";
 
 type Casa = {
@@ -23,6 +28,7 @@ export default function HomeCasaPage() {
   const [avaliacaoCasa, setAvaliacaoCasa] = useState(0);
   const [quantidadeAvaliacoesCasa, setQuantidadeAvaliacoesCasa] = useState(0);
   const [eventosConcluidos, setEventosConcluidos] = useState(0);
+  const [planAccess, setPlanAccess] = useState<PlanAccess | null>(null);
 
   useEffect(() => {
     let ativo = true;
@@ -60,7 +66,7 @@ export default function HomeCasaPage() {
         const perfilCasa = perfil as Casa;
         setCasa(perfilCasa);
 
-        const [avaliacoesResult, eventosResult] = await Promise.all([
+        const [avaliacoesResult, eventosResult, planoResult] = await Promise.all([
           supabase
             .from("reviews")
             .select("overall_rating")
@@ -71,7 +77,10 @@ export default function HomeCasaPage() {
             .select("id", { count: "exact", head: true })
             .eq("venue_id", perfilCasa.id)
             .eq("status", "completed"),
+          getMyPlanAccess("venue"),
         ]);
+
+        setPlanAccess(planoResult);
 
         if (!ativo) return;
 
@@ -195,6 +204,13 @@ export default function HomeCasaPage() {
       hover: "hover:border-red-500/50",
     },
     {
+      icon: "💎",
+      label: "Meu plano",
+      detail: "Benefícios e nível atual",
+      href: "/planos-casa",
+      hover: "hover:border-amber-400/50",
+    },
+    {
       icon: "⚙️",
       label: "Configurações",
       detail: "Conta e preferências",
@@ -255,6 +271,12 @@ export default function HomeCasaPage() {
           </div>
         </section>
 
+        <PlanStatusCard
+          audience="venue"
+          access={planAccess}
+          onViewPlans={() => router.push("/planos-casa")}
+        />
+
         <section className="grid gap-3 sm:grid-cols-2" aria-label="Resumo da Casa">
           <div className="aura-stat rounded-2xl border p-5">
             <p className="text-sm text-zinc-500">Avaliação da Casa</p>
@@ -277,7 +299,7 @@ export default function HomeCasaPage() {
         <section>
           <h2 className="mb-3 text-lg font-black">Acesso rápido</h2>
 
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-7">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-8">
             {atalhos.map((atalho) => (
               <button
                 key={atalho.href}
