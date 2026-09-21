@@ -1147,6 +1147,12 @@ export default function ExplorePage() {
           )}
         </div>
 
+        {view === "map" && !loading && profiles.length > 0 && mappableCount === 0 && (
+          <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm leading-6 text-amber-100/80">
+            Nenhum perfil compartilhou localização pública ainda. Os perfis continuam disponíveis na lista e só aparecem no mapa depois que o próprio Artista ou a Casa autorizar a localização.
+          </div>
+        )}
+
         {loading ? (
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-label="Carregando perfis">
             {Array.from({ length: 6 }, (_, index) => (
