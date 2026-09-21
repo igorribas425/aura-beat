@@ -5,6 +5,7 @@ import type { FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getAuthenticatedDestination } from "../../lib/auth-navigation";
+import { PASSWORD_REQUIREMENTS_TEXT, passwordMeetsRequirements } from "../../lib/password";
 import { supabase } from "../../lib/supabase";
 
 type TipoPerfil = "artist" | "venue";
@@ -122,8 +123,8 @@ export default function CadastroPage() {
       return;
     }
 
-    if (senha.length < 6) {
-      setMensagem("A senha precisa ter pelo menos 6 caracteres.");
+    if (!passwordMeetsRequirements(senha)) {
+      setMensagem(PASSWORD_REQUIREMENTS_TEXT);
       return;
     }
 
@@ -540,8 +541,8 @@ export default function CadastroPage() {
                   value={senha}
                   onChange={(e) => setSenha(e.target.value)}
                   type="password"
-                  placeholder="Mínimo 6 caracteres"
-                  minLength={6}
+                  placeholder="8+ caracteres, com maiúscula, número e símbolo"
+                  minLength={8}
                   required
                   autoComplete="new-password"
                   className="w-full rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3.5 outline-none transition focus:border-red-500"
