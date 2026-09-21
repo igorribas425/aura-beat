@@ -34,7 +34,6 @@ const BENEFIT_LABELS: Record<string, string> = {
   profile_highlight: "Destaque visual do perfil",
   pro_badge: "Selo exclusivo PRO",
   support_chat: "Chat com a Equipe Aura",
-  ai_chat: "Aura IA",
   priority_support: "Atendimento prioritário",
 };
 
@@ -52,6 +51,12 @@ function date(value: string | null) {
 function benefitText(key: string, value: unknown) {
   if (key === "trial_days") {
     return `${value} dias de teste`;
+  }
+
+  if (key === "support_priority") {
+    return value === "priority"
+      ? "Suporte Aura prioritário"
+      : "Chat com a Equipe Aura";
   }
 
   if (key === "visibility") {
