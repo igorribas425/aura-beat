@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatBRL } from "../../lib/finance";
+import { PASSWORD_REQUIREMENTS_TEXT, passwordMeetsRequirements } from "../../lib/password";
 import { supabase } from "../../lib/supabase";
 import { setThemePreference, type ThemePreference } from "../../lib/theme";
 import { ProfilePhotoEditor } from "../../components/profile-photo-editor";
@@ -410,8 +411,8 @@ export default function ConfiguracoesPage() {
     setErro("");
     setMensagem("");
 
-    if (senha.length < 6) {
-      setErro("A nova senha precisa ter pelo menos 6 caracteres.");
+    if (!passwordMeetsRequirements(senha)) {
+      setErro(PASSWORD_REQUIREMENTS_TEXT);
       return;
     }
 
@@ -621,6 +622,11 @@ export default function ConfiguracoesPage() {
         <section className="rounded-3xl border border-zinc-800 bg-zinc-950 p-6">
           <p className="text-xs font-black text-red-500">CONTA</p>
           <h2 className="mt-1 text-2xl font-black">Dados pessoais</h2>
+
+          <p className="mt-2 text-sm text-zinc-500">
+            Use pelo menos 8 caracteres, com letra maiúscula, letra minúscula,
+            número e símbolo.
+          </p>
 
           <div className="mt-6 grid gap-5 md:grid-cols-2">
             <div>
@@ -865,7 +871,7 @@ export default function ConfiguracoesPage() {
                 type="password"
                 value={senha}
                 onChange={(event) => setSenha(event.target.value)}
-                placeholder="Mínimo 6 caracteres"
+                placeholder="8+ caracteres, com maiúscula, número e símbolo"
                 autoComplete="new-password"
                 className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 outline-none focus:border-red-500"
               />
