@@ -104,9 +104,14 @@ export function PlanStatusCard({
             available: value(access, "pro_badge") === true,
           },
           {
-            key: "priority_support",
-            label: "Suporte prioritário",
-            available: value(access, "priority_support") === true,
+            key: "support_chat",
+            label: "Chat com a Equipe Aura",
+            available: value(access, "support_chat") === true,
+          },
+          {
+            key: "ai_chat",
+            label: "Aura IA",
+            available: value(access, "ai_chat") === true,
           },
         ]
       : [
@@ -136,14 +141,14 @@ export function PlanStatusCard({
             available: value(access, "reports") === true,
           },
           {
-            key: "team",
-            label: "Gestão de equipe",
-            available: value(access, "team") === true,
+            key: "support_chat",
+            label: "Chat com a Equipe Aura",
+            available: value(access, "support_chat") === true,
           },
           {
-            key: "priority_support",
-            label: "Suporte prioritário",
-            available: value(access, "priority_support") === true,
+            key: "ai_chat",
+            label: "Aura IA",
+            available: value(access, "ai_chat") === true,
           },
         ];
 
