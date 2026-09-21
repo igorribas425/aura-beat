@@ -18,7 +18,15 @@ import {
 type Mode = "artist" | "venue";
 type NavIcon = "home" | "explore" | "offers" | "events" | "chat" | "alerts" | "calendar";
 
-const publicPaths = new Set(["/", "/login", "/cadastro", "/cadastro/login"]);
+const publicPaths = new Set([
+  "/",
+  "/login",
+  "/cadastro",
+  "/cadastro/login",
+  "/privacidade",
+  "/termos",
+  "/excluir-conta",
+]);
 
 function NavigationIcon({ name }: { name: NavIcon }) {
   const paths: Record<NavIcon, React.ReactNode> = {
@@ -148,13 +156,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       setOwnerAccount(ownerOnly);
       setAuthenticated(true);
 
+      if (publicPaths.has(pathname)) {
+        setPlanLocked(false);
+        setPlanExpiresAt(null);
+        setPlanDaysRemaining(null);
+        setPlanName(null);
+        return;
+      }
+
       const ownerEntryPaths = new Set([
         "/",
         "/login",
         "/cadastro",
         "/cadastro/login",
-        "/perfil-artista",
-        "/perfil-casa",
       ]);
 
       if (
@@ -446,8 +460,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     "/login",
     "/cadastro",
     "/cadastro/login",
-    "/perfil-artista",
-    "/perfil-casa",
   ]);
 
   if (supportPortalPath || adminPath || accessChoicePath) return <>{children}</>;
