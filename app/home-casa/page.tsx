@@ -218,24 +218,14 @@ export default function HomeCasaPage() {
       icon: "🎧",
       label: "Suporte Aura",
       detail: hasPlanBenefit(planAccess, "support_chat")
-        ? hasPlanBenefit(planAccess, "ai_chat")
+        ? planAccess?.benefits?.support_priority === "priority"
           ? "Atendimento prioritário"
           : "Falar com a equipe"
         : "Intermediário / Pro",
       href: "/suporte-aura",
       hover: "hover:border-purple-500/50",
       locked: !hasPlanBenefit(planAccess, "support_chat"),
-    },
-    {
-      icon: "🤖",
-      label: "Aura IA",
-      detail: hasPlanBenefit(planAccess, "ai_chat")
-        ? "Assistente Pro"
-        : "Exclusivo Pro",
-      href: "/aura-ia",
-      hover: "hover:border-amber-400/50",
-      locked: !hasPlanBenefit(planAccess, "ai_chat"),
-      pro: true,
+      pro: planAccess?.benefits?.support_priority === "priority",
     },
     {
       icon: "💎",
