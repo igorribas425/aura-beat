@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { getAuthenticatedDestination } from "../../lib/auth-navigation";
+import { isOwnerEmail } from "../../lib/owner-account";
 import { supabase } from "../../lib/supabase";
 
 export default function LoginPage() {
@@ -24,6 +25,11 @@ export default function LoginPage() {
 
         const user = data.session?.user;
         if (!user) return;
+
+        if (isOwnerEmail(user.email)) {
+          router.replace("/admin");
+          return;
+        }
 
         const destination = await getAuthenticatedDestination(user.id);
         if (active) router.replace(destination);
@@ -60,6 +66,11 @@ export default function LoginPage() {
       if (!data.user) {
         setMensagem("❌ Não foi possível entrar.");
         setCarregando(false);
+        return;
+      }
+
+      if (isOwnerEmail(data.user.email)) {
+        router.replace("/admin");
         return;
       }
 
