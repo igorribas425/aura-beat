@@ -51,6 +51,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [mode, setMode] = useState<Mode | null>(null);
   const [theme, setTheme] = useState<ThemePreference>("system");
   const [authenticated, setAuthenticated] = useState(false);
+  const [supportAccount, setSupportAccount] = useState(false);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [unreadAlertCount, setUnreadAlertCount] = useState(0);
 
@@ -77,6 +78,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       if (!data.user) {
         setAuthenticated(false);
+        setSupportAccount(false);
         setMode(null);
 
         const nextTheme = getStoredTheme();
@@ -87,13 +89,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       setAuthenticated(true);
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("default_mode,theme")
-        .eq("id", data.user.id)
-        .maybeSingle();
+      const [{ data: profile }, { data: isSupportAccount }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("default_mode,theme")
+          .eq("id", data.user.id)
+          .maybeSingle(),
+        supabase.rpc("is_support_account_v1"),
+      ]);
 
       if (!alive) return;
+
+      const supportOnly = isSupportAccount === true;
+      setSupportAccount(supportOnly);
+
+      if (supportOnly && !pathname.startsWith("/equipe-aura")) {
+        router.replace("/equipe-aura");
+        return;
+      }
 
       const nextMode: Mode = profile?.default_mode === "venue" ? "venue" : "artist";
       const nextTheme: ThemePreference =
@@ -286,6 +299,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     router.push(next === "artist" ? "/home-artista" : "/home-casa");
   }
 
+  const supportPortalPath = pathname.startsWith("/equipe-aura");
+
+  if (supportPortalPath) return <>{children}</>;
+  if (supportAccount) return null;
   if (publicPaths.has(pathname) || !authenticated) return <>{children}</>;
 
   const home = mode === "venue" ? "/home-casa" : "/home-artista";
