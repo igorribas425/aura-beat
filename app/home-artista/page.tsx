@@ -1321,44 +1321,12 @@ export default function HomeArtistaPage() {
               <p className="mt-3 font-bold">Suporte Aura</p>
               <p className="mt-1 text-xs text-zinc-500">
                 {hasPlanBenefit(planAccess, "support_chat")
-                  ? hasPlanBenefit(planAccess, "ai_chat")
+                  ? planAccess?.benefits?.support_priority === "priority"
                     ? "Atendimento prioritário"
                     : "Falar com a equipe"
                   : "Intermediário / Pro"}
               </p>
               {!hasPlanBenefit(planAccess, "support_chat") && (
-                <span className="mt-3 inline-flex rounded-full border border-zinc-700 bg-black/30 px-2.5 py-1 text-[10px] font-black uppercase text-zinc-400">
-                  🔒 Bloqueado
-                </span>
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() =>
-                router.push(
-                  "/aura-ia"
-                )
-              }
-              className={
-                "rounded-2xl border p-5 text-left transition " +
-                (hasPlanBenefit(planAccess, "ai_chat")
-                  ? "border-amber-400/40 bg-amber-400/5 hover:border-amber-300"
-                  : "border-zinc-800 bg-zinc-950 hover:border-zinc-700")
-              }
-            >
-              <div className="text-2xl">🤖</div>
-              <p className="mt-3 font-bold">Aura IA</p>
-              <p className="mt-1 text-xs text-zinc-500">
-                {hasPlanBenefit(planAccess, "ai_chat")
-                  ? "Assistente exclusivo Pro"
-                  : "Exclusivo Pro"}
-              </p>
-              {hasPlanBenefit(planAccess, "ai_chat") ? (
-                <span className="mt-3 inline-flex rounded-full border border-amber-400/30 bg-amber-400/10 px-2.5 py-1 text-[10px] font-black uppercase text-amber-300">
-                  ✦ PRO
-                </span>
-              ) : (
                 <span className="mt-3 inline-flex rounded-full border border-zinc-700 bg-black/30 px-2.5 py-1 text-[10px] font-black uppercase text-zinc-400">
                   🔒 Bloqueado
                 </span>
