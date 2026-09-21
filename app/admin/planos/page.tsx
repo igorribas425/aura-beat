@@ -163,12 +163,9 @@ export default function AdminPlansPage() {
           )
           .order("audience")
           .order("monthly_price"),
-        supabase
-          .from("subscriptions")
-          .select(
-            "id,plan_id,artist_id,venue_id,status,trial_ends_at,current_period_start,current_period_end,provider,created_at",
-          )
-          .order("created_at", { ascending: false }),
+        supabase.rpc(
+          "owner_list_subscriptions_v1",
+        ),
         supabase
           .from("artist_profiles")
           .select(
@@ -395,21 +392,24 @@ export default function AdminPlansPage() {
     if (duration === "unlimited") {
       return {
         unlimited: true,
-        months: 1,
+        months: 0,
       };
     }
 
     if (duration === "custom") {
       const parsed = Number(customMonths);
 
-      if (
-        !Number.isInteger(parsed) ||
-        parsed < 1 ||
-        parsed > 120
-      ) {
+      if (!Number.isInteger(parsed) || parsed < 0 || parsed > 120) {
         throw new Error(
-          "O período personalizado deve ficar entre 1 e 120 meses.",
+          "Use 0 para ilimitado ou um período entre 1 e 120 meses.",
         );
+      }
+
+      if (parsed === 0) {
+        return {
+          unlimited: true,
+          months: 0,
+        };
       }
 
       return {
@@ -1005,7 +1005,7 @@ export default function AdminPlansPage() {
                           className="mt-2 w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 text-white"
                         />
                         <span className="mt-1 block text-[11px] text-zinc-600">
-                          De 1 até 120 meses.
+                          Use 0 para ilimitado ou de 1 até 120 meses.
                         </span>
                       </label>
                     )}
