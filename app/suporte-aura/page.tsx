@@ -2,11 +2,13 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { SupportNotificationButton } from "../../components/support-notification-button";
 import {
   getMyPlanAccess,
   hasPlanBenefit,
   type PlanAccess,
 } from "../../lib/plan-access";
+import { notifySupportIncoming } from "../../lib/support-alerts";
 import { supabase } from "../../lib/supabase";
 
 type Audience = "artist" | "venue";
@@ -51,12 +53,16 @@ function statusLabel(status: SupportThread["status"]) {
 export default function SupportAuraPage() {
   const router = useRouter();
   const endRef = useRef<HTMLDivElement | null>(null);
+  const selectedIdRef = useRef<string | null>(null);
+  const threadIdsRef = useRef<Set<string>>(new Set());
 
+  const [userId, setUserId] = useState("");
   const [audience, setAudience] = useState<Audience>("artist");
   const [access, setAccess] = useState<PlanAccess | null>(null);
   const [threads, setThreads] = useState<SupportThread[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [messages, setMessages] = useState<SupportMessage[]>([]);
+  const [unreadByThread, setUnreadByThread] = useState<Record<string, number>>({});
   const [subject, setSubject] = useState("");
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(true);
@@ -66,29 +72,71 @@ export default function SupportAuraPage() {
 
   const canUseSupport = hasPlanBenefit(access, "support_chat");
   const priority = access?.benefits?.support_priority === "priority";
+
   const selected = useMemo(
     () => threads.find((thread) => thread.id === selectedId) || null,
     [selectedId, threads],
   );
 
-  async function loadThreads(currentAudience: Audience) {
+  useEffect(() => {
+    selectedIdRef.current = selectedId;
+  }, [selectedId]);
+
+  async function loadThreads(
+    currentAudience: Audience,
+    currentUserId: string,
+    preferredId?: string | null,
+  ) {
     const { data, error: threadsError } = await supabase
       .from("support_threads")
       .select(
         "id,requester_user_id,audience,subject,status,created_at,updated_at,last_message_at",
       )
       .eq("audience", currentAudience)
+      .eq("requester_user_id", currentUserId)
       .order("last_message_at", { ascending: false });
 
     if (threadsError) throw threadsError;
 
     const rows = (data || []) as SupportThread[];
+    const ids = rows.map((thread) => thread.id);
+
+    threadIdsRef.current = new Set(ids);
     setThreads(rows);
-    setSelectedId((current) =>
-      current && rows.some((thread) => thread.id === current)
-        ? current
-        : rows[0]?.id || null,
-    );
+
+    if (ids.length > 0) {
+      const { data: unreadRows, error: unreadError } = await supabase
+        .from("support_messages")
+        .select("thread_id")
+        .in("thread_id", ids)
+        .eq("sender_side", "support")
+        .is("read_at", null);
+
+      if (!unreadError) {
+        const counts = (unreadRows || []).reduce<Record<string, number>>(
+          (accumulator, row) => {
+            const threadId = String(row.thread_id);
+            accumulator[threadId] = (accumulator[threadId] || 0) + 1;
+            return accumulator;
+          },
+          {},
+        );
+
+        setUnreadByThread(counts);
+      }
+    } else {
+      setUnreadByThread({});
+    }
+
+    setSelectedId((current) => {
+      const wanted = preferredId || current;
+
+      if (wanted && rows.some((thread) => thread.id === wanted)) {
+        return wanted;
+      }
+
+      return rows[0]?.id || null;
+    });
   }
 
   useEffect(() => {
@@ -146,14 +194,20 @@ export default function SupportAuraPage() {
 
         if (!active) return;
 
+        setUserId(user.id);
         setAudience(resolved);
         setAccess(plan);
 
         if (hasPlanBenefit(plan, "support_chat")) {
-          await loadThreads(resolved);
+          const requestedThread = new URLSearchParams(
+            window.location.search,
+          ).get("thread");
+
+          await loadThreads(resolved, user.id, requestedThread);
         }
       } catch (caught) {
         console.error(caught);
+
         if (active) {
           setError(
             caught instanceof Error
@@ -174,6 +228,60 @@ export default function SupportAuraPage() {
   }, [router]);
 
   useEffect(() => {
+    if (!canUseSupport || !userId) return;
+
+    const threadChannel = supabase
+      .channel("support-customer-inbox-" + userId)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "support_threads",
+          filter: "requester_user_id=eq." + userId,
+        },
+        () => {
+          void loadThreads(audience, userId, selectedIdRef.current);
+        },
+      )
+      .subscribe();
+
+    const messageChannel = supabase
+      .channel("support-customer-alerts-" + userId)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "support_messages",
+        },
+        (payload) => {
+          const incoming = payload.new as SupportMessage;
+
+          if (
+            incoming.sender_side !== "support" ||
+            !threadIdsRef.current.has(incoming.thread_id)
+          ) {
+            return;
+          }
+
+          void notifySupportIncoming(
+            incoming.body,
+            "/suporte-aura?thread=" + incoming.thread_id,
+          );
+
+          void loadThreads(audience, userId, selectedIdRef.current);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(threadChannel);
+      void supabase.removeChannel(messageChannel);
+    };
+  }, [audience, canUseSupport, userId]);
+
+  useEffect(() => {
     if (!selectedId || !canUseSupport) {
       setMessages([]);
       return;
@@ -182,12 +290,25 @@ export default function SupportAuraPage() {
     const threadId = selectedId;
     let active = true;
 
+    async function markRead() {
+      await supabase.rpc("support_mark_customer_read_v1", {
+        p_thread_id: threadId,
+      });
+
+      setUnreadByThread((current) => ({
+        ...current,
+        [threadId]: 0,
+      }));
+    }
+
     async function loadMessages() {
       setLoadingMessages(true);
 
       const { data, error: messagesError } = await supabase
         .from("support_messages")
-        .select("id,thread_id,sender_user_id,sender_side,body,read_at,is_automatic,created_at")
+        .select(
+          "id,thread_id,sender_user_id,sender_side,body,read_at,is_automatic,created_at",
+        )
         .eq("thread_id", threadId)
         .order("created_at", { ascending: true });
 
@@ -198,9 +319,7 @@ export default function SupportAuraPage() {
         setMessages([]);
       } else {
         setMessages((data || []) as SupportMessage[]);
-        await supabase.rpc("support_mark_read_v1", {
-          p_thread_id: threadId,
-        });
+        await markRead();
       }
 
       if (active) setLoadingMessages(false);
@@ -209,7 +328,7 @@ export default function SupportAuraPage() {
     void loadMessages();
 
     const channel = supabase
-      .channel("support-customer-" + threadId)
+      .channel("support-customer-thread-" + threadId)
       .on(
         "postgres_changes",
         {
@@ -220,14 +339,34 @@ export default function SupportAuraPage() {
         },
         (payload) => {
           const incoming = payload.new as SupportMessage;
+
           setMessages((current) =>
             current.some((message) => message.id === incoming.id)
               ? current
               : [...current, incoming],
           );
-          void supabase.rpc("support_mark_read_v1", {
-            p_thread_id: threadId,
-          });
+
+          if (incoming.sender_side === "support") {
+            void markRead();
+          }
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "support_messages",
+          filter: "thread_id=eq." + threadId,
+        },
+        (payload) => {
+          const updated = payload.new as SupportMessage;
+
+          setMessages((current) =>
+            current.map((message) =>
+              message.id === updated.id ? updated : message,
+            ),
+          );
         },
       )
       .subscribe();
@@ -245,7 +384,7 @@ export default function SupportAuraPage() {
   async function openThread(event: FormEvent) {
     event.preventDefault();
 
-    if (!subject.trim()) {
+    if (!subject.trim() || !userId) {
       setError("Escreva o assunto do atendimento.");
       return;
     }
@@ -264,9 +403,17 @@ export default function SupportAuraPage() {
 
       if (openError) throw openError;
 
+      const threadId = String(data);
+
       setSubject("");
-      await loadThreads(audience);
-      setSelectedId(String(data));
+      await loadThreads(audience, userId, threadId);
+      setSelectedId(threadId);
+
+      window.history.replaceState(
+        null,
+        "",
+        "/suporte-aura?thread=" + threadId,
+      );
     } catch (caught) {
       console.error(caught);
       setError(
@@ -289,7 +436,7 @@ export default function SupportAuraPage() {
       setError("");
 
       const { error: sendError } = await supabase.rpc(
-        "support_send_message_v1",
+        "support_send_customer_message_v1",
         {
           p_thread_id: selectedId,
           p_body: text.trim(),
@@ -299,7 +446,6 @@ export default function SupportAuraPage() {
       if (sendError) throw sendError;
 
       setText("");
-      await loadThreads(audience);
     } catch (caught) {
       console.error(caught);
       setError(
@@ -325,7 +471,10 @@ export default function SupportAuraPage() {
       );
 
       if (closeError) throw closeError;
-      await loadThreads(audience);
+
+      if (userId) {
+        await loadThreads(audience, userId, selectedId);
+      }
     } catch (caught) {
       console.error(caught);
       setError(
@@ -391,17 +540,21 @@ export default function SupportAuraPage() {
               </p>
             </div>
 
-            <div
-              className={
-                "rounded-full border px-4 py-2 text-xs font-black " +
-                (priority
-                  ? "border-amber-400/30 bg-amber-400/10 text-amber-300"
-                  : "border-purple-500/30 bg-purple-500/10 text-purple-300")
-              }
-            >
-              {priority
-                ? "✦ PRO · ATENDIMENTO PRIORITÁRIO"
-                : "◆ INTERMEDIÁRIO · SUPORTE LIBERADO"}
+            <div className="flex flex-col gap-3 sm:items-end">
+              <SupportNotificationButton />
+
+              <div
+                className={
+                  "rounded-full border px-4 py-2 text-xs font-black " +
+                  (priority
+                    ? "border-amber-400/30 bg-amber-400/10 text-amber-300"
+                    : "border-purple-500/30 bg-purple-500/10 text-purple-300")
+                }
+              >
+                {priority
+                  ? "✦ PRO · ATENDIMENTO PRIORITÁRIO"
+                  : "◆ INTERMEDIÁRIO · SUPORTE LIBERADO"}
+              </div>
             </div>
           </div>
         </section>
@@ -438,29 +591,51 @@ export default function SupportAuraPage() {
                   Nenhum atendimento ainda.
                 </p>
               ) : (
-                threads.map((thread) => (
-                  <button
-                    key={thread.id}
-                    type="button"
-                    onClick={() => setSelectedId(thread.id)}
-                    className={
-                      "w-full border-b border-zinc-900 p-4 text-left " +
-                      (selectedId === thread.id
-                        ? "bg-purple-500/10"
-                        : "hover:bg-zinc-900/50")
-                    }
-                  >
-                    <p className="truncate font-black">{thread.subject}</p>
-                    <div className="mt-2 flex items-center justify-between gap-2 text-xs">
-                      <span className="text-zinc-500">
-                        {dateTime(thread.last_message_at)}
-                      </span>
-                      <span className="text-zinc-400">
-                        {statusLabel(thread.status)}
-                      </span>
-                    </div>
-                  </button>
-                ))
+                threads.map((thread) => {
+                  const unread = unreadByThread[thread.id] || 0;
+
+                  return (
+                    <button
+                      key={thread.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedId(thread.id);
+                        window.history.replaceState(
+                          null,
+                          "",
+                          "/suporte-aura?thread=" + thread.id,
+                        );
+                      }}
+                      className={
+                        "w-full border-b border-zinc-900 p-4 text-left " +
+                        (selectedId === thread.id
+                          ? "bg-purple-500/10"
+                          : "hover:bg-zinc-900/50")
+                      }
+                    >
+                      <div className="flex items-center gap-2">
+                        <p className="min-w-0 flex-1 truncate font-black">
+                          {thread.subject}
+                        </p>
+
+                        {unread > 0 && (
+                          <span className="grid h-6 min-w-6 place-items-center rounded-full bg-purple-600 px-1.5 text-[11px] font-black text-white">
+                            {unread > 99 ? "99+" : unread}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="mt-2 flex items-center justify-between gap-2 text-xs">
+                        <span className="text-zinc-500">
+                          {dateTime(thread.last_message_at)}
+                        </span>
+                        <span className="text-zinc-400">
+                          {statusLabel(thread.status)}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })
               )}
             </div>
           </aside>
@@ -544,14 +719,26 @@ export default function SupportAuraPage() {
                               {message.body}
                             </p>
 
-                            <p
+                            <div
                               className={
-                                "mt-1 text-right text-[10px] " +
+                                "mt-1 flex items-center justify-end gap-1 text-[10px] " +
                                 (mine ? "text-purple-100/70" : "text-zinc-500")
                               }
                             >
-                              {dateTime(message.created_at)}
-                            </p>
+                              <span>{dateTime(message.created_at)}</span>
+                              {mine && (
+                                <span
+                                  className={
+                                    message.read_at
+                                      ? "font-black text-sky-300"
+                                      : "font-black text-purple-100/70"
+                                  }
+                                  title={message.read_at ? "Visualizada" : "Enviada"}
+                                >
+                                  {message.read_at ? "✓✓" : "✓"}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       );
