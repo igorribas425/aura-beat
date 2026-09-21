@@ -2,6 +2,7 @@ import { supabase } from "./supabase";
 import { isOwnerEmail } from "./owner-account";
 
 export type AuthenticatedDestination =
+  | "/acesso"
   | "/admin"
   | "/home-artista"
   | "/home-casa"
@@ -21,7 +22,7 @@ export async function getAuthenticatedDestination(
     user?.id === userId &&
     isOwnerEmail(user.email)
   ) {
-    return "/admin";
+    return "/acesso";
   }
   const [ownerAccessResult, supportAccountResult, profileResult, artistResult, venueResult] = await Promise.all([
     supabase.rpc("owner_access_v1"),
@@ -32,7 +33,7 @@ export async function getAuthenticatedDestination(
   ]);
 
   if (ownerAccessResult.data === true) {
-    return "/admin";
+    return "/acesso";
   }
 
   if (supportAccountResult.data === true) {
