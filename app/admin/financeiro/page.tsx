@@ -304,42 +304,27 @@ export default function AdminFinanceiroPage() {
           }
 
           const {
-            data: adminData,
-            error: adminError,
-          } = await supabase
-            .from(
-              "aura_admins"
-            )
-            .select(
-              "role,is_active"
-            )
-            .eq(
-              "user_id",
-              authData.user.id
-            )
-            .maybeSingle();
+            data: ownerAccess,
+            error: ownerAccessError,
+          } = await supabase.rpc(
+            "owner_access_v1"
+          );
 
-          if (adminError) {
-            throw adminError;
+          if (ownerAccessError) {
+            throw ownerAccessError;
           }
 
-          if (
-            !adminData?.is_active ||
-            adminData.role !== "owner"
-          ) {
+          if (ownerAccess !== true) {
             setRole(null);
-
             setDados([]);
-
             setErro(
               "Acesso restrito ao proprietário da Aura Beat."
             );
-
             return;
           }
 
           setRole(
-            adminData.role as AdminRole
+            "owner" as AdminRole
           );
 
           const {
