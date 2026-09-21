@@ -18,6 +18,11 @@ import {
   matchesExploreFilters,
   withDistances,
 } from "../../lib/explore";
+import {
+  getMyPlanAccess,
+  hasPlanBenefit,
+  type PlanAccess,
+} from "../../lib/plan-access";
 import { supabase } from "../../lib/supabase";
 
 type Mode = "artist" | "venue";
@@ -273,6 +278,7 @@ export default function ExplorePage() {
   const [favorites, setFavorites] = useState<FavoriteRow[]>([]);
   const [favoriteBusy, setFavoriteBusy] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("artist");
+  const [planAccess, setPlanAccess] = useState<PlanAccess | null>(null);
   const [ownArtistId, setOwnArtistId] = useState<string | null>(null);
   const [ownVenueId, setOwnVenueId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -295,6 +301,9 @@ export default function ExplorePage() {
   const [reloadKey, setReloadKey] = useState(0);
 
   const canSendOffer = mode === "venue" && Boolean(ownVenueId);
+  const canUseAdvancedFilters =
+    mode !== "venue" ||
+    hasPlanBenefit(planAccess, "advanced_filters");
 
   useEffect(() => {
     let active = true;
@@ -329,14 +338,36 @@ export default function ExplorePage() {
               ? "venue"
               : "artist";
 
+      let nextPlanAccess: PlanAccess | null = null;
+
+      try {
+        nextPlanAccess = await getMyPlanAccess(resolvedMode);
+      } catch (planError) {
+        console.warn("Não foi possível carregar o plano atual:", planError);
+      }
+
+      if (!active) return;
+
       setUserId(user.id);
       setOwnArtistId(artistResult.data?.id ?? null);
       setOwnVenueId(venueResult.data?.id ?? null);
       setMode(resolvedMode);
+      setPlanAccess(nextPlanAccess);
       setFilters((current) => ({
         ...current,
         kind: defaultExploreKind(resolvedMode),
         maximumDistanceKm: null,
+        ...(resolvedMode === "venue" &&
+        !hasPlanBenefit(nextPlanAccess, "advanced_filters")
+          ? {
+              style: "",
+              eventType: "",
+              availableNow: false,
+              verifiedOnly: false,
+              minimumRating: 0,
+              maximumHourlyFee: null,
+            }
+          : {}),
       }));
       setPage(1);
 
@@ -518,20 +549,34 @@ export default function ExplorePage() {
       setSelectedProfile(null);
 
       try {
-        const effectiveDistanceKm = filters.maximumDistanceKm;
+        const planAwareFilters: ExploreFilters =
+          mode === "venue" && !canUseAdvancedFilters
+            ? {
+                ...filters,
+                style: "",
+                eventType: "",
+                availableNow: false,
+                verifiedOnly: false,
+                minimumRating: 0,
+                maximumHourlyFee: null,
+              }
+            : filters;
+
+        const effectiveDistanceKm =
+          planAwareFilters.maximumDistanceKm;
         const requestLimit = view === "map" ? 48 : EXPLORE_PAGE_SIZE;
         const requestOffset = view === "map" ? 0 : (page - 1) * EXPLORE_PAGE_SIZE;
 
         const { data, error: rpcError } = await supabase.rpc("explore_profiles_v1", {
-          p_kind: filters.kind,
-          p_query: filters.query || null,
-          p_city: filters.city || null,
-          p_style: filters.style || null,
-          p_event_type: filters.eventType || null,
-          p_available_now: filters.availableNow,
-          p_verified_only: filters.verifiedOnly,
-          p_min_rating: filters.minimumRating,
-          p_max_hourly_fee: filters.maximumHourlyFee,
+          p_kind: planAwareFilters.kind,
+          p_query: planAwareFilters.query || null,
+          p_city: planAwareFilters.city || null,
+          p_style: planAwareFilters.style || null,
+          p_event_type: planAwareFilters.eventType || null,
+          p_available_now: planAwareFilters.availableNow,
+          p_verified_only: planAwareFilters.verifiedOnly,
+          p_min_rating: planAwareFilters.minimumRating,
+          p_max_hourly_fee: planAwareFilters.maximumHourlyFee,
           p_origin_lat: location?.lat ?? null,
           p_origin_lng: location?.lng ?? null,
           p_max_distance_km: effectiveDistanceKm,
@@ -549,7 +594,7 @@ export default function ExplorePage() {
           setUsingFallback(false);
         } else {
           const fallback = await loadFallbackProfiles(
-            filters,
+            planAwareFilters,
             page,
             ownArtistId,
             ownVenueId,
@@ -561,7 +606,7 @@ export default function ExplorePage() {
 
         const located = withDistances(nextProfiles, location);
         const effectiveFilters: ExploreFilters = {
-          ...filters,
+          ...planAwareFilters,
           maximumDistanceKm: effectiveDistanceKm,
         };
         const visibleProfiles = located.filter((profile) =>
@@ -583,7 +628,18 @@ export default function ExplorePage() {
       active = false;
       window.clearTimeout(timer);
     };
-  }, [contextLoading, filters, location, ownArtistId, ownVenueId, page, reloadKey, view]);
+  }, [
+    canUseAdvancedFilters,
+    contextLoading,
+    filters,
+    location,
+    mode,
+    ownArtistId,
+    ownVenueId,
+    page,
+    reloadKey,
+    view,
+  ]);
 
   const favoriteKeys = useMemo(
     () =>
@@ -852,8 +908,31 @@ export default function ExplorePage() {
           </div>
 
           <details className="mt-4 rounded-2xl border border-zinc-800 bg-black/40 p-4">
-            <summary className="cursor-pointer text-sm font-bold text-zinc-300">Mais filtros</summary>
+            <summary className="cursor-pointer text-sm font-bold text-zinc-300">
+              Mais filtros
+              {mode === "venue" && !canUseAdvancedFilters && (
+                <span className="ml-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-black text-amber-200">
+                  🔒 INTERMEDIÁRIO / PRO
+                </span>
+              )}
+            </summary>
 
+            {mode === "venue" && !canUseAdvancedFilters ? (
+              <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5">
+                <p className="font-black text-amber-200">
+                  Filtros avançados bloqueados neste plano
+                </p>
+                <p className="mt-2 text-sm leading-6 text-zinc-400">
+                  {planAccess?.active
+                    ? `Seu plano atual é ${planAccess.planName || "Normal"}.`
+                    : "Esta Casa ainda não possui um plano ativo."}
+                  {" "}Os planos Intermediário e Pro liberam estilo musical,
+                  tipo de evento, avaliação mínima, cachê máximo,
+                  disponibilidade imediata e somente verificados.
+                </p>
+              </div>
+            ) : (
+              <>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <label>
                 <span className="mb-2 block text-xs text-zinc-500">Estilo musical</span>
@@ -931,6 +1010,8 @@ export default function ExplorePage() {
                 Somente verificados
               </label>
             </div>
+              </>
+            )}
           </details>
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
