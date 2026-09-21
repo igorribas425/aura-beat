@@ -215,14 +215,26 @@ export default function HomeCasaPage() {
       locked: !hasPlanBenefit(planAccess, "reports"),
     },
     {
-      icon: "👥",
-      label: "Equipe",
-      detail: hasPlanBenefit(planAccess, "team")
-        ? "Gestão liberada"
+      icon: "🎧",
+      label: "Suporte Aura",
+      detail: hasPlanBenefit(planAccess, "support_chat")
+        ? hasPlanBenefit(planAccess, "ai_chat")
+          ? "Atendimento prioritário"
+          : "Falar com a equipe"
+        : "Intermediário / Pro",
+      href: "/suporte-aura",
+      hover: "hover:border-purple-500/50",
+      locked: !hasPlanBenefit(planAccess, "support_chat"),
+    },
+    {
+      icon: "🤖",
+      label: "Aura IA",
+      detail: hasPlanBenefit(planAccess, "ai_chat")
+        ? "Assistente Pro"
         : "Exclusivo Pro",
-      href: "/equipe-casa",
+      href: "/aura-ia",
       hover: "hover:border-amber-400/50",
-      locked: !hasPlanBenefit(planAccess, "team"),
+      locked: !hasPlanBenefit(planAccess, "ai_chat"),
       pro: true,
     },
     {
