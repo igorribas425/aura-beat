@@ -146,7 +146,7 @@ export default function AuraIaPage() {
 
     const value = text.trim();
 
-    if (!value || !canUseAi) return;
+    if (!value || !canUseAi || !configured) return;
 
     const userMessage: ChatItem = {
       id: "user-" + Date.now(),
@@ -274,35 +274,67 @@ export default function AuraIaPage() {
 
         <section className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950">
           <div className="min-h-[540px] space-y-4 bg-black/20 p-5 sm:p-7">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={
-                  message.role === "user"
-                    ? "flex justify-end"
-                    : "flex justify-start"
-                }
-              >
-                <div
-                  className={
-                    "max-w-[86%] rounded-2xl px-4 py-3 sm:max-w-[75%] " +
-                    (message.role === "user"
-                      ? "rounded-br-md bg-purple-600 text-white"
-                      : "rounded-bl-md border border-amber-400/20 bg-amber-400/5 text-zinc-200")
-                  }
-                >
-                  {message.role === "assistant" && (
-                    <p className="mb-1 text-[10px] font-black uppercase tracking-wide text-amber-300">
-                      Aura IA
-                    </p>
-                  )}
+            {!configured ? (
+              <div className="flex min-h-[460px] items-center justify-center">
+                <div className="max-w-2xl rounded-3xl border border-amber-400/25 bg-amber-400/5 p-6 text-center sm:p-8">
+                  <div className="text-5xl">🤖</div>
 
-                  <p className="whitespace-pre-wrap text-sm leading-6">
-                    {message.body}
+                  <p className="mt-5 text-xs font-black uppercase tracking-[0.2em] text-amber-300">
+                    AURA IA · PRO
                   </p>
+
+                  <h2 className="mt-2 text-2xl font-black">
+                    Motor de IA em configuração
+                  </h2>
+
+                  <p className="mt-3 leading-7 text-zinc-400">
+                    Seu acesso Pro ao Aura IA já está liberado. O chat será
+                    habilitado automaticamente assim que o administrador conectar
+                    o provedor de inteligência artificial no backend.
+                  </p>
+
+                  <div className="mt-5 rounded-2xl border border-zinc-800 bg-black/30 px-4 py-3 text-sm text-zinc-500">
+                    Você não precisa fazer nada. Quando a IA for conectada, este
+                    campo será liberado para uso.
+                  </div>
                 </div>
               </div>
-            ))}
+            ) : (
+              messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={
+                    message.role === "user"
+                      ? "flex justify-end"
+                      : "flex justify-start"
+                  }
+                >
+                  <div
+                    className={
+                      "max-w-[86%] rounded-2xl px-4 py-3 sm:max-w-[75%] " +
+                      (message.role === "user"
+                        ? "rounded-br-md bg-purple-600 text-white"
+                        : "rounded-bl-md border border-amber-400/20 bg-amber-400/5 text-zinc-200")
+                    }
+                  >
+                    <p
+                      className={
+                        "mb-1 text-[10px] font-black uppercase tracking-wide " +
+                        (message.role === "assistant"
+                          ? "text-amber-300"
+                          : "text-purple-100")
+                      }
+                    >
+                      {message.role === "assistant" ? "Aura IA" : "Você"}
+                    </p>
+
+                    <p className="whitespace-pre-wrap text-sm leading-6">
+                      {message.body}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
           <form onSubmit={sendMessage} className="border-t border-zinc-800 p-4">
@@ -310,21 +342,30 @@ export default function AuraIaPage() {
               <textarea
                 rows={1}
                 value={text}
+                disabled={!configured}
                 onChange={(event) => setText(event.target.value)}
                 onKeyDown={(event) => {
-                  if (event.key === "Enter" && !event.shiftKey) {
+                  if (
+                    configured &&
+                    event.key === "Enter" &&
+                    !event.shiftKey
+                  ) {
                     event.preventDefault();
                     void sendMessage();
                   }
                 }}
-                placeholder="Pergunte ao Aura IA…"
-                className="min-h-12 flex-1 resize-none rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm outline-none focus:border-amber-400"
+                placeholder={
+                  configured
+                    ? "Pergunte ao Aura IA…"
+                    : "Aura IA será liberado quando o motor estiver conectado"
+                }
+                className="min-h-12 flex-1 resize-none rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm outline-none focus:border-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
               />
 
               <button
                 type="submit"
-                disabled={!text.trim() || sending}
-                className="rounded-2xl bg-amber-400 px-5 font-black text-black disabled:opacity-40"
+                disabled={!configured || !text.trim() || sending}
+                className="rounded-2xl bg-amber-400 px-5 font-black text-black disabled:cursor-not-allowed disabled:opacity-30"
               >
                 {sending ? "..." : "➤"}
               </button>
@@ -332,9 +373,7 @@ export default function AuraIaPage() {
 
             {!configured && (
               <p className="mt-3 text-xs leading-5 text-zinc-500">
-                O acesso Pro está correto, mas o modelo de IA ainda não foi
-                conectado no backend. As mensagens servem para testar a estrutura
-                até o provedor ser configurado.
+                Chat temporariamente bloqueado até o provedor de IA ser configurado.
               </p>
             )}
           </form>
