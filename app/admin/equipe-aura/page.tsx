@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { getOwnerAccessFast } from "../../../lib/admin-access";
+import { ensureFreshSession, getOwnerAccessFast, isJwtExpiredError } from "../../../lib/admin-access";
 import { supabase } from "../../../lib/supabase";
 
 type SupportAgent = {
@@ -93,10 +93,27 @@ export default function AdminAuraTeamPage() {
   }, [agents, query]);
 
   async function loadTeamData() {
-    const [agentsResult, invitesResult] = await Promise.all([
-      supabase.rpc("owner_support_team_list_v2"),
-      supabase.rpc("owner_support_invite_list_v1"),
-    ]);
+    const run = async () =>
+      Promise.all([
+        supabase.rpc("owner_support_team_list_v2"),
+        supabase.rpc("owner_support_invite_list_v1"),
+      ]);
+
+    let [agentsResult, invitesResult] = await run();
+
+    if (
+      isJwtExpiredError(agentsResult.error) ||
+      isJwtExpiredError(invitesResult.error)
+    ) {
+      const refreshed = await ensureFreshSession();
+
+      if (!refreshed) {
+        router.replace("/login");
+        return;
+      }
+
+      [agentsResult, invitesResult] = await run();
+    }
 
     if (agentsResult.error) throw agentsResult.error;
     if (invitesResult.error) throw invitesResult.error;
