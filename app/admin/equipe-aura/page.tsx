@@ -423,45 +423,11 @@ export default function AdminAuraTeamPage() {
 
       if (updateError) throw updateError;
 
-      if (nextActive) {
-        const { data: invitedEmail, error: reinviteError } = await supabase.rpc(
-          "owner_support_device_reinvite_v1",
-          {
-            p_user_id: agent.user_id,
-          },
-        );
-
-        if (reinviteError) throw reinviteError;
-
-        const targetEmail =
-          typeof invitedEmail === "string" ? invitedEmail : agent.email;
-
-        if (!targetEmail) {
-          throw new Error("E-mail do atendente indisponível.");
-        }
-
-        const { error: emailError } = await supabase.auth.signInWithOtp({
-          email: targetEmail,
-          options: {
-            shouldCreateUser: false,
-            emailRedirectTo:
-              window.location.origin + "/equipe-aura/ativar",
-          },
-        });
-
-        if (emailError) {
-          throw new Error(
-            "O acesso foi reativado, mas o novo convite não pôde ser enviado: " +
-              emailError.message,
-          );
-        }
-
-        setMessage(
-          "Acesso reativado. Um novo convite foi enviado para vincular o dispositivo novamente.",
-        );
-      } else {
-        setMessage("Acesso da equipe suspenso imediatamente.");
-      }
+      setMessage(
+        nextActive
+          ? "Acesso reativado. O atendente volta ao chat no dispositivo já autorizado."
+          : "Acesso da equipe suspenso imediatamente.",
+      );
 
       await loadTeamData();
     } catch (caught) {
