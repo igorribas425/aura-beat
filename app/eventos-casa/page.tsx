@@ -2183,31 +2183,15 @@ export default function EventosCasaPage() {
                       <div className="border-t border-zinc-800 pt-4">
                         <div className="flex items-end justify-between gap-4">
                           <span className="font-bold">
-                            Total da Casa
+                            Taxa a pagar no Aura Beat
                           </span>
 
                           <strong className="text-2xl text-green-400">
                             {dinheiro(
                               Number(
-                                selecionado.agreed_fee ||
+                                selecionado.platform_fee_venue ||
                                   0
-                              ) +
-                                Number(
-                                  selecionado.travel_amount ||
-                                    0
-                                ) +
-                                Number(
-                                  selecionado.toll_amount ||
-                                    0
-                                ) +
-                                Number(
-                                  selecionado.lodging_amount ||
-                                    0
-                                ) +
-                                Number(
-                                  selecionado.platform_fee_venue ||
-                                    0
-                                )
+                              )
                             )}
                           </strong>
                         </div>
@@ -2226,11 +2210,11 @@ export default function EventosCasaPage() {
                         </p>
 
                         <h2 className="mt-2 text-xl font-black">
-                          Finalize a contratação com Pix
+                          Pague somente a taxa Aura Beat
                         </h2>
 
                         <p className="mt-2 text-sm text-zinc-400">
-                          O valor final, incluindo a Taxa Aura Beat, aparece antes de gerar o QR Code.
+                          A Casa paga 3% ao Aura Beat. Cachê e demais valores continuam acertados diretamente com o DJ.
                         </p>
                       </div>
 
@@ -2238,12 +2222,12 @@ export default function EventosCasaPage() {
                         type="button"
                         onClick={() =>
                           router.push(
-                            `/pagamento/${selecionado.id}`
+                            `/pagamento/${selecionado.id}?payer=venue`
                           )
                         }
                         className="rounded-2xl bg-green-600 px-6 py-3 font-black text-white transition hover:bg-green-500"
                       >
-                        Pagar com Pix
+                        Pagar taxa de 3%
                       </button>
                     </div>
                   </section>
