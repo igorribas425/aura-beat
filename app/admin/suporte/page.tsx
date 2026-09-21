@@ -2,6 +2,8 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { SupportNotificationButton } from "../../../components/support-notification-button";
+import { notifySupportIncoming } from "../../../lib/support-alerts";
 import { supabase } from "../../../lib/supabase";
 
 type ThreadRow = {
@@ -47,10 +49,12 @@ function dateTime(value: string) {
 export default function AdminSupportPage() {
   const router = useRouter();
   const endRef = useRef<HTMLDivElement | null>(null);
+  const selectedIdRef = useRef<string | null>(null);
 
   const [threads, setThreads] = useState<ThreadRow[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [messages, setMessages] = useState<SupportMessage[]>([]);
+  const [unreadByThread, setUnreadByThread] = useState<Record<string, number>>({});
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
@@ -69,6 +73,7 @@ export default function AdminSupportPage() {
 
   const filtered = useMemo(() => {
     const term = query.trim().toLowerCase();
+
     if (!term) return threads;
 
     return threads.filter((thread) =>
@@ -85,7 +90,11 @@ export default function AdminSupportPage() {
     );
   }, [query, threads]);
 
-  async function loadThreads() {
+  useEffect(() => {
+    selectedIdRef.current = selectedId;
+  }, [selectedId]);
+
+  async function loadThreads(preferredId?: string | null) {
     const { data, error: threadError } = await supabase.rpc(
       "admin_support_threads_v1",
     );
@@ -94,11 +103,42 @@ export default function AdminSupportPage() {
 
     const rows = (data || []) as ThreadRow[];
     setThreads(rows);
-    setSelectedId((current) =>
-      current && rows.some((thread) => thread.thread_id === current)
-        ? current
-        : rows[0]?.thread_id || null,
-    );
+
+    const ids = rows.map((thread) => thread.thread_id);
+
+    if (ids.length > 0) {
+      const { data: unreadRows, error: unreadError } = await supabase
+        .from("support_messages")
+        .select("thread_id")
+        .in("thread_id", ids)
+        .eq("sender_side", "customer")
+        .is("read_at", null);
+
+      if (!unreadError) {
+        const counts = (unreadRows || []).reduce<Record<string, number>>(
+          (accumulator, row) => {
+            const threadId = String(row.thread_id);
+            accumulator[threadId] = (accumulator[threadId] || 0) + 1;
+            return accumulator;
+          },
+          {},
+        );
+
+        setUnreadByThread(counts);
+      }
+    } else {
+      setUnreadByThread({});
+    }
+
+    setSelectedId((current) => {
+      const wanted = preferredId || current;
+
+      if (wanted && rows.some((thread) => thread.thread_id === wanted)) {
+        return wanted;
+      }
+
+      return rows[0]?.thread_id || null;
+    });
   }
 
   async function loadSettings() {
@@ -147,9 +187,17 @@ export default function AdminSupportPage() {
           return;
         }
 
-        await Promise.all([loadThreads(), loadSettings()]);
+        const requestedThread = new URLSearchParams(
+          window.location.search,
+        ).get("thread");
+
+        await Promise.all([
+          loadThreads(requestedThread),
+          loadSettings(),
+        ]);
       } catch (caught) {
         console.error(caught);
+
         if (active) {
           setError(
             caught instanceof Error
@@ -170,6 +218,47 @@ export default function AdminSupportPage() {
   }, [router]);
 
   useEffect(() => {
+    const channel = supabase
+      .channel("admin-support-inbox")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "support_threads",
+        },
+        () => {
+          void loadThreads(selectedIdRef.current);
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "support_messages",
+        },
+        (payload) => {
+          const incoming = payload.new as SupportMessage;
+
+          if (incoming.sender_side !== "customer") return;
+
+          void notifySupportIncoming(
+            incoming.body,
+            "/admin/suporte?thread=" + incoming.thread_id,
+          );
+
+          void loadThreads(selectedIdRef.current);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!selectedId) {
       setMessages([]);
       return;
@@ -178,10 +267,23 @@ export default function AdminSupportPage() {
     const threadId = selectedId;
     let active = true;
 
+    async function markRead() {
+      await supabase.rpc("support_mark_staff_read_v1", {
+        p_thread_id: threadId,
+      });
+
+      setUnreadByThread((current) => ({
+        ...current,
+        [threadId]: 0,
+      }));
+    }
+
     async function loadMessages() {
       const { data, error: messageError } = await supabase
         .from("support_messages")
-        .select("id,thread_id,sender_user_id,sender_side,body,read_at,is_automatic,created_at")
+        .select(
+          "id,thread_id,sender_user_id,sender_side,body,read_at,is_automatic,created_at",
+        )
         .eq("thread_id", threadId)
         .order("created_at", { ascending: true });
 
@@ -189,18 +291,17 @@ export default function AdminSupportPage() {
 
       if (messageError) {
         setError(messageError.message);
-      } else {
-        setMessages((data || []) as SupportMessage[]);
-        await supabase.rpc("support_mark_read_v1", {
-          p_thread_id: threadId,
-        });
+        return;
       }
+
+      setMessages((data || []) as SupportMessage[]);
+      await markRead();
     }
 
     void loadMessages();
 
     const channel = supabase
-      .channel("admin-support-" + threadId)
+      .channel("admin-support-thread-" + threadId)
       .on(
         "postgres_changes",
         {
@@ -211,15 +312,34 @@ export default function AdminSupportPage() {
         },
         (payload) => {
           const incoming = payload.new as SupportMessage;
+
           setMessages((current) =>
             current.some((message) => message.id === incoming.id)
               ? current
               : [...current, incoming],
           );
-          void loadThreads();
-          void supabase.rpc("support_mark_read_v1", {
-            p_thread_id: threadId,
-          });
+
+          if (incoming.sender_side === "customer") {
+            void markRead();
+          }
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "support_messages",
+          filter: "thread_id=eq." + threadId,
+        },
+        (payload) => {
+          const updated = payload.new as SupportMessage;
+
+          setMessages((current) =>
+            current.map((message) =>
+              message.id === updated.id ? updated : message,
+            ),
+          );
         },
       )
       .subscribe();
@@ -254,9 +374,9 @@ export default function AdminSupportPage() {
       if (sendError) throw sendError;
 
       setText("");
-      await loadThreads();
     } catch (caught) {
       console.error(caught);
+
       setError(
         caught instanceof Error
           ? caught.message
@@ -267,10 +387,15 @@ export default function AdminSupportPage() {
     }
   }
 
-  async function saveSettings() {
-    if (awayMessage.trim().length < 5) {
+  async function persistSettings(
+    nextAwayEnabled: boolean,
+    nextMessage: string,
+  ) {
+    const cleanMessage = nextMessage.trim();
+
+    if (cleanMessage.length < 5) {
       setError("Escreva uma mensagem automática com pelo menos 5 caracteres.");
-      return;
+      return false;
     }
 
     try {
@@ -280,8 +405,8 @@ export default function AdminSupportPage() {
       const { error: settingsError } = await supabase.rpc(
         "admin_update_support_settings_v1",
         {
-          p_away_enabled: awayEnabled,
-          p_away_message: awayMessage.trim(),
+          p_away_enabled: nextAwayEnabled,
+          p_away_message: cleanMessage,
           p_ai_enabled: false,
         },
       );
@@ -289,16 +414,37 @@ export default function AdminSupportPage() {
       if (settingsError) throw settingsError;
 
       await loadSettings();
+      return true;
     } catch (caught) {
       console.error(caught);
+
       setError(
         caught instanceof Error
           ? caught.message
           : "Não foi possível salvar o modo ausente.",
       );
+
+      return false;
     } finally {
       setBusy("");
     }
+  }
+
+  async function toggleAway() {
+    const next = !awayEnabled;
+    const previous = awayEnabled;
+
+    setAwayEnabled(next);
+
+    const saved = await persistSettings(next, awayMessage);
+
+    if (!saved) {
+      setAwayEnabled(previous);
+    }
+  }
+
+  async function saveSettings() {
+    await persistSettings(awayEnabled, awayMessage);
   }
 
   async function closeThread() {
@@ -314,9 +460,11 @@ export default function AdminSupportPage() {
       );
 
       if (closeError) throw closeError;
-      await loadThreads();
+
+      await loadThreads(selectedId);
     } catch (caught) {
       console.error(caught);
+
       setError(
         caught instanceof Error
           ? caught.message
@@ -339,13 +487,19 @@ export default function AdminSupportPage() {
     <main className="aura-page px-4 py-8">
       <div className="mx-auto max-w-7xl space-y-6">
         <section className="aura-hero rounded-3xl p-6 sm:p-8">
-          <p className="aura-kicker">ADMIN · SUPORTE</p>
-          <h1 className="mt-2 text-3xl font-black">
-            Central de Suporte Aura
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
-            Atendimentos de Artistas e Casas dos planos Intermediário e Pro.
-          </p>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="aura-kicker">ADMIN · SUPORTE</p>
+              <h1 className="mt-2 text-3xl font-black">
+                Central de Suporte Aura
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
+                Atendimentos de Artistas e Casas dos planos Intermediário e Pro.
+              </p>
+            </div>
+
+            <SupportNotificationButton />
+          </div>
         </section>
 
         <section className="grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
@@ -366,22 +520,27 @@ export default function AdminSupportPage() {
                   Resposta automática da Equipe Aura
                 </h2>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">
-                  Ative quando você estiver ausente. O cliente recebe uma resposta automática,
-                  e o chamado continua disponível para você responder depois.
+                  O botão salva imediatamente. Quando estiver ativo, a primeira
+                  mensagem do cliente recebe a resposta automática configurada.
                 </p>
               </div>
 
               <button
                 type="button"
-                onClick={() => setAwayEnabled((current) => !current)}
+                disabled={busy === "settings"}
+                onClick={() => void toggleAway()}
                 className={
-                  "rounded-full border px-4 py-2 text-xs font-black " +
+                  "rounded-full border px-4 py-2 text-xs font-black disabled:opacity-50 " +
                   (awayEnabled
                     ? "border-green-500/30 bg-green-500/10 text-green-300"
                     : "border-zinc-700 bg-black/30 text-zinc-400")
                 }
               >
-                {awayEnabled ? "● ATIVO" : "○ DESATIVADO"}
+                {busy === "settings"
+                  ? "Salvando…"
+                  : awayEnabled
+                    ? "● ATIVO"
+                    : "○ DESATIVADO"}
               </button>
             </div>
 
@@ -402,7 +561,7 @@ export default function AdminSupportPage() {
                 onClick={() => void saveSettings()}
                 className="rounded-xl bg-amber-400 px-5 py-3 text-sm font-black text-black disabled:opacity-50"
               >
-                {busy === "settings" ? "Salvando…" : "Salvar modo ausente"}
+                {busy === "settings" ? "Salvando…" : "Salvar mensagem"}
               </button>
 
               {settingsUpdatedAt && (
@@ -413,10 +572,7 @@ export default function AdminSupportPage() {
             </div>
           </article>
 
-          <article
-            id="ia"
-            className="scroll-mt-24 rounded-3xl border border-zinc-800 bg-zinc-950 p-5 sm:p-6"
-          >
+          <article className="rounded-3xl border border-zinc-800 bg-zinc-950 p-5 sm:p-6">
             <p className="text-xs font-black uppercase tracking-[0.2em] text-purple-300">
               AUTOMAÇÃO FUTURA
             </p>
@@ -424,18 +580,16 @@ export default function AdminSupportPage() {
               IA no atendimento
             </h2>
             <p className="mt-2 text-sm leading-6 text-zinc-500">
-              A IA fica somente no Admin. Quando um modelo real for conectado,
-              você poderá ativá-la aqui apenas quando quiser.
+              A IA permanece desativada e separada no Admin até conectarmos um modelo real.
             </p>
 
-            <div className="mt-5 rounded-2xl border border-zinc-800 bg-black/30 px-4 py-3">
-              <p className="text-xs font-black text-zinc-400">
-                ○ IA DESATIVADA
-              </p>
-              <p className="mt-1 text-xs text-zinc-600">
-                Motor de IA ainda não conectado.
-              </p>
-            </div>
+            <button
+              type="button"
+              onClick={() => router.push("/admin/ia-suporte")}
+              className="mt-5 rounded-xl border border-purple-500/30 bg-purple-500/10 px-4 py-3 text-sm font-black text-purple-200"
+            >
+              🤖 Abrir área futura da IA
+            </button>
           </article>
         </section>
 
@@ -462,51 +616,74 @@ export default function AdminSupportPage() {
                   Nenhum atendimento encontrado.
                 </p>
               ) : (
-                filtered.map((thread) => (
-                  <button
-                    key={thread.thread_id}
-                    type="button"
-                    onClick={() => setSelectedId(thread.thread_id)}
-                    className={
-                      "w-full border-b border-zinc-900 p-4 text-left " +
-                      (selectedId === thread.thread_id
-                        ? "bg-amber-400/10"
-                        : "hover:bg-zinc-900/50")
-                    }
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="truncate font-black">
-                        {thread.requester_name}
+                filtered.map((thread) => {
+                  const unread = unreadByThread[thread.thread_id] || 0;
+
+                  return (
+                    <button
+                      key={thread.thread_id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedId(thread.thread_id);
+                        window.history.replaceState(
+                          null,
+                          "",
+                          "/admin/suporte?thread=" + thread.thread_id,
+                        );
+                      }}
+                      className={
+                        "w-full border-b border-zinc-900 p-4 text-left " +
+                        (selectedId === thread.thread_id
+                          ? "bg-amber-400/10"
+                          : "hover:bg-zinc-900/50")
+                      }
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex min-w-0 flex-1 items-center gap-2">
+                          <p className="min-w-0 flex-1 truncate font-black">
+                            {thread.requester_name}
+                          </p>
+
+                          {unread > 0 && (
+                            <span className="grid h-6 min-w-6 place-items-center rounded-full bg-amber-400 px-1.5 text-[11px] font-black text-black">
+                              {unread > 99 ? "99+" : unread}
+                            </span>
+                          )}
+                        </div>
+
+                        <span className="text-[10px] font-black uppercase text-zinc-500">
+                          {thread.audience === "artist" ? "Artista" : "Casa"}
+                        </span>
+                      </div>
+
+                      <p className="mt-1 truncate text-xs text-zinc-500">
+                        {thread.subject}
                       </p>
-                      <span className="text-[10px] font-black uppercase text-zinc-500">
-                        {thread.audience === "artist" ? "Artista" : "Casa"}
-                      </span>
-                    </div>
-                    <p className="mt-1 truncate text-xs text-zinc-500">
-                      {thread.subject}
-                    </p>
-                    <div className="mt-2 flex items-center justify-between gap-2 text-[11px]">
-                      <span className="text-zinc-600">
-                        {dateTime(thread.last_message_at)}
-                      </span>
-                      <span
-                        className={
-                          thread.status === "open"
-                            ? "font-bold text-green-400"
+
+                      <div className="mt-2 flex items-center justify-between gap-2 text-[11px]">
+                        <span className="text-zinc-600">
+                          {dateTime(thread.last_message_at)}
+                        </span>
+
+                        <span
+                          className={
+                            thread.status === "open"
+                              ? "font-bold text-green-400"
+                              : thread.status === "waiting_user"
+                                ? "font-bold text-amber-300"
+                                : "text-zinc-600"
+                          }
+                        >
+                          {thread.status === "open"
+                            ? "Responder"
                             : thread.status === "waiting_user"
-                              ? "font-bold text-amber-300"
-                              : "text-zinc-600"
-                        }
-                      >
-                        {thread.status === "open"
-                          ? "Responder"
-                          : thread.status === "waiting_user"
-                            ? "Aguardando cliente"
-                            : "Encerrado"}
-                      </span>
-                    </div>
-                  </button>
-                ))
+                              ? "Aguardando cliente"
+                              : "Encerrado"}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })
               )}
             </div>
           </aside>
@@ -582,9 +759,23 @@ export default function AdminSupportPage() {
                             <p className="whitespace-pre-wrap break-words text-sm leading-6">
                               {message.body}
                             </p>
-                            <p className="mt-1 text-right text-[10px] opacity-60">
-                              {dateTime(message.created_at)}
-                            </p>
+
+                            <div className="mt-1 flex items-center justify-end gap-1 text-[10px] opacity-60">
+                              <span>{dateTime(message.created_at)}</span>
+
+                              {support && !message.is_automatic && (
+                                <span
+                                  className={
+                                    message.read_at
+                                      ? "font-black text-sky-700"
+                                      : "font-black"
+                                  }
+                                  title={message.read_at ? "Visualizada" : "Enviada"}
+                                >
+                                  {message.read_at ? "✓✓" : "✓"}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       );
@@ -613,6 +804,7 @@ export default function AdminSupportPage() {
                       }
                       className="min-h-12 flex-1 resize-none rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-sm outline-none focus:border-amber-400 disabled:opacity-50"
                     />
+
                     <button
                       type="submit"
                       disabled={
