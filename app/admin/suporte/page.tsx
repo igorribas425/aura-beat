@@ -413,7 +413,10 @@ export default function AdminSupportPage() {
             </div>
           </article>
 
-          <article className="rounded-3xl border border-zinc-800 bg-zinc-950 p-5 sm:p-6">
+          <article
+            id="ia"
+            className="scroll-mt-24 rounded-3xl border border-zinc-800 bg-zinc-950 p-5 sm:p-6"
+          >
             <p className="text-xs font-black uppercase tracking-[0.2em] text-purple-300">
               AUTOMAÇÃO FUTURA
             </p>
