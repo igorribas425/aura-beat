@@ -28,10 +28,15 @@ try {
     mailer_templates_magic_link_content = $template
   } | ConvertTo-Json -Depth 6 -Compress
 
+  # Windows PowerShell 5 pode enviar strings com uma codificação maior que o
+  # necessário. Enviar bytes UTF-8 evita payload inflado e erro HTTP 413.
+  $payloadBytes = [Text.Encoding]::UTF8.GetBytes($payload)
+
+  Write-Host ("Tamanho do envio: {0} bytes" -f $payloadBytes.Length)
+
   Invoke-RestMethod -Method Patch -Uri "https://api.supabase.com/v1/projects/$ProjectRef/config/auth" -Headers @{
     Authorization = "Bearer $accessToken"
-    "Content-Type" = "application/json"
-  } -Body $payload | Out-Null
+  } -ContentType "application/json; charset=utf-8" -Body $payloadBytes | Out-Null
 
   Write-Host ""
   Write-Host "Template da Equipe Aura aplicado com sucesso." -ForegroundColor Green
