@@ -4,6 +4,33 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 
+function createDeviceSecret() {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+
+  return Array.from(bytes, (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+}
+
+function deviceLabel() {
+  if (typeof navigator === "undefined") return "Dispositivo da Equipe Aura";
+
+  const platform = navigator.platform || "Dispositivo";
+  const agent = navigator.userAgent || "Navegador";
+  const browser = agent.includes("Edg/")
+    ? "Edge"
+    : agent.includes("Chrome/")
+      ? "Chrome"
+      : agent.includes("Firefox/")
+        ? "Firefox"
+        : agent.includes("Safari/")
+          ? "Safari"
+          : "Navegador";
+
+  return platform + " · " + browser;
+}
+
 function errorMessage(caught: unknown, fallback: string) {
   if (caught instanceof Error && caught.message) return caught.message;
 
@@ -96,15 +123,20 @@ export default function ActivateAuraTeamInvitePage() {
 
       if (passwordError) throw passwordError;
 
+      const secret = createDeviceSecret();
+
       const { error: acceptError } = await supabase.rpc(
-        "support_accept_invite_v1",
+        "support_accept_invite_v2",
         {
           p_full_name: name.trim(),
+          p_device_label: deviceLabel(),
+          p_device_secret: secret,
         },
       );
 
       if (acceptError) throw acceptError;
 
+      window.localStorage.setItem("aura_support_device_secret", secret);
       router.replace("/equipe-aura");
     } catch (caught) {
       setError(
@@ -133,8 +165,9 @@ export default function ActivateAuraTeamInvitePage() {
             Criar acesso de trabalho
           </h1>
           <p className="mt-3 text-sm leading-6 text-zinc-400">
-            Este acesso serve somente para o chat do Suporte Aura. Ele não libera
-            Financeiro, Planos, Verificações ou a Central Administrativa.
+            Este acesso serve somente para o chat do Suporte Aura. Ao concluir,
+            este navegador será registrado como o dispositivo de trabalho. Outro
+            dispositivo não conseguirá acessar o suporte sem liberação do administrador.
           </p>
         </div>
 
