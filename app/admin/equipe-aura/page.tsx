@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { getOwnerAccessFast } from "../../../lib/admin-access";
 import { supabase } from "../../../lib/supabase";
 
 type SupportAgent = {
@@ -112,22 +113,15 @@ export default function AdminAuraTeamPage() {
         setLoading(true);
         setError("");
 
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+        const ownerAccess =
+          await getOwnerAccessFast();
 
-        if (!user) {
+        if (!ownerAccess.authenticated) {
           router.replace("/login");
           return;
         }
 
-        const { data: allowed, error: accessError } = await supabase.rpc(
-          "owner_access_v1",
-        );
-
-        if (accessError) throw accessError;
-
-        if (allowed !== true) {
+        if (!ownerAccess.allowed) {
           router.replace("/home");
           return;
         }
