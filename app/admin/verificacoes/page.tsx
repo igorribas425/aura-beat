@@ -231,40 +231,24 @@ export default function AdminVerificacoesPage() {
         return;
       }
 
-      const { data: adminRow, error: adminError } = await supabase
-        .from("aura_admins")
-        .select("role,is_active")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      const { data: ownerAccess, error: ownerAccessError } =
+        await supabase.rpc("owner_access_v1");
 
-      if (adminError) {
-        const text = `${adminError.code || ""} ${adminError.message || ""}`.toLowerCase();
-        if (
-          text.includes("42p01") ||
-          text.includes("pgrst205") ||
-          text.includes("aura_admins")
-        ) {
-          setModuleReady(false);
-          setAccessDenied(false);
-          setRole(null);
-          setItems([]);
-          return;
-        }
-        throw adminError;
+      if (ownerAccessError) {
+        throw ownerAccessError;
       }
 
       setModuleReady(true);
 
-      if (!adminRow?.is_active) {
+      if (ownerAccess !== true) {
         setAccessDenied(true);
         setRole(null);
         setItems([]);
         return;
       }
 
-      const currentRole = adminRow.role as AdminRole;
       setAccessDenied(false);
-      setRole(currentRole);
+      setRole("owner" as AdminRole);
 
       const [artistResult, venueResult, auditResult] = await Promise.all([
         supabase
