@@ -1638,11 +1638,38 @@ export default function EventosArtistaPage() {
 
                   {booking.status ===
                     "awaiting_payment" && (
-                    <div className="border-t border-zinc-900 bg-yellow-950/10 p-5 text-sm text-yellow-400">
-                      ⏳ O evento será
-                      liberado quando a Casa
-                      confirmar o pagamento.
-                    </div>
+                    Number(
+                      booking.platform_fee_artist ||
+                        0
+                    ) > 0 ? (
+                      <div className="border-t border-red-900/40 bg-red-950/10 p-5">
+                        <p className="text-sm font-black text-red-300">
+                          🔥 Contratação urgente · taxa do Artista
+                        </p>
+
+                        <p className="mt-2 text-sm leading-6 text-zinc-400">
+                          Nesta contratação urgente, Casa e Artista pagam 3% cada ao Aura Beat.
+                          O cachê continua sendo acertado diretamente com a Casa.
+                        </p>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            router.push(
+                              `/pagamento/${booking.id}?payer=artist`
+                            )
+                          }
+                          className="mt-4 rounded-xl bg-green-600 px-5 py-3 text-sm font-black text-white hover:bg-green-500"
+                        >
+                          Pagar minha taxa de 3%
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="border-t border-zinc-900 bg-yellow-950/10 p-5 text-sm text-yellow-400">
+                        ⏳ Contratação normal: você não paga taxa ao Aura Beat.
+                        O evento será liberado quando a Casa pagar a taxa de 3%.
+                      </div>
+                    )
                   )}
 
                   {booking.status ===
