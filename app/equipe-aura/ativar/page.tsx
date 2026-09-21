@@ -2,7 +2,6 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getAuthenticatedDestination } from "../../../lib/auth-navigation";
 import { supabase } from "../../../lib/supabase";
 
 function createDeviceSecret() {
@@ -100,9 +99,26 @@ export default function ActivateAuraTeamInvitePage() {
         if (!active) return;
 
         if (supportAccount === true) {
-          const destination = await getAuthenticatedDestination(user.id);
-          router.replace(destination);
-          return;
+          const storedSecret = window.localStorage.getItem(
+            "aura_support_device_secret",
+          );
+
+          if (storedSecret) {
+            await supabase.rpc("support_rebind_device_v1", {
+              p_device_secret: storedSecret,
+            });
+
+            const { data: allowed } = await supabase.rpc(
+              "support_portal_only_v1",
+            );
+
+            if (!active) return;
+
+            if (allowed === true) {
+              router.replace("/equipe-aura");
+              return;
+            }
+          }
         }
 
         setEmail(user.email || "");
