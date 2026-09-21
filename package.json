@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "test": "node tests/run.mjs",
-    "build": "next build",
+    "build": "node scripts/generate-pwa-icons.mjs && next build",
     "start": "next start",
     "lint": "eslint"
   },
