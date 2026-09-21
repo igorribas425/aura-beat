@@ -153,9 +153,19 @@ export default function AuraTeamSupportPage() {
         if (accessError) throw accessError;
 
         if (allowed !== true) {
-          router.replace("/home");
+          const { data: supportAccount } = await supabase.rpc(
+            "is_support_account_v1",
+          );
+
+          router.replace(
+            supportAccount === true
+              ? "/equipe-aura/dispositivo-bloqueado"
+              : "/home",
+          );
           return;
         }
+
+        await supabase.rpc("support_device_touch_v1");
 
         const requestedThread = new URLSearchParams(
           window.location.search,
@@ -183,6 +193,14 @@ export default function AuraTeamSupportPage() {
       active = false;
     };
   }, [router]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      void supabase.rpc("support_device_touch_v1");
+    }, 5 * 60 * 1000);
+
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const channel = supabase
