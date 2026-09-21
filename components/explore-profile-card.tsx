@@ -3,6 +3,36 @@ import { formatBRL } from "../lib/finance";
 import { ExploreProfile, isVerified, profilePath } from "../lib/explore";
 import { ProfileAvatar } from "./profile-avatar";
 
+function planAppearance(profile: ExploreProfile) {
+  if (profile.planCode === "pro") {
+    return {
+      card:
+        "border-amber-400/45 bg-gradient-to-br from-amber-500/10 via-zinc-950 to-purple-500/10 shadow-[0_0_40px_rgba(251,191,36,0.10)]",
+      avatar:
+        "rounded-3xl ring-2 ring-amber-300/80 shadow-[0_0_24px_rgba(251,191,36,0.28)]",
+      primary:
+        "bg-gradient-to-r from-amber-400 to-yellow-300 text-black",
+    };
+  }
+
+  if (profile.planCode === "intermediate") {
+    return {
+      card:
+        "border-purple-500/45 bg-gradient-to-br from-purple-500/10 via-zinc-950 to-blue-500/5 shadow-[0_0_32px_rgba(168,85,247,0.10)]",
+      avatar:
+        "rounded-3xl ring-2 ring-purple-400/70 shadow-[0_0_20px_rgba(168,85,247,0.24)]",
+      primary:
+        "bg-purple-500 text-white",
+    };
+  }
+
+  return {
+    card: "",
+    avatar: "rounded-3xl",
+    primary: "bg-white text-black",
+  };
+}
+
 type ExploreProfileCardProps = {
   profile: ExploreProfile;
   sourceKind: "artist" | "venue";
@@ -43,7 +73,7 @@ function ProfileActions({
     <div className="flex flex-wrap gap-2">
       <Link
         href={profilePath(profile)}
-        className={`${primaryProfileLink ? "bg-white text-black" : "border border-zinc-700"} flex-1 rounded-xl px-4 py-2.5 text-center text-sm font-black transition hover:border-purple-500/50`}
+        className={`${primaryProfileLink ? planAppearance(profile).primary : "border border-zinc-700"} flex-1 rounded-xl px-4 py-2.5 text-center text-sm font-black transition hover:border-purple-500/50`}
       >
         {profile.kind === "artist" ? "Ver perfil completo" : "Ver perfil"}
       </Link>
@@ -95,6 +125,16 @@ function IdentityBadges({ profile }: { profile: ExploreProfile }) {
           ✓ Verificad{profile.kind === "artist" ? "o" : "a"}
         </span>
       )}
+      {profile.planCode === "intermediate" && (
+        <span className="rounded-full border border-purple-400/30 bg-purple-500/10 px-2.5 py-1 text-[10px] font-black text-purple-200">
+          ◆ INTERMEDIÁRIO
+        </span>
+      )}
+      {profile.planCode === "pro" && (
+        <span className="rounded-full border border-amber-400/40 bg-amber-400/10 px-2.5 py-1 text-[10px] font-black text-amber-200">
+          ✦ PRO
+        </span>
+      )}
       {profile.isOwnProfile && (
         <span className="rounded-full bg-zinc-500/15 px-2.5 py-1 text-[10px] font-bold text-zinc-300">
           Seu perfil
@@ -119,8 +159,9 @@ export function ExploreProfileCard(props: ExploreProfileCardProps) {
 
   return (
     <article
-      className="aura-profile-card aura-card flex h-full flex-col overflow-hidden rounded-3xl border p-5"
+      className={`aura-profile-card aura-card flex h-full flex-col overflow-hidden rounded-3xl border p-5 ${planAppearance(profile).card}`}
       data-kind={profile.kind}
+      data-plan={profile.planCode || "none"}
     >
       <div className="flex items-start gap-4">
         <ProfileAvatar
@@ -128,7 +169,7 @@ export function ExploreProfileCard(props: ExploreProfileCardProps) {
           name={profile.name}
           url={profile.avatarUrl}
           sizeClassName="h-20 w-20"
-          className="rounded-3xl"
+          className={planAppearance(profile).avatar}
         />
         <div className="min-w-0 flex-1">
           <IdentityBadges profile={profile} />
@@ -227,20 +268,39 @@ export function MiniPressKit(
 
   return (
     <article
-      className="aura-mini-presskit overflow-hidden rounded-3xl border border-white/10 bg-zinc-950 shadow-2xl"
+      className={`aura-mini-presskit overflow-hidden rounded-3xl border bg-zinc-950 shadow-2xl ${
+        profile.planCode === "pro"
+          ? "border-amber-400/50 shadow-[0_0_42px_rgba(251,191,36,0.16)]"
+          : profile.planCode === "intermediate"
+            ? "border-purple-500/45 shadow-[0_0_34px_rgba(168,85,247,0.14)]"
+            : "border-white/10"
+      }`}
       data-kind={profile.kind}
+      data-plan={profile.planCode || "none"}
     >
       <div className="aura-mini-presskit-cover p-5 pb-6">
-        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/70">
-          {isArtist ? "Mini Press Kit" : "Perfil da Casa"}
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/70">
+            {isArtist ? "Mini Press Kit" : "Perfil da Casa"}
+          </p>
+          {profile.planCode === "pro" && (
+            <span className="rounded-full border border-amber-300/40 bg-black/30 px-3 py-1 text-[10px] font-black text-amber-200">
+              ✦ EXPERIÊNCIA PRO
+            </span>
+          )}
+          {profile.planCode === "intermediate" && (
+            <span className="rounded-full border border-purple-300/40 bg-black/30 px-3 py-1 text-[10px] font-black text-purple-200">
+              ◆ EM DESTAQUE
+            </span>
+          )}
+        </div>
         <div className="mt-5 flex items-end gap-4">
           <ProfileAvatar
             kind={profile.kind}
             name={profile.name}
             url={profile.avatarUrl}
             sizeClassName="h-24 w-24"
-            className="rounded-3xl ring-2 ring-white/20 shadow-2xl"
+            className={`${planAppearance(profile).avatar} shadow-2xl`}
           />
           <div className="min-w-0 flex-1 pb-1">
             <IdentityBadges profile={profile} />
@@ -254,6 +314,16 @@ export function MiniPressKit(
       </div>
 
       <div className="space-y-5 p-5">
+        {profile.planCode === "pro" && (
+          <div className="rounded-2xl border border-amber-400/20 bg-amber-400/5 px-4 py-3 text-xs font-bold text-amber-200">
+            ✦ Perfil Pro com alta visibilidade no Aura Beat.
+          </div>
+        )}
+        {profile.planCode === "intermediate" && (
+          <div className="rounded-2xl border border-purple-400/20 bg-purple-400/5 px-4 py-3 text-xs font-bold text-purple-200">
+            ◆ Perfil Intermediário em destaque.
+          </div>
+        )}
         {isArtist && (
           <div className="flex flex-wrap gap-2">
             {profile.availableNow ? (
