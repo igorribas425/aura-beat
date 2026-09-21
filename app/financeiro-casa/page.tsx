@@ -17,6 +17,7 @@ type FinanceRow = {
   travel_amount: number;
   toll_amount: number;
   lodging_amount: number;
+  platform_fee_venue: number;
   provider_fee: number;
   gross_amount: number;
   paid_at: string | null;
@@ -164,7 +165,7 @@ export default function FinanceiroCasaPage() {
     let totalPago = 0;
     let aguardando = 0;
     let taxaAsaas = 0;
-    let extras = 0;
+    let taxaAura = 0;
 
     for (const linha of dados) {
       const total = Number(linha.gross_amount || 0);
@@ -178,7 +179,7 @@ export default function FinanceiroCasaPage() {
         totalPago += total;
         taxaAsaas +=
           Number(linha.provider_fee || 0);
-        extras += adicionais;
+        taxaAura += Number(linha.platform_fee_venue || 0);
       }
 
       if (linha.payment_status === "pending") {
@@ -190,7 +191,7 @@ export default function FinanceiroCasaPage() {
       totalPago,
       aguardando,
       taxaAsaas,
-      extras,
+      taxaAura,
     };
   }, [dados]);
 
@@ -262,7 +263,7 @@ export default function FinanceiroCasaPage() {
         <div className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-2xl border border-green-900/60 bg-green-950/10 p-5">
             <p className="text-sm text-green-300">
-              Total pago
+              Taxas pagas
             </p>
 
             <p className="mt-2 text-3xl font-black text-green-400">
@@ -272,7 +273,7 @@ export default function FinanceiroCasaPage() {
 
           <div className="rounded-2xl border border-yellow-900/60 bg-yellow-950/10 p-5">
             <p className="text-sm text-yellow-300">
-              Aguardando pagamento
+              Taxas pendentes
             </p>
 
             <p className="mt-2 text-3xl font-black">
@@ -292,11 +293,11 @@ export default function FinanceiroCasaPage() {
 
           <div className="rounded-2xl border border-blue-900/60 bg-blue-950/10 p-5">
             <p className="text-sm text-blue-300">
-              Extras pagos
+              Taxa Aura Beat
             </p>
 
             <p className="mt-2 text-3xl font-black text-blue-400">
-              {dinheiro(totais.extras)}
+              {dinheiro(totais.taxaAura)}
             </p>
           </div>
         </div>
@@ -308,7 +309,7 @@ export default function FinanceiroCasaPage() {
             </h2>
 
             <p className="mt-1 text-sm text-zinc-500">
-              Contratações realizadas pela sua Casa.
+              O Pix do Aura Beat cobra somente a taxa da plataforma. Cachê e extras são pagos diretamente ao DJ.
             </p>
           </div>
 
@@ -365,7 +366,7 @@ export default function FinanceiroCasaPage() {
 
                     <div className="md:text-right">
                       <p className="text-xs uppercase text-zinc-600">
-                        Total da contratação
+                        Total do Pix
                       </p>
 
                       <p className="mt-1 text-3xl font-black text-green-400">
@@ -382,8 +383,17 @@ export default function FinanceiroCasaPage() {
 
                   <div className="mt-6 rounded-2xl bg-black p-5">
                     <div className="flex justify-between text-sm text-zinc-400">
-                      <span>Cachê do DJ</span>
+                      <span>Cachê combinado · fora do Aura Beat</span>
                       <span>{dinheiro(linha.agreed_fee)}</span>
+                    </div>
+
+                    <div className="mt-3 flex justify-between text-sm text-red-300">
+                      <span>Taxa Aura Beat · 3%</span>
+                      <span>
+                        {dinheiro(
+                          Number(linha.platform_fee_venue || 0)
+                        )}
+                      </span>
                     </div>
 
                     <div className="mt-3 flex justify-between text-sm text-zinc-400">
