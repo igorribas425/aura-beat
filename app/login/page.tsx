@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getAuthenticatedDestination } from "../../lib/auth-navigation";
 import { isOwnerEmail } from "../../lib/owner-account";
@@ -163,9 +164,20 @@ export default function LoginPage() {
           </button>
         </div>
 
-        <p className="mt-6 text-center text-xs text-zinc-500">
-          Música move pessoas. Aura Beat conecta.
-        </p>
+        <div className="mt-6 text-center text-xs text-zinc-500">
+          <p>Música move pessoas. Aura Beat conecta.</p>
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+            <Link href="/privacidade" className="hover:text-zinc-300">
+              Privacidade
+            </Link>
+            <Link href="/termos" className="hover:text-zinc-300">
+              Termos
+            </Link>
+            <Link href="/excluir-conta" className="hover:text-zinc-300">
+              Exclusão de conta
+            </Link>
+          </div>
+        </div>
       </div>
     </main>
   );
