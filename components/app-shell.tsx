@@ -52,6 +52,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<ThemePreference>("system");
   const [authenticated, setAuthenticated] = useState(false);
   const [supportAccount, setSupportAccount] = useState(false);
+  const [ownerAccount, setOwnerAccount] = useState(false);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [unreadAlertCount, setUnreadAlertCount] = useState(0);
 
@@ -79,6 +80,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       if (!data.user) {
         setAuthenticated(false);
         setSupportAccount(false);
+        setOwnerAccount(false);
         setMode(null);
 
         const nextTheme = getStoredTheme();
@@ -87,20 +89,45 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const [{ data: profile }, { data: isSupportIdentity }] = await Promise.all([
+      const [
+        { data: profile },
+        { data: isSupportIdentity },
+        { data: isOwner },
+      ] = await Promise.all([
         supabase
           .from("profiles")
           .select("default_mode,theme")
           .eq("id", data.user.id)
           .maybeSingle(),
         supabase.rpc("is_support_identity_v1"),
+        supabase.rpc("owner_access_v1"),
       ]);
 
       if (!alive) return;
 
       const supportOnly = isSupportIdentity === true;
+      const ownerOnly = isOwner === true;
+
       setSupportAccount(supportOnly);
+      setOwnerAccount(ownerOnly);
       setAuthenticated(true);
+
+      const ownerEntryPaths = new Set([
+        "/",
+        "/login",
+        "/cadastro",
+        "/cadastro/login",
+        "/perfil-artista",
+        "/perfil-casa",
+      ]);
+
+      if (
+        ownerOnly &&
+        ownerEntryPaths.has(pathname)
+      ) {
+        router.replace("/admin");
+        return;
+      }
 
       if (supportOnly && !pathname.startsWith("/equipe-aura")) {
         const storedSecret = window.localStorage.getItem(
@@ -317,9 +344,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   const supportPortalPath = pathname.startsWith("/equipe-aura");
+  const ownerEntryPaths = new Set([
+    "/",
+    "/login",
+    "/cadastro",
+    "/cadastro/login",
+    "/perfil-artista",
+    "/perfil-casa",
+  ]);
 
   if (supportPortalPath) return <>{children}</>;
   if (supportAccount) return null;
+  if (
+    ownerAccount &&
+    ownerEntryPaths.has(pathname)
+  ) {
+    return null;
+  }
   if (publicPaths.has(pathname) || !authenticated) return <>{children}</>;
 
   const home = mode === "venue" ? "/home-casa" : "/home-artista";
