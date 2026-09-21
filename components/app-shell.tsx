@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { isOwnerEmail } from "../lib/owner-account";
 import { supabase } from "../lib/supabase";
 import {
   AURA_THEME_EVENT,
@@ -106,7 +107,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       if (!alive) return;
 
       const supportOnly = isSupportIdentity === true;
-      const ownerOnly = isOwner === true;
+      const ownerOnly =
+        isOwner === true ||
+        isOwnerEmail(data.user.email);
 
       setSupportAccount(supportOnly);
       setOwnerAccount(ownerOnly);
