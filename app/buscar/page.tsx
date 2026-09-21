@@ -721,6 +721,20 @@ export default function ExplorePage() {
     view,
   ]);
 
+  useEffect(() => {
+    if (view !== "map" || contextLoading) {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      setReloadKey((value) => value + 1);
+    }, 10000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [contextLoading, view]);
+
   const favoriteKeys = useMemo(
     () =>
       new Set(
@@ -764,6 +778,7 @@ export default function ExplorePage() {
 
     if (nextView === "map") {
       setPage(1);
+      setReloadKey((value) => value + 1);
       window.requestAnimationFrame(() => {
         window.requestAnimationFrame(() => {
           document.getElementById("explore-results")?.scrollIntoView({
