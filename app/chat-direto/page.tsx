@@ -126,18 +126,49 @@ export default function DirectChatPage() {
 
       setUserId(user.id);
 
-      const { data: accountProfile } = await supabase
-        .from("profiles")
-        .select("default_mode")
-        .eq("id", user.id)
-        .maybeSingle();
+      const [accountProfileResult, ownArtistResult, ownVenueResult] =
+        await Promise.all([
+          supabase
+            .from("profiles")
+            .select("default_mode")
+            .eq("id", user.id)
+            .maybeSingle(),
+          supabase
+            .from("artist_profiles")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("is_active", true)
+            .maybeSingle(),
+          supabase
+            .from("venue_profiles")
+            .select("id")
+            .eq("owner_user_id", user.id)
+            .eq("is_active", true)
+            .maybeSingle(),
+        ]);
 
       if (!active) return;
-      setActiveMode(accountProfile?.default_mode === "venue" ? "venue" : "artist");
+
+      const preferredMode: ProfileKind =
+        accountProfileResult.data?.default_mode === "venue"
+          ? "venue"
+          : "artist";
+
+      const resolvedMode: ProfileKind =
+        preferredMode === "venue" && ownVenueResult.data
+          ? "venue"
+          : preferredMode === "artist" && ownArtistResult.data
+            ? "artist"
+            : ownVenueResult.data
+              ? "venue"
+              : "artist";
+
+      setActiveMode(resolvedMode);
 
       const params = new URLSearchParams(window.location.search);
       const targetKind = params.get("targetKind");
       const targetId = params.get("targetId");
+      const sourceKindParam = params.get("sourceKind");
       const requestedConversation = params.get("id");
       let conversationId = requestedConversation;
 
@@ -149,9 +180,24 @@ export default function DirectChatPage() {
         (targetKind === "artist" || targetKind === "venue") &&
         targetId
       ) {
+        const requestedSourceKind: ProfileKind =
+          sourceKindParam === "venue"
+            ? "venue"
+            : sourceKindParam === "artist"
+              ? "artist"
+              : resolvedMode;
+
+        const sourceKind: ProfileKind =
+          requestedSourceKind === "venue" && ownVenueResult.data
+            ? "venue"
+            : requestedSourceKind === "artist" && ownArtistResult.data
+              ? "artist"
+              : resolvedMode;
+
         const { data, error: startError } = await supabase.rpc(
-          "start_direct_conversation_v1",
+          "start_direct_conversation_v2",
           {
+            p_source_kind: sourceKind,
             p_target_kind: targetKind,
             p_target_profile_id: targetId,
           },
@@ -159,8 +205,8 @@ export default function DirectChatPage() {
 
         if (startError) {
           setError(
-            startError.message.includes("start_direct_conversation_v1")
-              ? "O Chat Direto precisa da migration 016 no Supabase antes de ser usado."
+            startError.message.includes("start_direct_conversation_v2")
+              ? "O Chat Direto precisa da atualização mais recente do Supabase."
               : startError.message,
           );
         } else if (data) {
