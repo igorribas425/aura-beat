@@ -268,7 +268,7 @@ export function MiniPressKit(
 
   return (
     <article
-      className={`aura-mini-presskit overflow-hidden rounded-3xl border bg-zinc-950 shadow-2xl ${
+      className={`aura-mini-presskit w-full min-w-0 max-w-full overflow-hidden rounded-3xl border bg-zinc-950 shadow-2xl ${
         profile.planCode === "pro"
           ? "border-amber-400/50 shadow-[0_0_42px_rgba(251,191,36,0.16)]"
           : profile.planCode === "intermediate"
