@@ -111,13 +111,37 @@ export default function PublicVenuePage() {
 
       const currentUser = userResult.data.user;
       if (currentUser) {
-        const { data: ownVenue } = await supabase
-          .from("venue_profiles")
-          .select("id")
-          .eq("owner_user_id", currentUser.id)
-          .maybeSingle();
+        const [profileResult, ownArtistResult, ownVenueResult] =
+          await Promise.all([
+            supabase
+              .from("profiles")
+              .select("default_mode")
+              .eq("id", currentUser.id)
+              .maybeSingle(),
+            supabase
+              .from("artist_profiles")
+              .select("id")
+              .eq("user_id", currentUser.id)
+              .eq("is_active", true)
+              .maybeSingle(),
+            supabase
+              .from("venue_profiles")
+              .select("id")
+              .eq("owner_user_id", currentUser.id)
+              .eq("is_active", true)
+              .maybeSingle(),
+          ]);
 
-        if (active) setCanChat(ownVenue?.id !== id);
+        const isArtist =
+          profileResult.data?.default_mode !== "venue" &&
+          Boolean(ownArtistResult.data);
+
+        if (active) {
+          setCanChat(
+            isArtist &&
+              ownVenueResult.data?.id !== id
+          );
+        }
       }
 
       setLoading(false);
@@ -220,7 +244,7 @@ export default function PublicVenuePage() {
               {canChat && (
                 <div className="mt-5">
                   <Link
-                    href={`/chat-direto?targetKind=venue&targetId=${venue.id}`}
+                    href={`/chat-direto?sourceKind=artist&targetKind=venue&targetId=${venue.id}`}
                     className="inline-flex rounded-xl border border-purple-500/40 bg-purple-500/10 px-6 py-3 font-black text-purple-200 hover:bg-purple-500/20"
                   >
                     Conversar
