@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "../../../lib/supabase";
+import { getOwnerAccessFast } from "../../../lib/admin-access";
 
 type AccessState = "loading" | "allowed" | "denied";
 
@@ -16,29 +16,22 @@ export default function AdminSupportAiPage() {
     let active = true;
 
     async function checkAccess() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const result =
+        await getOwnerAccessFast();
 
       if (!active) return;
 
-      if (!user) {
+      if (!result.authenticated) {
         router.replace("/login");
         return;
       }
 
-      setEmail(user.email || "");
-
-      const { data, error } = await supabase.rpc("owner_access_v1");
-
-      if (!active) return;
-
-      if (error || data !== true) {
-        setAccess("denied");
-        return;
-      }
-
-      setAccess("allowed");
+      setEmail(result.email);
+      setAccess(
+        result.allowed
+          ? "allowed"
+          : "denied"
+      );
     }
 
     void checkAccess();
