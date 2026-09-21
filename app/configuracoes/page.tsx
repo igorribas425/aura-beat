@@ -896,6 +896,41 @@ export default function ConfiguracoesPage() {
           </button>
         </section>
 
+        <section className="rounded-3xl border border-zinc-800 bg-zinc-950 p-6">
+          <p className="text-xs font-black text-red-500">PRIVACIDADE E CONTA</p>
+          <h2 className="mt-1 text-2xl font-black">Dados, termos e exclusão</h2>
+          <p className="mt-2 text-sm text-zinc-500">
+            Consulte os documentos legais da Aura Beat e solicite a exclusão
+            da sua conta quando precisar.
+          </p>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <button
+              type="button"
+              onClick={() => router.push("/privacidade")}
+              className="rounded-xl border border-zinc-700 px-4 py-3 text-left text-sm font-bold hover:bg-zinc-900"
+            >
+              Política de Privacidade
+            </button>
+
+            <button
+              type="button"
+              onClick={() => router.push("/termos")}
+              className="rounded-xl border border-zinc-700 px-4 py-3 text-left text-sm font-bold hover:bg-zinc-900"
+            >
+              Termos de Uso
+            </button>
+
+            <button
+              type="button"
+              onClick={() => router.push("/excluir-conta")}
+              className="rounded-xl border border-red-900 px-4 py-3 text-left text-sm font-bold text-red-400 hover:bg-red-950/30"
+            >
+              Solicitar exclusão da conta
+            </button>
+          </div>
+        </section>
+
         <section className="rounded-3xl border border-red-950 bg-red-950/10 p-6">
           <p className="text-xs font-black text-red-500">SESSÃO</p>
           <h2 className="mt-1 text-xl font-black">Sair da Aura Beat</h2>
