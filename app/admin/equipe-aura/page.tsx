@@ -37,6 +37,23 @@ function dateTime(value: string) {
   }).format(new Date(value));
 }
 
+function errorMessage(caught: unknown, fallback: string) {
+  if (caught instanceof Error && caught.message) {
+    return caught.message;
+  }
+
+  if (
+    typeof caught === "object" &&
+    caught !== null &&
+    "message" in caught &&
+    typeof (caught as { message?: unknown }).message === "string"
+  ) {
+    return (caught as { message: string }).message;
+  }
+
+  return fallback;
+}
+
 export default function AdminAuraTeamPage() {
   const router = useRouter();
   const [agents, setAgents] = useState<SupportAgent[]>([]);
@@ -105,9 +122,7 @@ export default function AdminAuraTeamPage() {
 
         if (active) {
           setError(
-            caught instanceof Error
-              ? caught.message
-              : "Não foi possível carregar a Equipe Aura.",
+            errorMessage(caught, "Não foi possível carregar a Equipe Aura."),
           );
         }
       } finally {
@@ -151,9 +166,7 @@ export default function AdminAuraTeamPage() {
       console.error(caught);
 
       setError(
-        caught instanceof Error
-          ? caught.message
-          : "Não foi possível adicionar o atendente.",
+        errorMessage(caught, "Não foi possível adicionar o atendente."),
       );
     } finally {
       setBusy("");
@@ -197,9 +210,7 @@ export default function AdminAuraTeamPage() {
       console.error(caught);
 
       setError(
-        caught instanceof Error
-          ? caught.message
-          : "Não foi possível alterar o acesso.",
+        errorMessage(caught, "Não foi possível alterar o acesso."),
       );
     } finally {
       setBusy("");
@@ -239,9 +250,7 @@ export default function AdminAuraTeamPage() {
       console.error(caught);
 
       setError(
-        caught instanceof Error
-          ? caught.message
-          : "Não foi possível remover o atendente.",
+        errorMessage(caught, "Não foi possível remover o atendente."),
       );
     } finally {
       setBusy("");
@@ -305,6 +314,7 @@ export default function AdminAuraTeamPage() {
           <p className="mt-2 text-sm leading-6 text-zinc-500">
             A pessoa precisa já ter uma conta cadastrada no Aura Beat. Depois de adicionada,
             ela entra pelo endereço <strong className="text-zinc-300">/equipe-aura</strong>.
+            O proprietário e administradores já podem acessar esse portal sem serem adicionados à equipe.
           </p>
 
           <form
