@@ -1184,33 +1184,52 @@ export default function ExplorePage() {
             ))}
           </section>
         ) : (
-          <section className="aura-card relative mt-5 overflow-hidden rounded-3xl border" aria-label="Resultados no mapa">
-            <ExploreMap profiles={profiles} userLocation={location} onSelect={setSelectedProfile} />
+          <section
+            className={`aura-card mt-5 overflow-hidden rounded-3xl border ${
+              selectedProfile
+                ? "lg:grid lg:grid-cols-[minmax(0,1fr)_420px]"
+                : ""
+            }`}
+            aria-label="Resultados no mapa"
+          >
+            <div className="min-w-0">
+              <ExploreMap
+                profiles={profiles}
+                userLocation={location}
+                onSelect={setSelectedProfile}
+              />
+            </div>
+
             {selectedProfile && (
               <aside
-                className="absolute inset-x-3 bottom-3 z-[500] max-h-[78%] overflow-y-auto rounded-3xl sm:left-auto sm:w-[460px]"
+                className="relative min-w-0 max-w-full overflow-hidden border-t border-white/10 bg-[#08080c] lg:max-h-[64vh] lg:min-h-[460px] lg:overflow-y-auto lg:border-l lg:border-t-0"
                 aria-label={`Perfil selecionado: ${selectedProfile.name}`}
               >
-                <button
-                  type="button"
-                  aria-label="Fechar perfil selecionado"
-                  onClick={() => setSelectedProfile(null)}
-                  className="absolute right-4 top-4 z-10 grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-black/60 text-lg text-white backdrop-blur"
-                >
-                  ×
-                </button>
-                <MiniPressKit
-                  profile={selectedProfile}
-                  sourceKind={mode}
-                  canSendOffer={canSendOffer}
-                  favorite={favoriteKeys.has(`${selectedProfile.kind}:${selectedProfile.id}`)}
-                  favoriteBusy={favoriteBusy === `${selectedProfile.kind}:${selectedProfile.id}`}
-                  onToggleFavorite={toggleFavorite}
-                  media={selectedMedia}
-                  mediaLoading={selectedMediaLoading}
-                  travelQuote={selectedTravelQuote}
-                  travelQuoteLoading={selectedTravelQuoteLoading}
-                />
+                <div className="sticky top-0 z-20 flex justify-end border-b border-white/10 bg-black/75 p-3 backdrop-blur">
+                  <button
+                    type="button"
+                    aria-label="Fechar perfil selecionado"
+                    onClick={() => setSelectedProfile(null)}
+                    className="grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-black/70 text-lg text-white"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="min-w-0 max-w-full p-3">
+                  <MiniPressKit
+                    profile={selectedProfile}
+                    sourceKind={mode}
+                    canSendOffer={canSendOffer}
+                    favorite={favoriteKeys.has(`${selectedProfile.kind}:${selectedProfile.id}`)}
+                    favoriteBusy={favoriteBusy === `${selectedProfile.kind}:${selectedProfile.id}`}
+                    onToggleFavorite={toggleFavorite}
+                    media={selectedMedia}
+                    mediaLoading={selectedMediaLoading}
+                    travelQuote={selectedTravelQuote}
+                    travelQuoteLoading={selectedTravelQuoteLoading}
+                  />
+                </div>
               </aside>
             )}
           </section>
