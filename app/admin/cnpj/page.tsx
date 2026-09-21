@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getOwnerAccessFast } from "../../../lib/admin-access";
 import { supabase } from "../../../lib/supabase";
 import {
   formatCnpj,
@@ -88,21 +89,15 @@ export default function AdminCnpjPage() {
       setLoading(true);
       setError("");
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const ownerAccess =
+        await getOwnerAccessFast();
 
-      if (!user) {
+      if (!ownerAccess.authenticated) {
         router.replace("/login");
         return;
       }
 
-      const { data: ownerAccess, error: ownerAccessError } =
-        await supabase.rpc("owner_access_v1");
-
-      if (ownerAccessError) throw ownerAccessError;
-
-      if (ownerAccess !== true) {
+      if (!ownerAccess.allowed) {
         setAccessDenied(true);
         setRows([]);
         return;
