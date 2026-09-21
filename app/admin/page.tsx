@@ -14,6 +14,7 @@ export default function AdminHomePage() {
   const router = useRouter();
   const [access, setAccess] =
     useState<AccessState>("loading");
+  const [sessionEmail, setSessionEmail] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -30,19 +31,15 @@ export default function AdminHomePage() {
         return;
       }
 
-      const { data, error } = await supabase
-        .from("aura_admins")
-        .select("role,is_active")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      setSessionEmail(user.email || "");
+
+      const { data, error } = await supabase.rpc(
+        "owner_access_v1"
+      );
 
       if (!active) return;
 
-      if (
-        error ||
-        !data?.is_active ||
-        data.role !== "owner"
-      ) {
+      if (error || data !== true) {
         setAccess("denied");
         return;
       }
@@ -81,6 +78,18 @@ export default function AdminHomePage() {
           <p className="mt-3 text-sm leading-6 text-zinc-400">
             Esta área é exclusiva do proprietário administrativo da Aura Beat.
           </p>
+
+          {sessionEmail && (
+            <p className="mt-4 rounded-xl border border-zinc-800 bg-black/30 px-4 py-3 text-xs text-zinc-500">
+              Sessão atual: <span className="font-bold text-zinc-300">{sessionEmail}</span>
+            </p>
+          )}
+
+          {sessionEmail && sessionEmail !== "igorribas425@gmail.com" && (
+            <p className="mt-3 text-xs leading-5 text-amber-300">
+              Entre com a conta principal igorribas425@gmail.com para acessar a Central Mestre.
+            </p>
+          )}
         </section>
       </main>
     );
