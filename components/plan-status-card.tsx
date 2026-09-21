@@ -76,7 +76,7 @@ export function PlanStatusCard({
           {
             key: "base",
             label: "Perfil, Press Kit, chat, ofertas e agenda",
-            available: true,
+            available: active,
           },
           {
             key: "visibility",
@@ -116,7 +116,7 @@ export function PlanStatusCard({
           {
             key: "base",
             label: "Explorar DJs, chat, ofertas e eventos",
-            available: true,
+            available: active,
           },
           {
             key: "offers",
@@ -193,7 +193,7 @@ export function PlanStatusCard({
           <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-500">
             {active
               ? "O Aura Beat libera os recursos deste nível automaticamente."
-              : "Os recursos principais continuam disponíveis, mas benefícios extras ficam bloqueados até existir um plano ativo."}
+              : "Seu acesso aos recursos do Aura Beat fica bloqueado até você escolher um plano e confirmar o pagamento."}
           </p>
         </div>
 
