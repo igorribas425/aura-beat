@@ -204,8 +204,11 @@ export default function ArtistPlansPage() {
                   {currentSubscription.status === "trialing" &&
                     currentSubscription.trial_ends_at &&
                     ` · teste até ${date(currentSubscription.trial_ends_at)}`}
-                  {currentSubscription.current_period_end &&
-                    ` · período até ${date(currentSubscription.current_period_end)}`}
+                  {currentSubscription.current_period_end
+                    ? ` · período até ${date(currentSubscription.current_period_end)}`
+                    : currentSubscription.status === "active"
+                      ? " · ♾ acesso ilimitado"
+                      : ""}
                 </p>
               </div>
 
