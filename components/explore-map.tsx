@@ -121,7 +121,14 @@ function profileMarkerIcon(
 ) {
   const imageUrl = safeImageUrl(profile.avatarUrl);
   const isArtist = profile.kind === "artist";
-  const markerColor = isArtist ? "#a855f7" : "#ff244f";
+  const markerColor =
+    profile.planCode === "pro"
+      ? "#fbbf24"
+      : profile.planCode === "intermediate"
+        ? "#a855f7"
+        : isArtist
+          ? "#a855f7"
+          : "#ff244f";
   const fallback = isArtist ? "♫" : "⌂";
   const name = escapeHtml(profile.name);
   const distance =
@@ -139,6 +146,18 @@ function profileMarkerIcon(
   const ownBadge = profile.isOwnProfile
     ? '<span class="aura-profile-marker-own">VOCÊ</span>'
     : "";
+  const planBadge =
+    profile.planCode === "pro"
+      ? '<span class="aura-profile-marker-plan aura-profile-marker-plan-pro">✦ PRO</span>'
+      : profile.planCode === "intermediate"
+        ? '<span class="aura-profile-marker-plan aura-profile-marker-plan-intermediate">◆</span>'
+        : "";
+  const planClass =
+    profile.planCode === "pro"
+      ? " aura-profile-marker--pro"
+      : profile.planCode === "intermediate"
+        ? " aura-profile-marker--intermediate"
+        : "";
   const media = imageUrl
     ? `<span
         class="aura-profile-marker-image"
@@ -150,11 +169,12 @@ function profileMarkerIcon(
   return leaflet.divIcon({
     className: "",
     html: `
-      <div class="aura-profile-marker" title="${name}" style="--aura-marker:${markerColor}">
+      <div class="aura-profile-marker${planClass}" title="${name}" style="--aura-marker:${markerColor}">
         <div class="aura-profile-marker-photo">
           ${media}
           ${availability}
           ${ownBadge}
+          ${planBadge}
         </div>
         ${distance}
       </div>
@@ -253,7 +273,14 @@ export function ExploreMap({ profiles, userLocation, onSelect }: ExploreMapProps
         const marker = leaflet
           .marker(point, {
             icon: profileMarkerIcon(leaflet, profile),
-            zIndexOffset: profile.availableNow ? 500 : 100,
+            zIndexOffset:
+              profile.planCode === "pro"
+                ? 950
+                : profile.planCode === "intermediate"
+                  ? 720
+                  : profile.availableNow
+                    ? 500
+                    : 100,
           })
           .bindTooltip(
             profile.isOwnProfile ? `${profile.name} · seu perfil` : profile.name,
