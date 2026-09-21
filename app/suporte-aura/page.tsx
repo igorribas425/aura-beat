@@ -528,15 +528,25 @@ export default function SupportAuraPage() {
                                 : "rounded-bl-md border border-zinc-800 bg-zinc-900 text-zinc-200")
                             }
                           >
-                            {!mine && (
-                              <p className="mb-1 text-[10px] font-black uppercase tracking-wide text-amber-300">
-                                Equipe Aura
-                              </p>
-                            )}
+                            <p
+                              className={
+                                "mb-1 text-[10px] font-black uppercase tracking-wide " +
+                                (mine ? "text-purple-100" : "text-amber-300")
+                              }
+                            >
+                              {mine ? "Você" : "Equipe Aura"}
+                            </p>
+
                             <p className="whitespace-pre-wrap break-words text-sm leading-6">
                               {message.body}
                             </p>
-                            <p className="mt-1 text-right text-[10px] text-zinc-400">
+
+                            <p
+                              className={
+                                "mt-1 text-right text-[10px] " +
+                                (mine ? "text-purple-100/70" : "text-zinc-500")
+                              }
+                            >
                               {dateTime(message.created_at)}
                             </p>
                           </div>
