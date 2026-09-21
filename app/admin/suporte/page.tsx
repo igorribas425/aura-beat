@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SupportNotificationButton } from "../../../components/support-notification-button";
-import { ensureFreshSession } from "../../../lib/admin-access";
+import { ensureFreshSession, getOwnerAccessFast } from "../../../lib/admin-access";
 import { notifySupportIncoming } from "../../../lib/support-alerts";
 import { supabase } from "../../../lib/supabase";
 
@@ -176,15 +176,25 @@ export default function AdminSupportPage() {
           return;
         }
 
-        const { data: staff, error: staffError } = await supabase.rpc(
-          "is_aura_staff_v1",
-        );
+        const ownerAccess =
+          await getOwnerAccessFast();
 
-        if (staffError) throw staffError;
-
-        if (staff !== true) {
-          router.replace("/home");
+        if (!ownerAccess.authenticated) {
+          router.replace("/login");
           return;
+        }
+
+        if (!ownerAccess.allowed) {
+          const { data: staff, error: staffError } = await supabase.rpc(
+            "is_aura_staff_v1",
+          );
+
+          if (staffError) throw staffError;
+
+          if (staff !== true) {
+            router.replace("/home");
+            return;
+          }
         }
 
         const requestedThread = new URLSearchParams(
