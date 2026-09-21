@@ -198,6 +198,116 @@ export async function POST(
     );
 
   const {
+    data: subscriptionPayment,
+    error: subscriptionPaymentError,
+  } = await admin
+    .from("subscription_payments")
+    .select(
+      "id,status,amount,metadata"
+    )
+    .eq("provider", "asaas")
+    .eq(
+      "provider_payment_id",
+      providerPaymentId
+    )
+    .maybeSingle();
+
+  if (subscriptionPaymentError) {
+    console.error(
+      "Erro ao localizar mensalidade do webhook Asaas:",
+      subscriptionPaymentError
+    );
+
+    return NextResponse.json(
+      { error: "Persistence lookup failed" },
+      { status: 500 }
+    );
+  }
+
+  if (subscriptionPayment) {
+    const externalReference =
+      event.payment?.externalReference?.trim();
+
+    const expectedReference =
+      `subscription:${subscriptionPayment.id}`;
+
+    if (
+      externalReference &&
+      externalReference !== expectedReference
+    ) {
+      return NextResponse.json(
+        { error: "External reference mismatch" },
+        { status: 409 }
+      );
+    }
+
+    if (
+      (status === "paid" ||
+        status === "refunded") &&
+      typeof event.payment?.value === "number" &&
+      Math.abs(
+        money(event.payment.value) -
+          money(subscriptionPayment.amount)
+      ) > 0.01
+    ) {
+      return NextResponse.json(
+        { error: "Payment amount mismatch" },
+        { status: 409 }
+      );
+    }
+
+    const now = new Date().toISOString();
+    const oldMetadata =
+      subscriptionPayment.metadata &&
+      typeof subscriptionPayment.metadata === "object"
+        ? subscriptionPayment.metadata
+        : {};
+
+    const updateData: Record<string, unknown> = {
+      status,
+      updated_at: now,
+      metadata: {
+        ...oldMetadata,
+        webhook_event: eventName,
+        webhook_received_at: now,
+      },
+    };
+
+    if (status === "paid") {
+      updateData.paid_at = now;
+    }
+
+    if (status === "refunded") {
+      updateData.refunded_at = now;
+    }
+
+    const { error: subscriptionUpdateError } =
+      await admin
+        .from("subscription_payments")
+        .update(updateData)
+        .eq("id", subscriptionPayment.id);
+
+    if (subscriptionUpdateError) {
+      console.error(
+        "Erro ao atualizar mensalidade pelo webhook Asaas:",
+        subscriptionUpdateError
+      );
+
+      return NextResponse.json(
+        { error: "Persistence update failed" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      received: true,
+      event: eventName,
+      status,
+      billing: "subscription",
+    });
+  }
+
+  const {
     data: payment,
     error: paymentError,
   } = await admin
