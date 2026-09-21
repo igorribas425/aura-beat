@@ -1,12 +1,21 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AppShell } from "../components/app-shell";
+import { ServiceWorkerRegister } from "../components/service-worker-register";
 
 export const metadata: Metadata = {
   title: { default: "Aura Beat", template: "%s | Aura Beat" },
   description: "Conectando talentos aos melhores eventos.",
   applicationName: "Aura Beat",
   manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "Aura Beat",
+    statusBarStyle: "black-translucent",
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
 
 export const viewport: Viewport = {
@@ -21,6 +30,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="pt-BR" className="h-full antialiased" suppressHydrationWarning>
       <body className="flex min-h-full flex-col">
+        <ServiceWorkerRegister />
         <AppShell>{children}</AppShell>
       </body>
     </html>
