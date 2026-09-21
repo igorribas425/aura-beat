@@ -22,6 +22,8 @@ export type ExploreProfile = {
   locationPrecisionKm: number | null;
   distanceKm: number | null;
   isOwnProfile: boolean;
+  planCode: "normal" | "intermediate" | "pro" | null;
+  planName: string | null;
 };
 
 export type ExploreFilters = {
