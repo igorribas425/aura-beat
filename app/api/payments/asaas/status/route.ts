@@ -14,6 +14,8 @@ import {
 
 export const runtime = "nodejs";
 
+type PayerType = "venue" | "artist";
+
 function bearerToken(
   request: NextRequest
 ) {
@@ -124,10 +126,16 @@ export async function POST(
     const body =
       (await request.json()) as {
         bookingId?: string;
+        payerType?: PayerType;
       };
 
     const bookingId =
       body.bookingId?.trim();
+
+    const payerType: PayerType =
+      body.payerType === "artist"
+        ? "artist"
+        : "venue";
 
     if (!bookingId) {
       return NextResponse.json(
@@ -147,7 +155,7 @@ export async function POST(
     } = await admin
       .from("bookings")
       .select(
-        "id,venue_id,status"
+        "id,venue_id,artist_id,status"
       )
       .eq(
         "id",
@@ -171,77 +179,112 @@ export async function POST(
       );
     }
 
-    const {
-      data: venue,
-      error: venueError,
-    } = await admin
-      .from("venue_profiles")
-      .select(
-        "id,owner_user_id"
-      )
-      .eq(
-        "id",
-        booking.venue_id
-      )
-      .maybeSingle();
-
-    if (venueError) {
-      throw venueError;
-    }
-
-    let authorized =
-      venue?.owner_user_id ===
-      userData.user.id;
-
-    if (!authorized) {
+    if (payerType === "artist") {
       const {
-        data: member,
-        error: memberError,
+        data: artist,
+        error: artistError,
       } = await admin
-        .from("venue_members")
-        .select("id")
+        .from("artist_profiles")
+        .select("user_id")
         .eq(
-          "venue_id",
-          booking.venue_id
-        )
-        .eq(
-          "user_id",
-          userData.user.id
+          "id",
+          booking.artist_id
         )
         .maybeSingle();
 
-      if (memberError) {
-        throw memberError;
+      if (artistError) {
+        throw artistError;
       }
 
-      authorized =
-        Boolean(member);
+      if (
+        !artist ||
+        artist.user_id !==
+          userData.user.id
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Sem permissao para consultar esta taxa.",
+          },
+          {
+            status: 403,
+          }
+        );
+      }
+    } else {
+      const {
+        data: venue,
+        error: venueError,
+      } = await admin
+        .from("venue_profiles")
+        .select(
+          "id,owner_user_id"
+        )
+        .eq(
+          "id",
+          booking.venue_id
+        )
+        .maybeSingle();
+
+      if (venueError) {
+        throw venueError;
+      }
+
+      let authorized =
+        venue?.owner_user_id ===
+        userData.user.id;
+
+      if (!authorized) {
+        const {
+          data: member,
+          error: memberError,
+        } = await admin
+          .from("venue_team")
+          .select("user_id")
+          .eq(
+            "venue_id",
+            booking.venue_id
+          )
+          .eq(
+            "user_id",
+            userData.user.id
+          )
+          .maybeSingle();
+
+        if (memberError) {
+          throw memberError;
+        }
+
+        authorized =
+          Boolean(member);
+      }
+
+      if (!authorized) {
+        return NextResponse.json(
+          {
+            error:
+              "Sem permissao para consultar esta taxa.",
+          },
+          {
+            status: 403,
+          }
+        );
+      }
     }
 
-    if (!authorized) {
-      return NextResponse.json(
-        {
-          error:
-            "Sem permissao para consultar este pagamento.",
-        },
-        {
-          status: 403,
-        }
-      );
-    }
+    const chargeType =
+      payerType === "artist"
+        ? "artist_platform_fee"
+        : "venue_platform_fee";
 
     const {
       data: payment,
       error: paymentError,
     } = await admin
       .from("payments")
-      .select(`
-        id,
-        provider_payment_id,
-        status,
-        gross_amount,
-        provider_fee
-      `)
+      .select(
+        "id,provider_payment_id,status,gross_amount,provider_fee,metadata"
+      )
       .eq(
         "booking_id",
         bookingId
@@ -249,6 +292,10 @@ export async function POST(
       .eq(
         "provider",
         "asaas"
+      )
+      .eq(
+        "charge_type",
+        chargeType
       )
       .order(
         "created_at",
@@ -299,6 +346,13 @@ export async function POST(
         new Date()
           .toISOString();
 
+      const oldMetadata =
+        payment.metadata &&
+        typeof payment.metadata ===
+          "object"
+          ? payment.metadata
+          : {};
+
       const {
         error: updateError,
       } = await admin
@@ -312,8 +366,9 @@ export async function POST(
               }
             : {}),
           metadata: {
+            ...oldMetadata,
             source:
-              "asaas_pix_checkout",
+              "asaas_platform_fee_v2",
             asaas_status:
               remote.status,
           },
@@ -328,12 +383,20 @@ export async function POST(
       }
     }
 
+    const {
+      data: refreshedBooking,
+    } = await admin
+      .from("bookings")
+      .select("status")
+      .eq("id", bookingId)
+      .maybeSingle();
+
     return NextResponse.json({
       status,
+      payerType,
       bookingStatus:
-        status === "paid"
-          ? "confirmed"
-          : booking.status,
+        refreshedBooking?.status ||
+        booking.status,
       total:
         Number(
           payment.gross_amount ||
