@@ -27,7 +27,7 @@ export default function LoginPage() {
         if (!user) return;
 
         if (isOwnerEmail(user.email)) {
-          router.replace("/admin");
+          router.replace("/acesso");
           return;
         }
 
@@ -70,7 +70,7 @@ export default function LoginPage() {
       }
 
       if (isOwnerEmail(data.user.email)) {
-        router.replace("/admin");
+        router.replace("/acesso");
         return;
       }
 
