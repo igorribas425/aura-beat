@@ -316,11 +316,22 @@ export default function ArtistPlansPage() {
                     </div>
                   )}
 
-                  {!current && (
-                    <div className="mt-6 rounded-xl border border-zinc-800 bg-black/30 p-3 text-xs leading-5 text-zinc-500">
-                      A assinatura automática pelo ASAAS será conectada ao fluxo de pagamento. O Admin já pode liberar este plano manualmente.
-                    </div>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/assinatura/${plan.id}`)}
+                    className={`mt-6 w-full rounded-xl px-4 py-3 text-sm font-black transition ${
+                      current
+                        ? "border border-green-700 text-green-300 hover:bg-green-950/30"
+                        : "bg-green-600 text-white hover:bg-green-500"
+                    }`}
+                  >
+                    {current ? "Renovar por mais 1 mês" : "Assinar com Pix"}
+                  </button>
+
+                  <p className="mt-3 text-xs leading-5 text-zinc-500">
+                    Pagamento processado pelo ASAAS. Após a confirmação do Pix,
+                    o plano é ativado automaticamente por 1 mês.
+                  </p>
                 </article>
               );
             })}
