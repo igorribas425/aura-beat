@@ -17,31 +17,34 @@ export async function ensureFreshSession() {
     return null;
   }
 
-  const expiresAtMs =
-    Number(session.expires_at || 0) * 1000;
-
-  const shouldRefresh =
-    !expiresAtMs ||
-    expiresAtMs <= Date.now() + 2 * 60 * 1000;
-
-  if (!shouldRefresh) {
-    return session;
-  }
-
+  // Admin pages use protected RPCs. Always rotate the access token before
+  // entering the Admin so a stale browser JWT never reaches Supabase.
   const {
     data: refreshed,
     error: refreshError,
   } = await supabase.auth.refreshSession();
 
-  if (refreshError || !refreshed.session) {
-    await supabase.auth.signOut({
-      scope: "local",
-    });
-
-    return null;
+  if (!refreshError && refreshed.session) {
+    return refreshed.session;
   }
 
-  return refreshed.session;
+  // If refresh failed but the current token is still accepted, keep it.
+  const {
+    data: userData,
+    error: userError,
+  } = await supabase.auth.getUser(
+    session.access_token,
+  );
+
+  if (!userError && userData.user) {
+    return session;
+  }
+
+  await supabase.auth.signOut({
+    scope: "local",
+  });
+
+  return null;
 }
 
 export async function getOwnerAccessFast(): Promise<OwnerAccessResult> {
@@ -100,4 +103,27 @@ export async function getOwnerAccessFast(): Promise<OwnerAccessResult> {
       email,
     };
   }
+}
+
+export function isJwtExpiredError(
+  error: unknown,
+) {
+  if (!error) return false;
+
+  const text =
+    error instanceof Error
+      ? error.message
+      : typeof error === "object" &&
+          error !== null &&
+          "message" in error
+        ? String(
+            (error as {
+              message?: unknown;
+            }).message || "",
+          )
+        : String(error);
+
+  return /jwt.*expired|expired.*jwt/i.test(
+    text,
+  );
 }
