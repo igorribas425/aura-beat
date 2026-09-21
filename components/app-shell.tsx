@@ -54,6 +54,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [authenticated, setAuthenticated] = useState(false);
   const [supportAccount, setSupportAccount] = useState(false);
   const [ownerAccount, setOwnerAccount] = useState(false);
+  const [planLocked, setPlanLocked] = useState(false);
+  const [planExpiresAt, setPlanExpiresAt] = useState<string | null>(null);
+  const [planName, setPlanName] = useState<string | null>(null);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [unreadAlertCount, setUnreadAlertCount] = useState(0);
 
@@ -82,6 +85,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         setAuthenticated(false);
         setSupportAccount(false);
         setOwnerAccount(false);
+        setPlanLocked(false);
+        setPlanExpiresAt(null);
+        setPlanName(null);
         setMode(null);
 
         const nextTheme = getStoredTheme();
@@ -164,6 +170,49 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       setMode(nextMode);
       setTheme(nextTheme);
       setThemePreference(nextTheme);
+
+      if (!ownerOnly && !supportOnly) {
+        const { data: planAccess, error: planError } = await supabase.rpc(
+          "get_my_plan_access_v1",
+          {
+            p_audience: nextMode,
+          },
+        );
+
+        if (!alive) return;
+
+        if (!planError) {
+          const access = (planAccess || {}) as {
+            active?: boolean;
+            profile_id?: string | null;
+            plan_name?: string | null;
+            current_period_end?: string | null;
+          };
+
+          const hasProfile = Boolean(access.profile_id);
+          const locked = hasProfile && access.active !== true;
+
+          setPlanLocked(locked);
+          setPlanExpiresAt(access.current_period_end ?? null);
+          setPlanName(access.plan_name ?? null);
+
+          const billingPath =
+            pathname.startsWith("/planos-") ||
+            pathname.startsWith("/assinatura/") ||
+            pathname.startsWith("/perfil-") ||
+            pathname.startsWith("/configuracoes") ||
+            pathname.startsWith("/verificacao-");
+
+          if (locked && !billingPath) {
+            router.replace(
+              nextMode === "venue"
+                ? "/planos-casa"
+                : "/planos-artista",
+            );
+            return;
+          }
+        }
+      }
     }
 
     void loadSessionContext();
@@ -359,6 +408,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (supportPortalPath || adminPath) return <>{children}</>;
   if (supportAccount) return null;
+
+  const billingPath =
+    pathname.startsWith("/planos-") ||
+    pathname.startsWith("/assinatura/") ||
+    pathname.startsWith("/perfil-") ||
+    pathname.startsWith("/configuracoes") ||
+    pathname.startsWith("/verificacao-");
+
+  if (planLocked && !billingPath) return null;
   if (
     ownerAccount &&
     ownerEntryPaths.has(pathname)
@@ -379,8 +437,42 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     { href: "/notificacoes", icon: "alerts", label: "Alertas" },
   ];
 
+  const daysUntilExpiry =
+    planExpiresAt
+      ? Math.ceil(
+          (new Date(planExpiresAt).getTime() - Date.now()) /
+            (1000 * 60 * 60 * 24),
+        )
+      : null;
+
+  const showRenewalWarning =
+    !planLocked &&
+    daysUntilExpiry !== null &&
+    daysUntilExpiry >= 0 &&
+    daysUntilExpiry <= 7;
+
   return (
     <div className="aura-shell min-h-screen">
+      {showRenewalWarning && (
+        <div className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-3 text-center text-sm text-amber-100">
+          Seu plano {planName || "Aura Beat"} vence em{" "}
+          <strong>
+            {daysUntilExpiry === 0
+              ? "hoje"
+              : daysUntilExpiry === 1
+                ? "1 dia"
+                : `${daysUntilExpiry} dias`}
+          </strong>
+          .{" "}
+          <Link
+            href={mode === "venue" ? "/planos-casa" : "/planos-artista"}
+            className="font-black underline"
+          >
+            Renovar agora
+          </Link>
+        </div>
+      )}
+
       <header className="aura-shell-header sticky top-0 z-50 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
           <Link
