@@ -672,9 +672,26 @@ export default function ExplorePage() {
           ...planAwareFilters,
           maximumDistanceKm: effectiveDistanceKm,
         };
-        const visibleProfiles = located.filter((profile) =>
-          matchesExploreFilters(profile, effectiveFilters),
-        );
+        const visibleProfiles = located
+          .filter((profile) =>
+            matchesExploreFilters(profile, effectiveFilters),
+          )
+          .sort((left, right) => {
+            if (left.availableNow !== right.availableNow) {
+              return left.availableNow ? -1 : 1;
+            }
+
+            const priority = (code: ExploreProfile["planCode"]) =>
+              code === "pro" ? 2 : code === "intermediate" ? 1 : 0;
+
+            const planDifference =
+              priority(right.planCode) - priority(left.planCode);
+
+            if (planDifference !== 0) return planDifference;
+            if (right.rating !== left.rating) return right.rating - left.rating;
+
+            return left.name.localeCompare(right.name, "pt-BR");
+          });
 
         if (!active) return;
         setProfiles(visibleProfiles);
