@@ -328,6 +328,34 @@ export function ExploreMap({ profiles, userLocation, onSelect }: ExploreMapProps
     };
   }, [profiles, userLocation]);
 
+  useEffect(() => {
+    const element = elementRef.current;
+
+    if (!element || typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    let frame = 0;
+
+    const observer = new ResizeObserver(() => {
+      window.cancelAnimationFrame(frame);
+
+      frame = window.requestAnimationFrame(() => {
+        mapRef.current?.invalidateSize({
+          animate: false,
+          pan: false,
+        });
+      });
+    });
+
+    observer.observe(element);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, []);
+
   useEffect(
     () => () => {
       mapRef.current?.remove();
