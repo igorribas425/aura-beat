@@ -1,0 +1,34 @@
+$ErrorActionPreference = "Stop"
+
+$repoRoot = Split-Path -Parent $PSScriptRoot
+$templatePath = Join-Path $repoRoot "supabase\templates\support-magic-link.html"
+
+$template = @'
+<html><body style="margin:0;background:#07070b;font-family:Arial,sans-serif;color:#fff;padding:28px 12px">
+<div style="max-width:560px;margin:auto;background:#0b0b12;border:1px solid #164e63;border-radius:24px;padding:30px 24px">
+<div style="text-align:center"><span style="display:inline-block;background:#22d3ee;color:#020617;border-radius:999px;padding:8px 15px;font-size:12px;font-weight:800;letter-spacing:1.5px">AURA BEAT</span>
+<h1 style="margin:18px 0 8px;font-size:28px">Convite para a Equipe Aura</h1>
+<p style="margin:0;color:#a1a1aa;font-size:15px;line-height:1.6">Você foi convidado para fazer parte da equipe de atendimento da <b style="color:#fff">Aura Beat</b>.</p></div>
+<div style="margin-top:24px;background:#09090f;border:1px solid #27272a;border-radius:16px;padding:18px;color:#d4d4d8;font-size:14px;line-height:1.6">Este acesso é exclusivo para o <b>Suporte Aura</b> e libera somente o portal de trabalho e o chat de atendimento.</div>
+<div style="text-align:center;margin:28px 0"><a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#22d3ee;color:#020617;text-decoration:none;font-weight:800;padding:14px 22px;border-radius:13px">Criar meu acesso de trabalho</a></div>
+<div style="background:#0f172a;border:1px solid #1e3a5f;border-radius:15px;padding:16px;color:#94a3b8;font-size:13px;line-height:1.6"><b style="color:#e2e8f0">Abra no dispositivo de trabalho</b><br>Ao concluir o cadastro, o acesso ficará vinculado a este navegador/dispositivo. Outro aparelho não conseguirá abrir o chat sem nova liberação do administrador.</div>
+<p style="margin:20px 0 0;text-align:center;color:#71717a;font-size:12px">O link é temporário e só pode ser usado uma vez.</p>
+</div></body></html>
+'@
+
+[IO.File]::WriteAllText(
+  $templatePath,
+  $template,
+  (New-Object System.Text.UTF8Encoding($false))
+)
+
+$file = Get-Item $templatePath
+
+if ($file.Length -gt 10000) {
+  throw "O template local ainda ficou maior que o esperado: $($file.Length) bytes."
+}
+
+Write-Host ("Template local corrigido: {0} bytes" -f $file.Length) -ForegroundColor Green
+Write-Host "Abrindo o configurador do Supabase..."
+
+& (Join-Path $PSScriptRoot "configure-support-email-template.ps1")
