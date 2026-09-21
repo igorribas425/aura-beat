@@ -1014,6 +1014,7 @@ export default function ExplorePage() {
               <ExploreProfileCard
                 key={`${profile.kind}-${profile.id}`}
                 profile={profile}
+                sourceKind={mode}
                 canSendOffer={canSendOffer}
                 favorite={favoriteKeys.has(`${profile.kind}:${profile.id}`)}
                 favoriteBusy={favoriteBusy === `${profile.kind}:${profile.id}`}
@@ -1039,6 +1040,7 @@ export default function ExplorePage() {
                 </button>
                 <MiniPressKit
                   profile={selectedProfile}
+                  sourceKind={mode}
                   canSendOffer={canSendOffer}
                   favorite={favoriteKeys.has(`${selectedProfile.kind}:${selectedProfile.id}`)}
                   favoriteBusy={favoriteBusy === `${selectedProfile.kind}:${selectedProfile.id}`}
