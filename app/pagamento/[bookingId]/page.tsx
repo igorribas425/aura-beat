@@ -10,11 +10,16 @@ import {
 import {
   useParams,
   useRouter,
+  useSearchParams,
 } from "next/navigation";
 
 import {
   supabase,
 } from "../../../lib/supabase";
+
+type PayerType =
+  | "venue"
+  | "artist";
 
 type Booking = {
   id: string;
@@ -23,13 +28,18 @@ type Booking = {
   travel_amount: number;
   toll_amount: number;
   lodging_amount: number;
+  platform_fee_venue: number;
+  platform_fee_artist: number;
 };
 
 type PixResponse = {
   status: string;
   paymentId?: string;
+  payerType?: PayerType;
+  platformFee?: number;
   total: number;
   providerFee: number;
+  bookingStatus?: string;
   pix?: {
     payload: string;
     encodedImage: string;
@@ -58,9 +68,17 @@ export default function PagamentoPixPage() {
     useParams<{
       bookingId: string;
     }>();
+  const searchParams =
+    useSearchParams();
 
   const bookingId =
     params.bookingId;
+
+  const payerType: PayerType =
+    searchParams.get("payer") ===
+    "artist"
+      ? "artist"
+      : "venue";
 
   const [
     booking,
@@ -143,7 +161,9 @@ export default function PagamentoPixPage() {
               agreed_fee,
               travel_amount,
               toll_amount,
-              lodging_amount
+              lodging_amount,
+              platform_fee_venue,
+              platform_fee_artist
             `)
             .eq(
               "id",
@@ -157,7 +177,7 @@ export default function PagamentoPixPage() {
 
           if (!data) {
             setErro(
-              "Contratacao nao encontrada."
+              "Contratação não encontrada."
             );
 
             return;
@@ -175,7 +195,7 @@ export default function PagamentoPixPage() {
             error instanceof
               Error
               ? error.message
-              : "Nao foi possivel carregar a contratacao."
+              : "Não foi possível carregar a contratação."
           );
         } finally {
           setCarregando(
@@ -190,8 +210,13 @@ export default function PagamentoPixPage() {
     );
 
   useEffect(() => {
+    setPix(null);
+    setErro("");
     void carregarBooking();
-  }, [carregarBooking]);
+  }, [
+    carregarBooking,
+    payerType,
+  ]);
 
   async function accessToken() {
     const {
@@ -205,7 +230,7 @@ export default function PagamentoPixPage() {
       !session?.access_token
     ) {
       throw new Error(
-        "Sessao expirada. Entre novamente."
+        "Sessão expirada. Entre novamente."
       );
     }
 
@@ -233,6 +258,7 @@ export default function PagamentoPixPage() {
             },
             body: JSON.stringify({
               bookingId,
+              payerType,
             }),
           }
         );
@@ -244,7 +270,7 @@ export default function PagamentoPixPage() {
       if (!response.ok) {
         throw new Error(
           data.error ||
-            "Nao foi possivel gerar o Pix."
+            "Não foi possível gerar o Pix."
         );
       }
 
@@ -265,7 +291,7 @@ export default function PagamentoPixPage() {
         error instanceof
           Error
           ? error.message
-          : "Nao foi possivel gerar o Pix."
+          : "Não foi possível gerar o Pix."
       );
     } finally {
       setGerando(false);
@@ -309,6 +335,7 @@ export default function PagamentoPixPage() {
                 body:
                   JSON.stringify({
                     bookingId,
+                    payerType,
                   }),
               }
             );
@@ -321,7 +348,7 @@ export default function PagamentoPixPage() {
             if (!silencioso) {
               throw new Error(
                 data.error ||
-                  "Nao foi possivel verificar o pagamento."
+                  "Não foi possível verificar o pagamento."
               );
             }
 
@@ -354,7 +381,7 @@ export default function PagamentoPixPage() {
               error instanceof
                 Error
                 ? error.message
-                : "Nao foi possivel verificar o pagamento."
+                : "Não foi possível verificar o pagamento."
             );
           }
         } finally {
@@ -368,6 +395,7 @@ export default function PagamentoPixPage() {
       [
         bookingId,
         carregarBooking,
+        payerType,
         pix,
       ]
     );
@@ -445,6 +473,19 @@ export default function PagamentoPixPage() {
       );
     }, [booking]);
 
+  const platformFee =
+    booking
+      ? payerType === "artist"
+        ? Number(
+            booking.platform_fee_artist ||
+              0
+          )
+        : Number(
+            booking.platform_fee_venue ||
+              0
+          )
+      : 0;
+
   const taxaAsaas =
     Number(
       pix?.providerFee ||
@@ -461,9 +502,16 @@ export default function PagamentoPixPage() {
 
   const pago =
     pix?.status ===
-      "paid" ||
+    "paid";
+
+  const bookingConfirmed =
     booking?.status ===
-      "confirmed";
+    "confirmed";
+
+  const backPath =
+    payerType === "artist"
+      ? "/eventos-artista"
+      : "/eventos-casa";
 
   return (
     <main className="min-h-screen bg-black px-4 py-8 text-white">
@@ -472,7 +520,7 @@ export default function PagamentoPixPage() {
           type="button"
           onClick={() =>
             router.push(
-              "/eventos-casa"
+              backPath
             )
           }
           className="mb-6 text-sm text-zinc-400 hover:text-white"
@@ -485,12 +533,19 @@ export default function PagamentoPixPage() {
         </p>
 
         <h1 className="mt-2 text-3xl font-black">
-          Pagamento da contratação
+          Taxa da contratação
         </h1>
 
         <p className="mt-2 text-zinc-400">
-          Finalize a contratação com Pix.
+          {payerType === "artist"
+            ? "Pagamento da taxa de 3% do Artista."
+            : "Pagamento da taxa de 3% da Casa."}
         </p>
+
+        <div className="mt-5 rounded-2xl border border-purple-900/50 bg-purple-950/10 p-4 text-sm leading-6 text-purple-100/80">
+          O cachê, deslocamento, pedágio e hospedagem são acertados diretamente entre Casa e DJ.
+          Este Pix cobra somente a taxa do Aura Beat e a tarifa do provedor de pagamento.
+        </div>
 
         {erro && (
           <div className="mt-6 rounded-2xl border border-red-900 bg-red-950/30 p-4 text-red-300">
@@ -507,7 +562,7 @@ export default function PagamentoPixPage() {
             <div className="mt-5 space-y-3 text-sm">
               <div className="flex justify-between text-zinc-400">
                 <span>
-                  Cachê
+                  Cachê combinado
                 </span>
 
                 <span>
@@ -520,7 +575,7 @@ export default function PagamentoPixPage() {
               {extras > 0 && (
                 <div className="flex justify-between text-zinc-400">
                   <span>
-                    Extras
+                    Extras combinados
                   </span>
 
                   <span>
@@ -531,9 +586,21 @@ export default function PagamentoPixPage() {
                 </div>
               )}
 
+              <div className="flex justify-between text-red-300">
+                <span>
+                  Taxa Aura Beat · 3%
+                </span>
+
+                <strong>
+                  {money(
+                    platformFee
+                  )}
+                </strong>
+              </div>
+
               <div className="flex justify-between text-zinc-400">
                 <span>
-                  Taxa ASAAS
+                  Tarifa ASAAS
                 </span>
 
                 <span>
@@ -547,7 +614,7 @@ export default function PagamentoPixPage() {
 
               <div className="flex justify-between border-t border-zinc-800 pt-4 text-lg font-black">
                 <span>
-                  Total
+                  Total do Pix
                 </span>
 
                 <span className="text-green-400">
@@ -555,32 +622,45 @@ export default function PagamentoPixPage() {
                     ? money(
                         pix.total
                       )
-                    : "calculado ao gerar o Pix"}
+                    : money(
+                        platformFee
+                      )}
                 </span>
               </div>
             </div>
           </section>
         )}
 
-        {pago ? (
+        {platformFee <= 0 ? (
+          <section className="mt-6 rounded-3xl border border-zinc-800 bg-zinc-950 p-6 text-center">
+            <h2 className="text-xl font-black">
+              Nenhuma taxa para pagar
+            </h2>
+            <p className="mt-2 text-sm text-zinc-500">
+              Esta contratação não possui cobrança do Aura Beat para este perfil.
+            </p>
+          </section>
+        ) : pago ? (
           <section className="mt-6 rounded-3xl border border-green-800 bg-green-950/20 p-8 text-center">
             <div className="text-4xl">
               ✓
             </div>
 
             <h2 className="mt-3 text-2xl font-black text-green-400">
-              Pagamento confirmado
+              Taxa confirmada
             </h2>
 
             <p className="mt-2 text-zinc-300">
-              A contratação foi confirmada e o contato do artista já pode ser liberado.
+              {bookingConfirmed
+                ? "As taxas necessárias foram confirmadas e a contratação está liberada."
+                : "Sua taxa foi confirmada. A contratação será liberada quando a outra parte concluir a taxa obrigatória."}
             </p>
 
             <button
               type="button"
               onClick={() =>
                 router.push(
-                  "/eventos-casa"
+                  backPath
                 )
               }
               className="mt-6 rounded-xl bg-green-600 px-5 py-3 font-black hover:bg-green-500"
@@ -597,14 +677,18 @@ export default function PagamentoPixPage() {
             disabled={
               gerando ||
               !booking ||
-              booking.status !==
-                "awaiting_payment"
+              ![
+                "awaiting_payment",
+                "confirmed",
+              ].includes(
+                booking.status
+              )
             }
             className="mt-6 w-full rounded-2xl bg-green-600 px-5 py-4 text-lg font-black transition hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {gerando
               ? "Gerando Pix..."
-              : "Gerar Pix"}
+              : "Gerar Pix da taxa"}
           </button>
         ) : (
           <section className="mt-6 rounded-3xl border border-zinc-800 bg-zinc-950 p-6">
