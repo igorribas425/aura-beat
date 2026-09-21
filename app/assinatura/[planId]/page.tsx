@@ -422,28 +422,22 @@ export default function SubscriptionCheckoutPage() {
               </span>
 
               <h2 className="mt-4 text-xl font-black">
-                Escaneie o QR Code
+                Pix copia e cola
               </h2>
 
-              <p className="mt-2 text-2xl font-black text-green-400">
+              <p className="mt-2 text-sm leading-6 text-zinc-400">
+                Copie o código abaixo e cole na opção Pix copia e cola do seu banco.
+              </p>
+
+              <p className="mt-3 text-2xl font-black text-green-400">
                 {formatBRL(Number(checkout.total || plan?.monthly_price || 0))}
               </p>
             </div>
 
-            {checkout.pix?.encodedImage && (
-              <div className="mt-6 flex justify-center">
-                <img
-                  src={`data:image/png;base64,${checkout.pix.encodedImage}`}
-                  alt="QR Code Pix da mensalidade Aura Beat"
-                  className="h-64 w-64 rounded-2xl bg-white p-3"
-                />
-              </div>
-            )}
-
             {checkout.pix?.payload && (
               <div className="mt-6">
                 <p className="mb-2 text-sm font-bold text-zinc-300">
-                  Pix copia e cola
+                  Código Pix
                 </p>
                 <div className="rounded-2xl border border-zinc-800 bg-black p-4">
                   <p className="break-all text-xs text-zinc-400">
