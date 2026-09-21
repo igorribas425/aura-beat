@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getAuthenticatedDestination } from "../../../lib/auth-navigation";
 import { supabase } from "../../../lib/supabase";
 
 function createDeviceSecret() {
@@ -92,6 +93,18 @@ export default function ActivateAuraTeamInvitePage() {
           return;
         }
 
+        const { data: supportAccount } = await supabase.rpc(
+          "is_support_account_v1",
+        );
+
+        if (!active) return;
+
+        if (supportAccount === true) {
+          const destination = await getAuthenticatedDestination(user.id);
+          router.replace(destination);
+          return;
+        }
+
         setEmail(user.email || "");
         setName(
           typeof user.user_metadata?.full_name === "string"
@@ -112,7 +125,7 @@ export default function ActivateAuraTeamInvitePage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [router]);
 
   async function activate(event: FormEvent) {
     event.preventDefault();
