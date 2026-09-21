@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ProfileAvatar } from "../../../components/profile-avatar";
+import { getOwnerAccessFast } from "../../../lib/admin-access";
 import { formatBRL } from "../../../lib/finance";
 import { supabase } from "../../../lib/supabase";
 
@@ -243,21 +244,15 @@ export default function AdminPlansPage() {
       setLoading(true);
       setError("");
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const ownerAccess =
+        await getOwnerAccessFast();
 
-      if (!user) {
+      if (!ownerAccess.authenticated) {
         router.replace("/login");
         return;
       }
 
-      const { data: ownerAccess, error: ownerAccessError } =
-        await supabase.rpc("owner_access_v1");
-
-      if (ownerAccessError) throw ownerAccessError;
-
-      if (ownerAccess !== true) {
+      if (!ownerAccess.allowed) {
         setAccessDenied(true);
         return;
       }
