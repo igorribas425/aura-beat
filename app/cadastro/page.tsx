@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getAuthenticatedDestination } from "../../lib/auth-navigation";
 import { supabase } from "../../lib/supabase";
@@ -70,6 +71,7 @@ export default function CadastroPage() {
   const [verificandoSessao, setVerificandoSessao] = useState(true);
   const [mensagem, setMensagem] = useState("");
   const [usuarioJaExiste, setUsuarioJaExiste] = useState(false);
+  const [aceitouTermos, setAceitouTermos] = useState(false);
 
   const [nomeCasa, setNomeCasa] = useState("");
   const [razaoSocial, setRazaoSocial] = useState("");
@@ -124,6 +126,11 @@ export default function CadastroPage() {
       return;
     }
 
+    if (!aceitouTermos) {
+      setMensagem("Leia e aceite os Termos de Uso e a Política de Privacidade para criar a conta.");
+      return;
+    }
+
     if (tipo === "venue") {
       const telefoneNumeros = somenteNumeros(telefone);
 
@@ -167,6 +174,9 @@ export default function CadastroPage() {
         options: {
           data: {
             full_name: nome.trim(),
+            terms_accepted_at: new Date().toISOString(),
+            terms_version: "2026-09-21",
+            privacy_version: "2026-09-21",
           },
         },
       });
@@ -540,6 +550,26 @@ export default function CadastroPage() {
                 🔒 Contratações formais no Aura Beat exigem verificação dos dois lados. Documentos e dados sensíveis nunca devem aparecer no perfil público.
               </div>
 
+              <label className="flex items-start gap-3 rounded-2xl border border-zinc-800 bg-black/30 p-4 text-xs leading-5 text-zinc-400">
+                <input
+                  type="checkbox"
+                  checked={aceitouTermos}
+                  onChange={(event) => setAceitouTermos(event.target.checked)}
+                  className="mt-1 h-4 w-4 shrink-0 accent-red-500"
+                />
+                <span>
+                  Li e aceito os{" "}
+                  <Link href="/termos" target="_blank" className="font-bold text-zinc-200 underline">
+                    Termos de Uso
+                  </Link>{" "}
+                  e a{" "}
+                  <Link href="/privacidade" target="_blank" className="font-bold text-zinc-200 underline">
+                    Política de Privacidade
+                  </Link>
+                  .
+                </span>
+              </label>
+
               <button
                 disabled={carregando}
                 type="submit"
@@ -595,7 +625,14 @@ export default function CadastroPage() {
           </section>
         )}
 
-        <p className="mt-7 text-center text-xs text-zinc-500">Música move pessoas. Aura Beat conecta.</p>
+        <div className="mt-7 text-center text-xs text-zinc-500">
+          <p>Música move pessoas. Aura Beat conecta.</p>
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+            <Link href="/privacidade" className="hover:text-zinc-300">Privacidade</Link>
+            <Link href="/termos" className="hover:text-zinc-300">Termos</Link>
+            <Link href="/excluir-conta" className="hover:text-zinc-300">Exclusão de conta</Link>
+          </div>
+        </div>
       </div>
     </main>
   );
