@@ -195,6 +195,19 @@ export default function AdminHomePage() {
               Consulta e validação administrativa.
             </p>
           </Link>
+
+          <Link
+            href="/admin/exclusoes"
+            className="rounded-3xl border border-red-900/50 bg-red-950/10 p-6 transition hover:border-red-500/60"
+          >
+            <div className="text-3xl">🗑️</div>
+            <h2 className="mt-4 text-xl font-black">
+              Exclusão de contas
+            </h2>
+            <p className="mt-2 text-sm text-zinc-500">
+              Pedidos de exclusão e acompanhamento LGPD.
+            </p>
+          </Link>
         </section>
       </div>
     </main>
