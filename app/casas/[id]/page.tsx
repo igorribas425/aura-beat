@@ -51,6 +51,8 @@ export default function PublicVenuePage() {
   const [offers, setOffers] = useState<PublicOffer[]>([]);
   const [media, setMedia] = useState<VenueMediaPublic[]>([]);
   const [canChat, setCanChat] = useState(false);
+  const [planCode, setPlanCode] =
+    useState<"normal" | "intermediate" | "pro" | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -74,7 +76,7 @@ export default function PublicVenuePage() {
         return;
       }
 
-      const [reviewsResult, bookingsResult, offersResult, visualResult, mediaResult, userResult] = await Promise.all([
+      const [reviewsResult, bookingsResult, offersResult, visualResult, mediaResult, planResult, userResult] = await Promise.all([
         supabase.from("reviews").select("overall_rating").eq("reviewee_type", "venue").eq("venue_id", id),
         supabase.from("bookings").select("id", { count: "exact", head: true }).eq("venue_id", id).eq("status", "completed"),
         supabase.from("offers").select("id,title,event_type,starts_at,duration_minutes,budget_amount").eq("venue_id", id).eq("status", "open").gte("starts_at", new Date().toISOString()).order("starts_at").limit(6),
@@ -86,6 +88,10 @@ export default function PublicVenuePage() {
           .eq("is_public", true)
           .order("is_cover", { ascending: false })
           .order("sort_order", { ascending: true }),
+        supabase.rpc("get_public_plan_levels_v1", {
+          p_artist_ids: [],
+          p_venue_ids: [id],
+        }),
         supabase.auth.getUser(),
       ]);
 
@@ -107,6 +113,17 @@ export default function PublicVenuePage() {
         setMedia((mediaResult.data ?? []) as VenueMediaPublic[]);
       } else {
         setMedia([]);
+      }
+
+      if (!planResult.error) {
+        const row = Array.isArray(planResult.data) ? planResult.data[0] : null;
+        setPlanCode(
+          row?.plan_code === "pro" ||
+          row?.plan_code === "intermediate" ||
+          row?.plan_code === "normal"
+            ? row.plan_code
+            : null,
+        );
       }
 
       const currentUser = userResult.data.user;
@@ -230,13 +247,43 @@ export default function PublicVenuePage() {
       <div className="mx-auto max-w-6xl px-4 py-8">
         <Link href="/buscar" className="text-sm font-bold text-zinc-400 hover:text-white">← Explorar</Link>
 
-        <section className="aura-hero aura-venue-hero mt-5 rounded-[2rem] p-6 sm:p-9">
+        <section
+          className={`aura-hero aura-venue-hero mt-5 rounded-[2rem] border p-6 sm:p-9 ${
+            planCode === "pro"
+              ? "border-amber-400/40 shadow-[0_0_45px_rgba(251,191,36,0.10)]"
+              : planCode === "intermediate"
+                ? "border-purple-500/40 shadow-[0_0_36px_rgba(168,85,247,0.10)]"
+                : "border-transparent"
+          }`}
+        >
           <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
-            <ProfileAvatar kind="venue" name={venue.trade_name} url={avatarUrl} sizeClassName="h-32 w-32 sm:h-40 sm:w-40" className="rounded-[2rem] ring-2 ring-white/10 shadow-2xl" />
+            <ProfileAvatar
+              kind="venue"
+              name={venue.trade_name}
+              url={avatarUrl}
+              sizeClassName="h-32 w-32 sm:h-40 sm:w-40"
+              className={`rounded-[2rem] ring-2 shadow-2xl ${
+                planCode === "pro"
+                  ? "ring-amber-300/80 shadow-[0_0_32px_rgba(251,191,36,0.24)]"
+                  : planCode === "intermediate"
+                    ? "ring-purple-400/70 shadow-[0_0_26px_rgba(168,85,247,0.20)]"
+                    : "ring-white/10"
+              }`}
+            />
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="aura-kicker">Perfil profissional · Casa</p>
                 {venue.verification_status === "verified" && <span className="rounded-full bg-blue-500/15 px-3 py-1 text-xs font-bold text-blue-300">✓ Casa verificada</span>}
+                {planCode === "intermediate" && (
+                  <span className="rounded-full border border-purple-400/30 bg-purple-500/10 px-3 py-1 text-xs font-black text-purple-200">
+                    ◆ INTERMEDIÁRIO
+                  </span>
+                )}
+                {planCode === "pro" && (
+                  <span className="rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1 text-xs font-black text-amber-200">
+                    ✦ PRO · EXPERIÊNCIA PREMIUM
+                  </span>
+                )}
               </div>
               <h1 className="mt-3 text-4xl font-black tracking-tight sm:text-6xl">{venue.trade_name}</h1>
               <p className="mt-3 text-zinc-400">{location || "Localização não informada"}</p>
