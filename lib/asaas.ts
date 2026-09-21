@@ -127,7 +127,7 @@ function onlyDigits(
 export async function findOrCreateAsaasCustomer(
   input: {
     name: string;
-    cpfCnpj: string;
+    cpfCnpj?: string | null;
     email?: string | null;
     phone?: string | null;
   }
@@ -135,22 +135,35 @@ export async function findOrCreateAsaasCustomer(
   const cpfCnpj =
     onlyDigits(input.cpfCnpj);
 
-  if (
-    cpfCnpj.length !== 11 &&
-    cpfCnpj.length !== 14
-  ) {
+  const validDocument =
+    cpfCnpj.length === 11 ||
+    cpfCnpj.length === 14;
+
+  const email =
+    input.email?.trim().toLowerCase() ||
+    "";
+
+  if (!input.name.trim()) {
     throw new Error(
-      "CPF/CNPJ da Casa invalido para cobranca."
+      "Nome do pagador obrigatorio."
     );
   }
+
+  if (!validDocument && !email) {
+    throw new Error(
+      "Informe CPF/CNPJ ou e-mail para criar a cobranca."
+    );
+  }
+
+  const query = validDocument
+    ? `cpfCnpj=${encodeURIComponent(cpfCnpj)}`
+    : `email=${encodeURIComponent(email)}`;
 
   const existing =
     await asaasRequest<{
       data?: AsaasCustomer[];
     }>(
-      `/customers?cpfCnpj=${encodeURIComponent(
-        cpfCnpj
-      )}&limit=1`
+      `/customers?${query}&limit=1`
     );
 
   const found =
@@ -165,10 +178,13 @@ export async function findOrCreateAsaasCustomer(
     {
       method: "POST",
       body: JSON.stringify({
-        name: input.name,
-        cpfCnpj,
+        name: input.name.trim(),
+        cpfCnpj:
+          validDocument
+            ? cpfCnpj
+            : undefined,
         email:
-          input.email || undefined,
+          email || undefined,
         mobilePhone:
           onlyDigits(
             input.phone
