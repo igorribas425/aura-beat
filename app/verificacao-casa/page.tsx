@@ -263,7 +263,7 @@ export default function VerificacaoCasaPage() {
 
     // No iPhone/iPad usamos a câmera nativa do iOS para evitar preview preto
     // no Safari e também quando o Aura Beat estiver instalado como PWA.
-    if (isIosDevice()) {
+    if (isIosCameraDevice()) {
       pararCamera();
       selfieInputRef.current?.click();
       return;
