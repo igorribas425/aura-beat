@@ -607,7 +607,6 @@ export default function ExplorePage() {
     const timer = window.setTimeout(async () => {
       setLoading(true);
       setError("");
-      setSelectedProfile(null);
 
       try {
         const planAwareFilters: ExploreFilters =
@@ -695,6 +694,17 @@ export default function ExplorePage() {
 
         if (!active) return;
         setProfiles(visibleProfiles);
+        setSelectedProfile((current) => {
+          if (!current) return null;
+
+          return (
+            visibleProfiles.find(
+              (profile) =>
+                profile.kind === current.kind &&
+                profile.id === current.id,
+            ) ?? null
+          );
+        });
         setTotalCount(nextTotal);
       } catch (loadError) {
         console.error(loadError);
