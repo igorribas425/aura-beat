@@ -326,6 +326,15 @@ export default function CadastroPage() {
               </p>
             </div>
 
+            <div className="mt-6 rounded-2xl border border-green-500/25 bg-green-500/5 px-4 py-3 text-center">
+              <p className="text-sm font-black text-green-300">
+                🎁 Lançamento: novos cadastros verificados ganham 30 dias grátis do plano Básico
+              </p>
+              <p className="mt-1 text-xs text-zinc-500">
+                Sem cobrança automática ao final do período.
+              </p>
+            </div>
+
             <div className="mt-8 grid gap-4 md:grid-cols-2">
               <button
                 type="button"
