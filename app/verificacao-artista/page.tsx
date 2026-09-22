@@ -110,12 +110,6 @@ export default function VerificacaoArtistaPage() {
   const streamRef = useRef<MediaStream | null>(null);
   const selfieInputRef = useRef<HTMLInputElement | null>(null);
 
-  function isIosDevice() {
-    if (typeof navigator === "undefined") return false;
-    return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-  }
-
   const carregarEffect = useEffectEvent(() => {
     void carregar();
   });
