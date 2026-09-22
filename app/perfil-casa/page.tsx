@@ -443,6 +443,121 @@ export default function PerfilCasaPage() {
     };
   }
 
+  async function garantirCasaParaGaleria(): Promise<string | null> {
+    if (casa?.id) {
+      return casa.id;
+    }
+
+    setErro("");
+    setSucesso("");
+
+    const cnpj = somenteNumeros(form.cnpj);
+    const telefone = somenteNumeros(form.phone);
+    const cep = somenteNumeros(form.postal_code);
+
+    if (!form.trade_name.trim()) {
+      setErro("Informe o nome da Casa antes de adicionar fotos ou vídeos.");
+      return null;
+    }
+
+    if (cnpj.length !== 14) {
+      setErro("Informe um CNPJ com 14 números antes de adicionar fotos ou vídeos.");
+      return null;
+    }
+
+    if (form.email && !form.email.includes("@")) {
+      setErro("Informe um e-mail válido.");
+      return null;
+    }
+
+    try {
+      setSalvando(true);
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.replace("/login");
+        return null;
+      }
+
+      const { data: casaCriada, error } = await supabase
+        .from("venue_profiles")
+        .insert({
+          owner_user_id: user.id,
+          trade_name: form.trade_name.trim(),
+          legal_name: form.legal_name.trim() || null,
+          venue_type: form.venue_type.trim() || null,
+          avatar_url: null,
+          cnpj,
+          phone: telefone || null,
+          email: form.email.trim().toLowerCase() || null,
+          address_line: form.address_line.trim() || null,
+          address_number: form.address_number.trim() || null,
+          address_extra: form.address_extra.trim() || null,
+          neighborhood: form.neighborhood.trim() || null,
+          city: form.city.trim() || null,
+          state: form.state.trim() ? form.state.trim().toUpperCase() : null,
+          postal_code: cep || null,
+        })
+        .select(`
+          id,
+          owner_user_id,
+          trade_name,
+          legal_name,
+          venue_type,
+          avatar_url,
+          cnpj,
+          phone,
+          email,
+          address_line,
+          address_number,
+          address_extra,
+          neighborhood,
+          city,
+          state,
+          postal_code,
+          verification_status,
+          is_active
+        `)
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      const criada = casaCriada as Casa;
+      setCasa(criada);
+      setCnpjOriginal(somenteNumeros(criada.cnpj));
+      setSucesso(
+        "Rascunho da Casa criado. Você já pode adicionar fotos e vídeos e continuar preenchendo o cadastro."
+      );
+
+      return criada.id;
+    } catch (error: unknown) {
+      let mensagem = "Não foi possível preparar a galeria da Casa.";
+
+      if (typeof error === "object" && error !== null && "message" in error) {
+        const texto = String((error as { message?: string }).message || "");
+
+        if (
+          texto.toLowerCase().includes("duplicate") ||
+          texto.includes("venue_profiles_cnpj_key")
+        ) {
+          mensagem = "Este CNPJ já está cadastrado no Aura Beat.";
+        } else if (texto) {
+          mensagem = texto;
+        }
+      }
+
+      setErro(mensagem);
+      return null;
+    } finally {
+      setSalvando(false);
+    }
+  }
+
   async function salvarPerfil() {
     setErro("");
     setSucesso("");
@@ -1080,21 +1195,13 @@ export default function PerfilCasaPage() {
             </div>
 
             <div className="md:col-span-2">
-              {casa ? (
-                <VenueMediaManager
-                  venueId={casa.id}
-                  onCoverChange={(url) =>
-                    atualizarCampo("avatar_url", url)
-                  }
-                />
-              ) : (
-                <div className="rounded-2xl border border-dashed border-red-500/25 bg-red-500/5 p-5">
-                  <p className="font-black text-red-200">Fotos e vídeos do espaço</p>
-                  <p className="mt-2 text-sm leading-6 text-zinc-400">
-                    Salve o perfil da Casa uma vez para liberar o envio de fotos e vídeos direto da galeria do celular ou computador.
-                  </p>
-                </div>
-              )}
+              <VenueMediaManager
+                venueId={casa?.id ?? null}
+                ensureVenueId={garantirCasaParaGaleria}
+                onCoverChange={(url) =>
+                  atualizarCampo("avatar_url", url)
+                }
+              />
             </div>
 
             <div>
