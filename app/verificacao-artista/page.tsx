@@ -107,6 +107,13 @@ export default function VerificacaoArtistaPage() {
   const [error, setError] = useState("");
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const selfieInputRef = useRef<HTMLInputElement | null>(null);
+
+  function isIosDevice() {
+    if (typeof navigator === "undefined") return false;
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  }
 
   const carregarEffect = useEffectEvent(() => {
     void carregar();
@@ -222,8 +229,16 @@ export default function VerificacaoArtistaPage() {
     setCameraError("");
     setError("");
 
+    // No iPhone/iPad usamos o capturador nativo do iOS. Isso evita a
+    // visualização preta que pode ocorrer com getUserMedia no Safari/PWA.
+    if (isIosDevice()) {
+      pararCamera();
+      selfieInputRef.current?.click();
+      return;
+    }
+
     if (!navigator.mediaDevices?.getUserMedia) {
-      setCameraError("Este navegador não oferece acesso à câmera. Abra o Aura Beat em um navegador atualizado.");
+      selfieInputRef.current?.click();
       return;
     }
 
@@ -245,6 +260,28 @@ export default function VerificacaoArtistaPage() {
       console.error(err);
       setCameraError("Não foi possível abrir a câmera. Confira a permissão da câmera no navegador e tente novamente.");
     }
+  }
+
+  function capturarSelfieNativa(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] || null;
+    event.target.value = "";
+
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setCameraError("A foto facial precisa ser uma imagem.");
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      setCameraError("A foto facial deve ter no máximo 10 MB.");
+      return;
+    }
+
+    setSelfie(file);
+    setSelfiePreview(URL.createObjectURL(file));
+    setCameraError("");
+    pararCamera();
   }
 
   async function capturarSelfie() {
@@ -520,6 +557,16 @@ export default function VerificacaoArtistaPage() {
                     />
                   </div>
                 )}
+
+                <input
+                  ref={selfieInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="user"
+                  onChange={capturarSelfieNativa}
+                  className="hidden"
+                  tabIndex={-1}
+                />
 
                 <button
                   type="button"
