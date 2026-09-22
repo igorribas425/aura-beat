@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ProfileAvatar } from "../../../components/profile-avatar";
 import { getOwnerAccessFast } from "../../../lib/admin-access";
@@ -368,8 +368,12 @@ export default function AdminPlansPage() {
     }
   }
 
-  useEffect(() => {
+  const loadEffect = useEffectEvent(() => {
     void load();
+  });
+
+  useEffect(() => {
+    loadEffect();
   }, []);
 
   useEffect(() => {
