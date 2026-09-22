@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { formatBRL } from "../../../lib/finance";
 import { supabase } from "../../../lib/supabase";
@@ -140,8 +140,12 @@ export default function CounterproposalPage() {
     }
   }
 
-  useEffect(() => {
+  const loadEffect = useEffectEvent(() => {
     void load();
+  });
+
+  useEffect(() => {
+    loadEffect();
   }, [responseId]);
 
   async function responder(action: "accepted" | "declined") {
