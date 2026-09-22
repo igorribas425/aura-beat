@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ExploreMap } from "../../components/explore-map";
 import {
   ExploreProfileCard,
@@ -360,6 +360,7 @@ export default function ExplorePage() {
   const [totalCount, setTotalCount] = useState(0);
   const [usingFallback, setUsingFallback] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const loadedOnceRef = useRef(false);
 
   const canSendOffer = mode === "venue" && Boolean(ownVenueId);
   const canUseAdvancedFilters =
@@ -605,7 +606,12 @@ export default function ExplorePage() {
 
     let active = true;
     const timer = window.setTimeout(async () => {
-      setLoading(true);
+      const showFullLoading = !loadedOnceRef.current;
+
+      if (showFullLoading) {
+        setLoading(true);
+      }
+
       setError("");
 
       try {
@@ -694,6 +700,7 @@ export default function ExplorePage() {
 
         if (!active) return;
         setProfiles(visibleProfiles);
+        loadedOnceRef.current = true;
         setSelectedProfile((current) => {
           if (!current) return null;
 
@@ -710,7 +717,9 @@ export default function ExplorePage() {
         console.error(loadError);
         if (active) setError("Não foi possível carregar o Explorar. Tente novamente.");
       } finally {
-        if (active) setLoading(false);
+        if (active && showFullLoading) {
+          setLoading(false);
+        }
       }
     }, 250);
 
