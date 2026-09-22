@@ -2,7 +2,6 @@
 
 import { useEffect, useEffectEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { isOwnerEmail } from "../../lib/owner-account";
 import { supabase } from "../../lib/supabase";
 import { PublicLocationControl } from "../../components/public-location-control";
 import { VenueMediaManager } from "../../components/venue-media-manager";
@@ -206,11 +205,6 @@ export default function PerfilCasaPage() {
 
       if (!user) {
         router.replace("/login");
-        return;
-      }
-
-      if (isOwnerEmail(user.email)) {
-        router.replace("/admin");
         return;
       }
 
