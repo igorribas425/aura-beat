@@ -135,6 +135,13 @@ export default function VerificacaoCasaPage() {
   const [error, setError] = useState("");
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const selfieInputRef = useRef<HTMLInputElement | null>(null);
+
+  function isIosDevice() {
+    if (typeof navigator === "undefined") return false;
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  }
 
   useEffect(() => {
     let active = true;
@@ -253,10 +260,16 @@ export default function VerificacaoCasaPage() {
     setCameraError("");
     setError("");
 
+    // No iPhone/iPad usamos a câmera nativa do iOS para evitar preview preto
+    // no Safari e também quando o Aura Beat estiver instalado como PWA.
+    if (isIosDevice()) {
+      pararCamera();
+      selfieInputRef.current?.click();
+      return;
+    }
+
     if (!navigator.mediaDevices?.getUserMedia) {
-      setCameraError(
-        "Este navegador não oferece acesso à câmera. Abra o Aura Beat em um navegador atualizado.",
-      );
+      selfieInputRef.current?.click();
       return;
     }
 
@@ -278,6 +291,28 @@ export default function VerificacaoCasaPage() {
         "Não foi possível abrir a câmera. Confira a permissão da câmera no navegador e tente novamente.",
       );
     }
+  }
+
+  function capturarSelfieNativa(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] || null;
+    event.target.value = "";
+
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setCameraError("A foto facial precisa ser uma imagem.");
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      setCameraError("A foto facial deve ter no máximo 10 MB.");
+      return;
+    }
+
+    setSelfie(file);
+    setSelfiePreview(URL.createObjectURL(file));
+    setCameraError("");
+    pararCamera();
   }
 
   async function capturarSelfie() {
@@ -693,6 +728,16 @@ export default function VerificacaoCasaPage() {
                 A foto é feita pela câmera neste momento e será comparada durante a
                 análise. Esta etapa ainda não é uma prova biométrica de vida.
               </p>
+
+              <input
+                ref={selfieInputRef}
+                type="file"
+                accept="image/*"
+                capture="user"
+                onChange={capturarSelfieNativa}
+                className="hidden"
+                tabIndex={-1}
+              />
 
               {!cameraOpen && !selfie && (
                 <button
