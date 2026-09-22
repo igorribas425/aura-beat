@@ -30,6 +30,7 @@ type BookingStatus =
 type Casa = {
   id: string;
   trade_name: string;
+  verification_status: string | null;
 };
 
 type Artista = {
@@ -456,7 +457,7 @@ export default function EventosCasaPage() {
         error: erroCasa,
       } = await supabase
         .from("venue_profiles")
-        .select("id, trade_name")
+        .select("id, trade_name, verification_status")
         .eq("owner_user_id", user.id)
         .maybeSingle();
 
@@ -469,7 +470,12 @@ export default function EventosCasaPage() {
         return;
       }
 
-      setCasa(perfilCasa);
+      if (perfilCasa.verification_status !== "verified") {
+        router.replace("/verificacao-casa");
+        return;
+      }
+
+      setCasa(perfilCasa as Casa);
 
       const {
         data: listaBookings,
