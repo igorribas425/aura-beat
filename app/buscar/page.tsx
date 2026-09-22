@@ -383,8 +383,8 @@ export default function ExplorePage() {
 
       const [profileResult, artistResult, venueResult, favoritesResult] = await Promise.all([
         supabase.from("profiles").select("default_mode").eq("id", user.id).maybeSingle(),
-        supabase.from("artist_profiles").select("id").eq("user_id", user.id).maybeSingle(),
-        supabase.from("venue_profiles").select("id").eq("owner_user_id", user.id).maybeSingle(),
+        supabase.from("artist_profiles").select("id,verification_status").eq("user_id", user.id).maybeSingle(),
+        supabase.from("venue_profiles").select("id,verification_status").eq("owner_user_id", user.id).maybeSingle(),
         supabase.from("favorites").select("id,artist_id,venue_id").eq("user_id", user.id),
       ]);
 
@@ -399,6 +399,20 @@ export default function ExplorePage() {
             : venueResult.data
               ? "venue"
               : "artist";
+
+      const resolvedVerification =
+        resolvedMode === "venue"
+          ? venueResult.data?.verification_status
+          : artistResult.data?.verification_status;
+
+      if (resolvedVerification !== "verified") {
+        router.replace(
+          resolvedMode === "venue"
+            ? "/verificacao-casa"
+            : "/verificacao-artista",
+        );
+        return;
+      }
 
       let nextPlanAccess: PlanAccess | null = null;
 
