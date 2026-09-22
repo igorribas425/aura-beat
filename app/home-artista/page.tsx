@@ -599,6 +599,11 @@ export default function HomeArtistaPage() {
   async function alternarDisponibilidade() {
     if (!artista) return;
 
+    if (artista.verification_status !== "verified") {
+      router.push("/verificacao-artista");
+      return;
+    }
+
     try {
       setSalvandoDisponibilidade(
         true
@@ -713,6 +718,15 @@ export default function HomeArtistaPage() {
         mensagemErroGPS(error)
       );
     }
+  }
+
+  function abrirAreaProtegidaArtista(path: string) {
+    if (artista?.verification_status !== "verified") {
+      router.push("/verificacao-artista");
+      return;
+    }
+
+    router.push(path);
   }
 
   if (carregando) {
@@ -833,9 +847,7 @@ export default function HomeArtistaPage() {
                   <button
                     type="button"
                     onClick={() =>
-                      router.push(
-                        "/buscar"
-                      )
+                      abrirAreaProtegidaArtista("/buscar")
                     }
                     className="rounded-xl border border-zinc-700 px-4 py-2 text-sm font-bold"
                   >
@@ -1005,6 +1017,33 @@ export default function HomeArtistaPage() {
           )}
 
         </section>
+
+        {artista?.verification_status !== "verified" && (
+          <section className="rounded-3xl border border-amber-500/30 bg-amber-500/5 p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-300">
+                  VERIFICAÇÃO NECESSÁRIA
+                </p>
+                <h2 className="mt-2 text-xl font-black">
+                  Confirme sua identidade para liberar os recursos
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
+                  Ao tentar usar disponibilidade, ofertas, solicitações, financeiro, agenda,
+                  chat ou Explorar, você será levado para o envio de documentos até a
+                  verificação ser aprovada.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => router.push("/verificacao-artista")}
+                className="rounded-xl bg-amber-500 px-5 py-3 font-black text-black"
+              >
+                Verificar identidade
+              </button>
+            </div>
+          </section>
+        )}
 
         <PlanStatusCard
           audience="artist"
@@ -1206,9 +1245,7 @@ export default function HomeArtistaPage() {
             <button
               type="button"
               onClick={() =>
-                router.push(
-                  "/disponibilidade-artista"
-                )
+                abrirAreaProtegidaArtista("/disponibilidade-artista")
               }
               className="group relative overflow-hidden rounded-2xl border border-amber-400/50 bg-gradient-to-br from-amber-500/15 via-orange-500/10 to-red-500/10 p-5 text-left shadow-[0_0_28px_rgba(245,158,11,0.18)] transition duration-300 hover:-translate-y-1 hover:border-amber-300/80 hover:shadow-[0_0_42px_rgba(245,158,11,0.30)]"
             >
@@ -1236,9 +1273,7 @@ export default function HomeArtistaPage() {
             <button
               type="button"
               onClick={() =>
-                router.push(
-                  "/buscar"
-                )
+                abrirAreaProtegidaArtista("/buscar")
               }
               className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-purple-500/50"
             >
@@ -1250,9 +1285,7 @@ export default function HomeArtistaPage() {
             <button
               type="button"
               onClick={() =>
-                router.push(
-                  "/ofertas-artista"
-                )
+                abrirAreaProtegidaArtista("/ofertas-artista")
               }
               className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-red-500/50"
             >
@@ -1264,9 +1297,7 @@ export default function HomeArtistaPage() {
             <button
               type="button"
               onClick={() =>
-                router.push(
-                  "/solicitacoes-artista"
-                )
+                abrirAreaProtegidaArtista("/solicitacoes-artista")
               }
               className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-green-500/50"
             >
@@ -1278,9 +1309,7 @@ export default function HomeArtistaPage() {
             <button
               type="button"
               onClick={() =>
-                router.push(
-                  "/financeiro-artista"
-                )
+                abrirAreaProtegidaArtista("/financeiro-artista")
               }
               className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-green-500/50"
             >
@@ -1306,9 +1335,7 @@ export default function HomeArtistaPage() {
             <button
               type="button"
               onClick={() =>
-                router.push(
-                  "/suporte-aura"
-                )
+                abrirAreaProtegidaArtista("/suporte-aura")
               }
               className={
                 "rounded-2xl border p-5 text-left transition " +
@@ -1336,9 +1363,7 @@ export default function HomeArtistaPage() {
             <button
               type="button"
               onClick={() =>
-                router.push(
-                  "/agenda"
-                )
+                abrirAreaProtegidaArtista("/agenda")
               }
               className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-red-500/50"
             >
@@ -1350,9 +1375,7 @@ export default function HomeArtistaPage() {
             <button
               type="button"
               onClick={() =>
-                router.push(
-                  "/chat-direto"
-                )
+                abrirAreaProtegidaArtista("/chat-direto")
               }
               className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-red-500/50"
             >
@@ -1410,9 +1433,7 @@ export default function HomeArtistaPage() {
 
             <button
               onClick={() =>
-                router.push(
-                  "/ofertas-artista"
-                )
+                abrirAreaProtegidaArtista("/ofertas-artista")
               }
               className="text-sm font-semibold text-red-500"
             >
@@ -1462,9 +1483,7 @@ export default function HomeArtistaPage() {
                         oferta.id
                       }
                       onClick={() =>
-                        router.push(
-                          "/ofertas-artista"
-                        )
+                        abrirAreaProtegidaArtista("/ofertas-artista")
                       }
                       className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-red-500/50"
                     >
