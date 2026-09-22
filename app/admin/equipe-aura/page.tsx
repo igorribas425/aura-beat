@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useEffectEvent, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ensureFreshSession, getOwnerAccessFast, isJwtExpiredError } from "../../../lib/admin-access";
@@ -122,6 +122,10 @@ export default function AdminAuraTeamPage() {
     setInvites((invitesResult.data || []) as SupportInvite[]);
   }
 
+  const loadTeamDataEffect = useEffectEvent(async () => {
+    await loadTeamData();
+  });
+
   useEffect(() => {
     let active = true;
 
@@ -143,7 +147,7 @@ export default function AdminAuraTeamPage() {
           return;
         }
 
-        await loadTeamData();
+        await loadTeamDataEffect();
       } catch (caught) {
         console.error(caught);
 
