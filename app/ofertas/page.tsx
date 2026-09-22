@@ -446,41 +446,6 @@ export default function OfertasCasaPage() {
     }
   }
 
-  async function carregarArtista(
-    artistId: string
-  ) {
-    const {
-      data,
-      error,
-    } = await supabase
-      .from("artist_profiles")
-      .select(`
-        id,
-        stage_name,
-        fixed_fee,
-        base_city,
-        base_state,
-        verification_status
-      `)
-      .eq("id", artistId)
-      .maybeSingle();
-
-    if (error) {
-      throw error;
-    }
-
-    if (!data) {
-      setArtistaAlvo(null);
-      setArtistaAlvoId(null);
-
-      return;
-    }
-
-    setArtistaAlvo(
-      data as Artista
-    );
-  }
-
   async function carregarOfertas(
     venueId: string
   ) {
