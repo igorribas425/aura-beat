@@ -150,6 +150,15 @@ export default function PerfilArtistaPage() {
           (data.verification_status ?? null) as VerificationStatus,
         );
 
+        const { data: primaryStyle } = await supabase
+          .from("artist_styles")
+          .select("style_name")
+          .eq("artist_id", data.id)
+          .eq("is_primary", true)
+          .maybeSingle();
+
+        setStyle(primaryStyle?.style_name ?? "");
+
         const { data: rider } = await supabase
           .from("artist_riders")
           .select("technical_summary,hospitality_summary,what_artist_brings,what_venue_provides")
