@@ -86,6 +86,10 @@ export default function PerfilArtistaPage() {
   const [maintenanceCost, setMaintenanceCost] = useState("");
   const [travelMargin, setTravelMargin] = useState("");
   const [acceptedEventTypes, setAcceptedEventTypes] = useState("");
+  const [riderTechnicalSummary, setRiderTechnicalSummary] = useState("");
+  const [riderHospitalitySummary, setRiderHospitalitySummary] = useState("");
+  const [riderArtistBrings, setRiderArtistBrings] = useState("");
+  const [riderVenueProvides, setRiderVenueProvides] = useState("");
   const [style, setStyle] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -145,6 +149,27 @@ export default function PerfilArtistaPage() {
         setVerificationStatus(
           (data.verification_status ?? null) as VerificationStatus,
         );
+
+        const { data: rider } = await supabase
+          .from("artist_riders")
+          .select("technical_summary,hospitality_summary,what_artist_brings,what_venue_provides")
+          .eq("artist_id", data.id)
+          .maybeSingle();
+
+        if (rider) {
+          setRiderTechnicalSummary(rider.technical_summary ?? "");
+          setRiderHospitalitySummary(rider.hospitality_summary ?? "");
+          setRiderArtistBrings(
+            Array.isArray(rider.what_artist_brings)
+              ? rider.what_artist_brings.filter((item): item is string => typeof item === "string").join(", ")
+              : "",
+          );
+          setRiderVenueProvides(
+            Array.isArray(rider.what_venue_provides)
+              ? rider.what_venue_provides.filter((item): item is string => typeof item === "string").join(", ")
+              : "",
+          );
+        }
       }
     }
 
@@ -231,6 +256,31 @@ export default function PerfilArtistaPage() {
       setVerificationStatus(
         (artist.verification_status ?? verificationStatus ?? null) as VerificationStatus,
       );
+
+      const { error: riderError } = await supabase
+        .from("artist_riders")
+        .upsert(
+          {
+            artist_id: artist.id,
+            technical_summary: riderTechnicalSummary.trim() || null,
+            hospitality_summary: riderHospitalitySummary.trim() || null,
+            what_artist_brings: riderArtistBrings
+              .split(",")
+              .map((item) => item.trim())
+              .filter(Boolean),
+            what_venue_provides: riderVenueProvides
+              .split(",")
+              .map((item) => item.trim())
+              .filter(Boolean),
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "artist_id" },
+        );
+
+      if (riderError) {
+        setMessage("⚠️ Perfil salvo, mas houve erro ao salvar o rider técnico.");
+        return;
+      }
 
       if (style.trim()) {
         await supabase
@@ -403,6 +453,78 @@ export default function PerfilArtistaPage() {
               </p>
             </div>
           )}
+
+          <section className="rounded-3xl border border-purple-500/20 bg-purple-500/5 p-5">
+            <div className="flex items-start gap-3">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-purple-500/10 text-xl">
+                🎛️
+              </div>
+              <div>
+                <h2 className="font-black">Rider técnico e hospitalidade</h2>
+                <p className="mt-1 text-xs leading-5 text-zinc-500">
+                  Cadastre o que você leva e o que precisa receber da Casa. Essas informações ajudam a produção a preparar o evento corretamente.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-4">
+              <div>
+                <label className="mb-2 block text-sm font-semibold">
+                  Resumo técnico
+                </label>
+                <textarea
+                  value={riderTechnicalSummary}
+                  onChange={(e) => setRiderTechnicalSummary(e.target.value)}
+                  rows={3}
+                  placeholder="Ex.: Setup para DJ com mesa Pioneer, retorno de palco e entrada estéreo disponível."
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-purple-500"
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-semibold">
+                    O que eu levo
+                  </label>
+                  <textarea
+                    value={riderArtistBrings}
+                    onChange={(e) => setRiderArtistBrings(e.target.value)}
+                    rows={3}
+                    placeholder="Ex.: notebook, controladora, cabos"
+                    className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-purple-500"
+                  />
+                  <p className="mt-2 text-xs text-zinc-500">Separe os itens por vírgula.</p>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-semibold">
+                    O que a Casa precisa fornecer
+                  </label>
+                  <textarea
+                    value={riderVenueProvides}
+                    onChange={(e) => setRiderVenueProvides(e.target.value)}
+                    rows={3}
+                    placeholder="Ex.: PA, monitor, mesa de apoio, energia 220 V"
+                    className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-purple-500"
+                  />
+                  <p className="mt-2 text-xs text-zinc-500">Separe os itens por vírgula.</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold">
+                  Hospitalidade / camarim
+                </label>
+                <textarea
+                  value={riderHospitalitySummary}
+                  onChange={(e) => setRiderHospitalitySummary(e.target.value)}
+                  rows={3}
+                  placeholder="Ex.: água sem gás, energético e espaço reservado para preparação."
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-purple-500"
+                />
+              </div>
+            </div>
+          </section>
 
           <section className="rounded-3xl border border-zinc-800 bg-black/25 p-5">
             <div className="flex items-start gap-3">
