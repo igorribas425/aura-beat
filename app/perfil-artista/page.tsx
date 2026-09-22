@@ -2,11 +2,9 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { ArtistMediaManager } from "../../components/artist-media-manager";
 import { ProfileAvatar } from "../../components/profile-avatar";
 import { PublicLocationControl } from "../../components/public-location-control";
-import { isOwnerEmail } from "../../lib/owner-account";
 import { supabase } from "../../lib/supabase";
 
 type VerificationStatus = "pending" | "verified" | "rejected" | "suspended" | null;
@@ -105,18 +103,6 @@ export default function PerfilArtistaPage() {
 
       if (!user) {
         setMessage("❌ Você precisa estar logado.");
-        return;
-      }
-
-      if (isOwnerEmail(user.email)) {
-        router.replace("/admin");
-        return;
-      }
-
-      const { data: isOwner } = await supabase.rpc("owner_access_v1");
-
-      if (isOwner === true) {
-        router.replace("/admin");
         return;
       }
 
