@@ -218,7 +218,7 @@ export function VenueMediaManager({
     const { error: avatarError } = await supabase
       .from("venue_profiles")
       .update({ avatar_url: item.public_url })
-      .eq("id", targetVenueId);
+      .eq("id", venueId);
 
     if (avatarError) {
       setMessage(
@@ -326,14 +326,14 @@ export function VenueMediaManager({
           await supabase
             .from("venue_profiles")
             .update({ avatar_url: nextCover.public_url })
-            .eq("id", targetVenueId);
+            .eq("id", venueId);
           onCoverChange?.(nextCover.public_url);
         }
       } else {
         await supabase
           .from("venue_profiles")
           .update({ avatar_url: null })
-          .eq("id", targetVenueId);
+          .eq("id", venueId);
         onCoverChange?.("");
       }
     }
