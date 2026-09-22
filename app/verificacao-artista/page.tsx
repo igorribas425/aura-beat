@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
-import { normalizeCapturedImage } from "../../lib/camera-capture";
+import { isIosCameraDevice, normalizeCapturedImage } from "../../lib/camera-capture";
 import { supabase } from "../../lib/supabase";
 
 type VerificationStatus = "pending" | "verified" | "rejected";
