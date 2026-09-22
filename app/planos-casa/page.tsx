@@ -214,6 +214,13 @@ export default function VenuePlansPage() {
           </p>
         </section>
 
+        <section className="rounded-3xl border border-green-500/25 bg-green-500/5 p-5">
+          <p className="font-black text-green-300">🎁 30 dias grátis para novas Casas verificadas</p>
+          <p className="mt-2 text-sm leading-6 text-zinc-400">
+            No lançamento, novos cadastros recebem o plano Básico por 30 dias após a aprovação da verificação. Sem cobrança automática.
+          </p>
+        </section>
+
         {error && (
           <div className="rounded-2xl border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
             {error}
