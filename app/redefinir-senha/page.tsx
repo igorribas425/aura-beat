@@ -32,7 +32,7 @@ export default function RedefinirSenhaPage() {
 
         // Uma sessão comum não autoriza a troca de senha por esta rota.
         // Sem o evento PASSWORD_RECOVERY, voltamos ao login normal.
-        router.replace("/login");
+        router.replace("/abrir");
       },
       temSinalDeRecuperacao ? 5000 : 800,
     );
