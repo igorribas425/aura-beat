@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
-import { isIosCameraDevice, normalizeCapturedImage } from "../../lib/camera-capture";
+import { normalizeCapturedImage } from "../../lib/camera-capture";
 import { supabase } from "../../lib/supabase";
 
 type VerificationStatus = "pending" | "verified" | "rejected";
@@ -108,7 +108,6 @@ export default function VerificacaoArtistaPage() {
   const [error, setError] = useState("");
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const selfieInputRef = useRef<HTMLInputElement | null>(null);
   const selfieInputRef = useRef<HTMLInputElement | null>(null);
 
   function isIosDevice() {
@@ -264,26 +263,32 @@ export default function VerificacaoArtistaPage() {
     }
   }
 
-  function capturarSelfieNativa(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0] || null;
+  async function capturarSelfieNativa(event: ChangeEvent<HTMLInputElement>) {
+    const source = event.target.files?.[0] || null;
     event.target.value = "";
 
-    if (!file) return;
+    if (!source) return;
 
-    if (!file.type.startsWith("image/")) {
-      setCameraError("A foto facial precisa ser uma imagem.");
-      return;
+    try {
+      setCameraError("");
+
+      const captured = await normalizeCapturedImage(
+        source,
+        `foto-facial-${Date.now()}.jpg`,
+      );
+
+      if (captured.file.size > MAX_FILE_SIZE) {
+        setCameraError("A foto facial deve ter no máximo 10 MB.");
+        return;
+      }
+
+      setSelfie(captured.file);
+      setSelfiePreview(captured.preview);
+      pararCamera();
+    } catch (err) {
+      console.error(err);
+      setCameraError("Não foi possível usar a foto feita pela câmera do iPhone. Tente novamente.");
     }
-
-    if (file.size > MAX_FILE_SIZE) {
-      setCameraError("A foto facial deve ter no máximo 10 MB.");
-      return;
-    }
-
-    setSelfie(file);
-    setSelfiePreview(URL.createObjectURL(file));
-    setCameraError("");
-    pararCamera();
   }
 
   async function capturarSelfie() {
@@ -565,17 +570,7 @@ export default function VerificacaoArtistaPage() {
                   type="file"
                   accept="image/*"
                   capture="user"
-                  onChange={capturarSelfieNativa}
-                  className="hidden"
-                  tabIndex={-1}
-                />
-
-                <input
-                  ref={selfieInputRef}
-                  type="file"
-                  accept="image/*"
-                  capture="user"
-                  onChange={(event) => void handleNativeSelfie(event)}
+                  onChange={(event) => void capturarSelfieNativa(event)}
                   className="hidden"
                   tabIndex={-1}
                   aria-hidden="true"
