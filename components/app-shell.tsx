@@ -29,7 +29,6 @@ const publicPaths = new Set([
   "/excluir-conta",
   "/recuperar-senha",
   "/redefinir-senha",
-  "/abrir",
 ]);
 
 function NavigationIcon({ name }: { name: NavIcon }) {
