@@ -1079,13 +1079,22 @@ export default function PerfilCasaPage() {
               />
             </div>
 
-            <div className="md:col-span-2 rounded-2xl border border-red-500/15 bg-red-500/5 p-4">
-              <p className="text-sm font-black text-red-200">
-                Foto principal e galeria
-              </p>
-              <p className="mt-1 text-xs leading-5 text-zinc-500">
-                Adicione as fotos e vídeos do espaço na galeria abaixo. A primeira foto vira a capa automaticamente e você pode trocar a foto principal depois.
-              </p>
+            <div className="md:col-span-2">
+              {casa ? (
+                <VenueMediaManager
+                  venueId={casa.id}
+                  onCoverChange={(url) =>
+                    atualizarCampo("avatar_url", url)
+                  }
+                />
+              ) : (
+                <div className="rounded-2xl border border-dashed border-red-500/25 bg-red-500/5 p-5">
+                  <p className="font-black text-red-200">Fotos e vídeos do espaço</p>
+                  <p className="mt-2 text-sm leading-6 text-zinc-400">
+                    Salve o perfil da Casa uma vez para liberar o envio de fotos e vídeos direto da galeria do celular ou computador.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div>
@@ -1129,15 +1138,6 @@ export default function PerfilCasaPage() {
             </div>
           </div>
         </section>
-
-        {casa && (
-          <VenueMediaManager
-            venueId={casa.id}
-            onCoverChange={(url) =>
-              atualizarCampo("avatar_url", url)
-            }
-          />
-        )}
 
         <section className="rounded-3xl border border-zinc-800 bg-zinc-950 p-6">
           <h2 className="text-xl font-black">
