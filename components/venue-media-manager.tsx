@@ -40,9 +40,11 @@ function extensionFor(file: File) {
 
 export function VenueMediaManager({
   venueId,
+  ensureVenueId,
   onCoverChange,
 }: {
-  venueId: string;
+  venueId?: string | null;
+  ensureVenueId?: () => Promise<string | null>;
   onCoverChange?: (url: string) => void;
 }) {
   const [media, setMedia] = useState<VenueMedia[]>([]);
@@ -50,7 +52,13 @@ export function VenueMediaManager({
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState("");
 
-  const loadMedia = useCallback(async () => {
+  const loadMedia = useCallback(async (targetVenueId = venueId) => {
+    if (!targetVenueId) {
+      setMedia([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
 
     const { data, error } = await supabase
@@ -58,7 +66,7 @@ export function VenueMediaManager({
       .select(
         "id,venue_id,media_type,storage_path,public_url,caption,sort_order,is_cover",
       )
-      .eq("venue_id", venueId)
+      .eq("venue_id", targetVenueId)
       .order("is_cover", { ascending: false })
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true });
@@ -90,6 +98,17 @@ export function VenueMediaManager({
     setMessage("");
 
     try {
+      let targetVenueId = venueId;
+
+      if (!targetVenueId && ensureVenueId) {
+        setMessage("Preparando o perfil da Casa para receber as mídias...");
+        targetVenueId = await ensureVenueId();
+      }
+
+      if (!targetVenueId) {
+        throw new Error("Preencha o nome da Casa e um CNPJ válido para adicionar fotos e vídeos.");
+      }
+
       let nextOrder =
         media.reduce((max, item) => Math.max(max, item.sort_order), -1) + 1;
       let hasCover = media.some((item) => item.is_cover);
@@ -105,7 +124,7 @@ export function VenueMediaManager({
           throw new Error(`${file.name}: o limite é 25 MB por arquivo.`);
         }
 
-        const storagePath = `${venueId}/${crypto.randomUUID()}.${extensionFor(file)}`;
+        const storagePath = `${targetVenueId}/${crypto.randomUUID()}.${extensionFor(file)}`;
 
         const { error: uploadError } = await supabase.storage
           .from("venue-media")
@@ -128,7 +147,7 @@ export function VenueMediaManager({
         const shouldBeCover = mediaType === "photo" && !hasCover;
 
         const { error: insertError } = await supabase.from("venue_media").insert({
-          venue_id: venueId,
+          venue_id: targetVenueId,
           media_type: mediaType,
           storage_path: storagePath,
           public_url: publicUrl,
@@ -147,7 +166,7 @@ export function VenueMediaManager({
           const { error: avatarError } = await supabase
             .from("venue_profiles")
             .update({ avatar_url: publicUrl })
-            .eq("id", venueId);
+            .eq("id", targetVenueId);
 
           if (avatarError) throw avatarError;
 
@@ -159,7 +178,7 @@ export function VenueMediaManager({
       }
 
       setMessage("✅ Galeria da Casa atualizada.");
-      await loadMedia();
+      await loadMedia(targetVenueId);
     } catch (error) {
       setMessage(
         `❌ ${error instanceof Error ? error.message : "Falha ao enviar a mídia."}`,
@@ -199,7 +218,7 @@ export function VenueMediaManager({
     const { error: avatarError } = await supabase
       .from("venue_profiles")
       .update({ avatar_url: item.public_url })
-      .eq("id", venueId);
+      .eq("id", targetVenueId);
 
     if (avatarError) {
       setMessage(
@@ -307,14 +326,14 @@ export function VenueMediaManager({
           await supabase
             .from("venue_profiles")
             .update({ avatar_url: nextCover.public_url })
-            .eq("id", venueId);
+            .eq("id", targetVenueId);
           onCoverChange?.(nextCover.public_url);
         }
       } else {
         await supabase
           .from("venue_profiles")
           .update({ avatar_url: null })
-          .eq("id", venueId);
+          .eq("id", targetVenueId);
         onCoverChange?.("");
       }
     }
@@ -351,6 +370,13 @@ export function VenueMediaManager({
       <p className="mt-3 text-xs text-zinc-500">
         JPG, PNG, WEBP, MP4 ou WEBM · máximo 25 MB por arquivo.
       </p>
+
+      {!venueId && (
+        <p className="mt-2 text-xs leading-5 text-green-300">
+          Você já pode adicionar as mídias no primeiro cadastro. Ao escolher os arquivos,
+          o Aura Beat cria o rascunho da Casa e mantém você nesta mesma tela.
+        </p>
+      )}
 
       {message && (
         <div className="mt-4 rounded-2xl border border-zinc-800 bg-black/30 p-4 text-sm text-zinc-300">
