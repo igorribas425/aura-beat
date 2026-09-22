@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { PASSWORD_REQUIREMENTS_TEXT, passwordMeetsRequirements } from "../../lib/password";
 import { supabase } from "../../lib/supabase";
 
 export default function RedefinirSenhaPage() {
+  const router = useRouter();
   const [pronto, setPronto] = useState(false);
   const [sessaoValida, setSessaoValida] = useState(false);
   const [senha, setSenha] = useState("");
@@ -16,30 +18,44 @@ export default function RedefinirSenhaPage() {
 
   useEffect(() => {
     let ativo = true;
+    let recuperacaoConfirmada = false;
+
+    const currentUrl = new URL(window.location.href);
+    const temSinalDeRecuperacao =
+      currentUrl.hash.includes("type=recovery") ||
+      currentUrl.searchParams.get("type") === "recovery" ||
+      currentUrl.searchParams.has("code");
+
+    const fallback = window.setTimeout(
+      () => {
+        if (!ativo || recuperacaoConfirmada) return;
+
+        // Uma sessão comum não autoriza a troca de senha por esta rota.
+        // Sem o evento PASSWORD_RECOVERY, voltamos ao login normal.
+        router.replace("/login");
+      },
+      temSinalDeRecuperacao ? 5000 : 800,
+    );
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (!ativo) return;
 
-      if (event === "PASSWORD_RECOVERY" || session?.user) {
+      if (event === "PASSWORD_RECOVERY" && session?.user) {
+        recuperacaoConfirmada = true;
+        window.clearTimeout(fallback);
         setSessaoValida(true);
+        setPronto(true);
       }
-
-      setPronto(true);
-    });
-
-    void supabase.auth.getSession().then(({ data }) => {
-      if (!ativo) return;
-      if (data.session?.user) setSessaoValida(true);
-      setPronto(true);
     });
 
     return () => {
       ativo = false;
+      window.clearTimeout(fallback);
       subscription.unsubscribe();
     };
-  }, []);
+  }, [router]);
 
   async function redefinir(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
