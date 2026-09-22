@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.aurabeat.app",
+      "sha256_cert_fingerprints": [
+        "CC:18:2A:BB:18:CA:CC:74:5E:80:CE:F9:1D:8E:D3:E8:4B:75:01:0E:57:1B:02:F4:15:9B:A9:16:5E:E5:C4:C7"
+      ]
+    }
+  }
+]
