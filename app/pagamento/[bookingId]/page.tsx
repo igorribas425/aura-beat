@@ -260,6 +260,7 @@ export default function PagamentoPixPage() {
       },
       [
         bookingId,
+        payerType,
         router,
       ]
     );
