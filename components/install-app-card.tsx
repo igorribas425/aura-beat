@@ -37,11 +37,13 @@ export function InstallAppCard() {
     useState<InstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
   const [ios, setIos] = useState(false);
+  const [ready, setReady] = useState(false);
   const [status, setStatus] = useState("");
 
   useEffect(() => {
     setInstalled(detectStandalone());
     setIos(detectIos());
+    setReady(true);
 
     const onBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
@@ -51,7 +53,7 @@ export function InstallAppCard() {
     const onInstalled = () => {
       setInstalled(true);
       setPromptEvent(null);
-      setStatus("Aura Beat instalado neste aparelho.");
+      setStatus("");
     };
 
     window.addEventListener(
@@ -89,6 +91,15 @@ export function InstallAppCard() {
     setPromptEvent(null);
   }
 
+  // O card só aparece quando existe uma ação útil:
+  // - botão nativo de instalação disponível; ou
+  // - instrução específica para iPhone/iPad.
+  // Se já estiver instalado ou o navegador ainda não oferecer instalação,
+  // não mostramos um aviso técnico/incompleto ao usuário.
+  if (!ready || installed || (!promptEvent && !ios)) {
+    return null;
+  }
+
   return (
     <section className="rounded-3xl border border-zinc-800 bg-zinc-950 p-6">
       <p className="text-xs font-black text-red-500">
@@ -114,11 +125,7 @@ export function InstallAppCard() {
         </div>
       </div>
 
-      {installed ? (
-        <div className="mt-5 rounded-2xl border border-green-900 bg-green-950/20 p-4 text-sm font-bold text-green-300">
-          ✓ Aura Beat já está instalado neste aparelho.
-        </div>
-      ) : promptEvent ? (
+      {promptEvent ? (
         <button
           type="button"
           onClick={() => void instalar()}
@@ -126,20 +133,14 @@ export function InstallAppCard() {
         >
           Instalar Aura Beat
         </button>
-      ) : ios ? (
-        <div className="mt-5 rounded-2xl border border-zinc-800 bg-black/30 p-4 text-sm leading-6 text-zinc-400">
-          No iPhone/iPad, abra o menu de compartilhamento do
-          Safari e escolha <strong className="text-white">
-            Adicionar à Tela de Início
-          </strong>.
-        </div>
       ) : (
         <div className="mt-5 rounded-2xl border border-zinc-800 bg-black/30 p-4 text-sm leading-6 text-zinc-400">
-          Quando o navegador liberar a instalação, o botão
-          aparecerá aqui. No Chrome também é possível usar o menu
-          do navegador e escolher <strong className="text-white">
-            Instalar app
-          </strong>.
+          No iPhone/iPad, abra o menu de compartilhamento do
+          Safari e escolha{" "}
+          <strong className="text-white">
+            Adicionar à Tela de Início
+          </strong>
+          .
         </div>
       )}
 
