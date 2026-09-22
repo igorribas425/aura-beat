@@ -146,6 +146,15 @@ export default function HomeCasaPage() {
     };
   }
 
+  function abrirAreaProtegidaCasa(path: string) {
+    if (casa?.verification_status !== "verified") {
+      router.push("/verificacao-casa");
+      return;
+    }
+
+    router.push(path);
+  }
+
   if (carregando) {
     return (
       <main className="aura-page flex min-h-screen items-center justify-center">
@@ -166,6 +175,7 @@ export default function HomeCasaPage() {
       label: "Disponibilidade urgente",
       detail: "Veja tudo que os DJs publicaram",
       href: "/disponibilidades-casa",
+      requiresVerification: true,
       hover: "hover:border-amber-400/70",
       destaque: true,
     },
@@ -174,6 +184,7 @@ export default function HomeCasaPage() {
       label: "Ofertas",
       detail: "Criar e acompanhar",
       href: "/ofertas",
+      requiresVerification: true,
       hover: "hover:border-red-500/50",
     },
     {
@@ -181,6 +192,7 @@ export default function HomeCasaPage() {
       label: "Eventos",
       detail: "Contratações da Casa",
       href: "/eventos-casa",
+      requiresVerification: true,
       hover: "hover:border-green-500/50",
     },
     {
@@ -188,6 +200,7 @@ export default function HomeCasaPage() {
       label: "Financeiro",
       detail: "Pagamentos e taxas",
       href: "/financeiro-casa",
+      requiresVerification: true,
       hover: "hover:border-green-500/50",
     },
     {
@@ -195,6 +208,7 @@ export default function HomeCasaPage() {
       label: "Chat",
       detail: "Conversas com artistas",
       href: "/chat-direto",
+      requiresVerification: true,
       hover: "hover:border-purple-500/50",
     },
     {
@@ -211,6 +225,7 @@ export default function HomeCasaPage() {
         ? "Análises liberadas"
         : "Intermediário / Pro",
       href: "/relatorios-casa",
+      requiresVerification: true,
       hover: "hover:border-purple-500/50",
       locked: !hasPlanBenefit(planAccess, "reports"),
     },
@@ -223,6 +238,7 @@ export default function HomeCasaPage() {
           : "Falar com a equipe"
         : "Intermediário / Pro",
       href: "/suporte-aura",
+      requiresVerification: true,
       hover: "hover:border-purple-500/50",
       locked: !hasPlanBenefit(planAccess, "support_chat"),
       pro: planAccess?.benefits?.support_priority === "priority",
@@ -285,7 +301,7 @@ export default function HomeCasaPage() {
 
                 <button
                   type="button"
-                  onClick={() => router.push("/ofertas")}
+                  onClick={() => abrirAreaProtegidaCasa("/ofertas")}
                   className="rounded-xl bg-red-500 px-4 py-2 text-sm font-black text-white"
                 >
                   Criar oferta
@@ -328,7 +344,11 @@ export default function HomeCasaPage() {
               <button
                 key={atalho.href}
                 type="button"
-                onClick={() => router.push(atalho.href)}
+                onClick={() =>
+                  "requiresVerification" in atalho && atalho.requiresVerification
+                    ? abrirAreaProtegidaCasa(atalho.href)
+                    : router.push(atalho.href)
+                }
                 className={`group relative overflow-hidden rounded-2xl border p-5 text-left transition duration-300 ${
                   "destaque" in atalho && atalho.destaque
                     ? "border-amber-400/50 bg-gradient-to-br from-amber-500/15 via-orange-500/10 to-red-500/10 shadow-[0_0_28px_rgba(245,158,11,0.18)] hover:-translate-y-1 hover:border-amber-300/80 hover:shadow-[0_0_42px_rgba(245,158,11,0.30)]"
@@ -406,10 +426,10 @@ export default function HomeCasaPage() {
             </p>
             <button
               type="button"
-              onClick={() => router.push("/perfil-casa")}
+              onClick={() => router.push("/verificacao-casa")}
               className="mt-6 rounded-xl bg-red-500 px-6 py-3 font-bold transition hover:bg-red-600"
             >
-              Ver perfil da Casa
+              Enviar documentos e verificar
             </button>
           </section>
         ) : (
@@ -426,7 +446,7 @@ export default function HomeCasaPage() {
 
               <button
                 type="button"
-                onClick={() => router.push("/buscar")}
+                onClick={() => abrirAreaProtegidaCasa("/buscar")}
                 className="rounded-2xl bg-red-500 px-6 py-4 font-black text-white transition hover:bg-red-600"
               >
                 Explorar DJs
