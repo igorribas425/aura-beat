@@ -149,7 +149,7 @@ export default function PerfilArtistaPage() {
     }
 
     carregarPerfil();
-  }, [router]);
+  }, []);
 
   async function salvar(e: FormEvent) {
     e.preventDefault();
