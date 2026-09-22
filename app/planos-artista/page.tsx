@@ -191,6 +191,13 @@ export default function ArtistPlansPage() {
           </p>
         </section>
 
+        <section className="rounded-3xl border border-green-500/25 bg-green-500/5 p-5">
+          <p className="font-black text-green-300">🎁 30 dias grátis para novos Artistas verificados</p>
+          <p className="mt-2 text-sm leading-6 text-zinc-400">
+            No lançamento, novos cadastros recebem o plano Básico por 30 dias após a aprovação da identidade. Sem cobrança automática.
+          </p>
+        </section>
+
         {error && (
           <div className="rounded-2xl border border-red-900 bg-red-950/30 p-4 text-sm text-red-300">
             {error}
@@ -213,7 +220,7 @@ export default function ArtistPlansPage() {
                   Status: {currentSubscription.status}
                   {currentSubscription.status === "trialing" &&
                     currentSubscription.trial_ends_at &&
-                    ` · teste até ${date(currentSubscription.trial_ends_at)}`}
+                    ` · grátis até ${date(currentSubscription.trial_ends_at)}`}
                   {currentSubscription.current_period_end
                     ? ` · período até ${date(currentSubscription.current_period_end)}`
                     : currentSubscription.status === "active"
