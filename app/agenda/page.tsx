@@ -16,6 +16,7 @@ import { supabase } from "../../lib/supabase";
 type Artista = {
   id: string;
   stage_name: string;
+  verification_status: string | null;
 };
 
 type TipoAgenda =
@@ -435,7 +436,7 @@ export default function AgendaPage() {
                   "artist_profiles"
                 )
                 .select(
-                  "id, stage_name"
+                  "id, stage_name, verification_status"
                 )
                 .eq(
                   "user_id",
@@ -463,7 +464,12 @@ export default function AgendaPage() {
       }
 
       const perfil =
-        acesso.artist;
+        acesso.artist as Artista;
+
+      if (perfil.verification_status !== "verified") {
+        router.replace("/verificacao-artista");
+        return;
+      }
 
       setArtista(perfil);
 
