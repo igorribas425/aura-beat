@@ -595,15 +595,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="flex items-center gap-2">
-            {ownerAccount && (
-              <Link
-                href="/admin"
-                className="rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs font-black text-red-300"
-              >
-                Admin
-              </Link>
-            )}
-
             <button
               onClick={switchMode}
               aria-label={`Alternar do modo ${mode === "venue" ? "Casa" : "Artista"}`}
