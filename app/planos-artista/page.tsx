@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatBRL } from "../../lib/finance";
 import { supabase } from "../../lib/supabase";
@@ -152,8 +152,12 @@ export default function ArtistPlansPage() {
     }
   }
 
-  useEffect(() => {
+  const loadEffect = useEffectEvent(() => {
     void load();
+  });
+
+  useEffect(() => {
+    loadEffect();
   }, []);
 
   const currentSubscription = useMemo(
