@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const args = process.argv.slice(2);
+const configPath = path.join(process.cwd(), "play-store", "app.config.json");
 
 function readFlag(name) {
   const index = args.indexOf(name);
@@ -35,12 +36,17 @@ function normalizeHost(value) {
   return url.host;
 }
 
-const host = normalizeHost(readFlag("--host"));
+let baseConfig = {};
+if (fs.existsSync(configPath)) {
+  baseConfig = JSON.parse(fs.readFileSync(configPath, "utf8"));
+}
+
+const host = normalizeHost(readFlag("--host") || baseConfig.host || "");
 const sha256 = readFlag("--sha256").trim().toUpperCase();
 
 if (!host) {
   fail(
-    "informe o host. Exemplo: npm run play:prepare -- --host aura-beat.vercel.app",
+    "host nao configurado. Defina em play-store/app.config.json ou use --host.",
   );
 }
 
@@ -51,17 +57,20 @@ if (sha256 && !/^([0-9A-F]{2}:){31}[0-9A-F]{2}$/.test(sha256)) {
 const outputDir = path.join(process.cwd(), "play-store", "generated");
 fs.mkdirSync(outputDir, { recursive: true });
 
+const packageId = baseConfig.packageId || "com.aurabeat.app";
+const startUrl = baseConfig.startUrl || "/abrir";
+
 const twaManifest = {
-  packageId: "com.aurabeat.app",
+  packageId,
   host,
-  name: "Aura Beat",
-  launcherName: "Aura Beat",
+  name: baseConfig.name || "Aura Beat",
+  launcherName: baseConfig.name || "Aura Beat",
   display: "standalone",
-  startUrl: "/abrir",
-  themeColor: "#050507",
-  backgroundColor: "#050507",
-  navigationColor: "#050507",
-  orientation: "portrait-primary",
+  startUrl,
+  themeColor: baseConfig.themeColor || "#050507",
+  backgroundColor: baseConfig.backgroundColor || "#050507",
+  navigationColor: baseConfig.navigationColor || "#050507",
+  orientation: baseConfig.orientation || "portrait-primary",
   iconUrl: `https://${host}/icons/icon-512.png`,
   maskableIconUrl: `https://${host}/icons/icon-maskable-512.png`,
 };
@@ -73,6 +82,7 @@ fs.writeFileSync(
 
 console.log("TWA preparado para:", `https://${host}`);
 console.log("Package ID:", twaManifest.packageId);
+console.log("Start URL:", twaManifest.startUrl);
 console.log("Arquivo:", "play-store/generated/twa-manifest.json");
 
 if (sha256) {
