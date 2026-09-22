@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatBRL } from "../../lib/finance";
 import { PASSWORD_REQUIREMENTS_TEXT, passwordMeetsRequirements } from "../../lib/password";
+import { isOwnerEmail } from "../../lib/owner-account";
 import { supabase } from "../../lib/supabase";
 import { setThemePreference, type ThemePreference } from "../../lib/theme";
 import { ProfilePhotoEditor } from "../../components/profile-photo-editor";
@@ -166,6 +167,8 @@ export default function ConfiguracoesPage() {
   const [alterandoSenha, setAlterandoSenha] = useState(false);
   const [erro, setErro] = useState("");
   const [mensagem, setMensagem] = useState("");
+
+  const ownerAccount = isOwnerEmail(email);
 
   useEffect(() => {
     let active = true;
@@ -855,6 +858,24 @@ export default function ConfiguracoesPage() {
         </section>
 
         <InstallAppCard />
+
+        {ownerAccount && (
+          <section className="rounded-3xl border border-red-500/20 bg-red-950/10 p-6">
+            <p className="text-xs font-black text-red-500">PROPRIETÁRIO</p>
+            <h2 className="mt-1 text-2xl font-black">Acessos do Aura Beat</h2>
+            <p className="mt-2 text-sm leading-6 text-zinc-500">
+              Seu modo Artista fica separado da Central Administrativa. Use este atalho
+              somente quando quiser trocar de acesso.
+            </p>
+            <button
+              type="button"
+              onClick={() => router.push("/acesso")}
+              className="mt-5 rounded-xl border border-red-500/40 bg-red-500/10 px-5 py-3 font-black text-red-300 hover:bg-red-500/15"
+            >
+              Escolher acesso
+            </button>
+          </section>
+        )}
 
         <section className="rounded-3xl border border-zinc-800 bg-zinc-950 p-6">
           <p className="text-xs font-black text-red-500">SEGURANÇA</p>
