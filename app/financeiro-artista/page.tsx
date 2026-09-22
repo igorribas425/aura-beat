@@ -161,7 +161,7 @@ export default function FinanceiroArtistaPage() {
         error: artistaError,
       } = await supabase
         .from("artist_profiles")
-        .select("id,stage_name")
+        .select("id,stage_name,verification_status")
         .eq(
           "user_id",
           authData.user.id
@@ -176,6 +176,11 @@ export default function FinanceiroArtistaPage() {
         setErro(
           "Perfil de artista não encontrado."
         );
+        return;
+      }
+
+      if (artistaData.verification_status !== "verified") {
+        router.replace("/verificacao-artista");
         return;
       }
 
