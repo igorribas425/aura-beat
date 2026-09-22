@@ -8,6 +8,13 @@ import { ProfileAvatar } from "../../../components/profile-avatar";
 import { formatBRL } from "../../../lib/finance";
 import { supabase } from "../../../lib/supabase";
 
+type ArtistRider = {
+  technical_summary: string | null;
+  hospitality_summary: string | null;
+  what_artist_brings: string[];
+  what_venue_provides: string[];
+};
+
 type ArtistPublic = {
   id: string;
   stage_name: string;
@@ -35,6 +42,7 @@ export default function PublicArtistPage() {
   const [styles, setStyles] = useState<string[]>([]);
   const [eventTypes, setEventTypes] = useState<string[]>([]);
   const [media, setMedia] = useState<ArtistMediaItem[]>([]);
+  const [rider, setRider] = useState<ArtistRider | null>(null);
   const [available, setAvailable] = useState(false);
   const [rating, setRating] = useState(0);
   const [reviewCount, setReviewCount] = useState(0);
@@ -67,13 +75,14 @@ export default function PublicArtistPage() {
         return;
       }
 
-      const [stylesResult, reviewsResult, availabilityResult, preferencesResult, bookingsResult, mediaResult, planResult, userResult] = await Promise.all([
+      const [stylesResult, reviewsResult, availabilityResult, preferencesResult, bookingsResult, mediaResult, riderResult, planResult, userResult] = await Promise.all([
         supabase.from("artist_styles").select("style_name").eq("artist_id", id),
         supabase.from("reviews").select("overall_rating").eq("reviewee_type", "artist").eq("artist_id", id),
         supabase.from("artist_availability").select("is_available,last_seen_at").eq("artist_id", id).maybeSingle(),
         supabase.from("artist_profiles").select("accepted_event_types").eq("id", id).maybeSingle(),
         supabase.from("bookings").select("id", { count: "exact", head: true }).eq("artist_id", id).eq("status", "completed"),
         supabase.from("artist_media").select("id,media_type,public_url,caption,sort_order,is_cover").eq("artist_id", id).order("is_cover", { ascending: false }).order("sort_order", { ascending: true }),
+        supabase.from("artist_riders").select("technical_summary,hospitality_summary,what_artist_brings,what_venue_provides").eq("artist_id", id).maybeSingle(),
         supabase.rpc("get_public_plan_levels_v1", {
           p_artist_ids: [id],
           p_venue_ids: [],
@@ -87,6 +96,20 @@ export default function PublicArtistPage() {
       if (!preferencesResult.error) setEventTypes(preferencesResult.data?.accepted_event_types ?? []);
       if (!bookingsResult.error) setCompletedEvents(bookingsResult.count ?? 0);
       if (!mediaResult.error) setMedia((mediaResult.data ?? []) as ArtistMediaItem[]);
+      if (!riderResult.error && riderResult.data) {
+        setRider({
+          technical_summary: riderResult.data.technical_summary ?? null,
+          hospitality_summary: riderResult.data.hospitality_summary ?? null,
+          what_artist_brings: Array.isArray(riderResult.data.what_artist_brings)
+            ? riderResult.data.what_artist_brings.filter((item): item is string => typeof item === "string")
+            : [],
+          what_venue_provides: Array.isArray(riderResult.data.what_venue_provides)
+            ? riderResult.data.what_venue_provides.filter((item): item is string => typeof item === "string")
+            : [],
+        });
+      } else {
+        setRider(null);
+      }
       if (!planResult.error) {
         const row = Array.isArray(planResult.data) ? planResult.data[0] : null;
         setPlanCode(
@@ -315,13 +338,53 @@ export default function PublicArtistPage() {
           <ArtistMediaGallery items={media} />
         </section>
 
-        <section className="aura-card mt-6 rounded-3xl border p-6">
-          <p className="aura-kicker">Produção</p>
-          <h2 className="mt-2 text-xl font-black">Rider técnico</h2>
-          <p className="mt-4 text-sm leading-6 text-zinc-400">
-            Informações técnicas e documentos do rider são compartilhados com a Casa no fluxo protegido de contratação.
-          </p>
-        </section>
+        {rider && (
+          <section className="aura-card mt-6 rounded-3xl border p-6">
+            <p className="aura-kicker">Produção</p>
+            <h2 className="mt-2 text-xl font-black">Rider técnico</h2>
+
+            {rider.technical_summary && (
+              <p className="mt-4 whitespace-pre-line text-sm leading-6 text-zinc-300">
+                {rider.technical_summary}
+              </p>
+            )}
+
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              {rider.what_artist_brings.length > 0 && (
+                <div className="rounded-2xl border border-purple-500/20 bg-purple-500/5 p-4">
+                  <p className="font-black text-purple-200">O que o Artista leva</p>
+                  <ul className="mt-3 space-y-2 text-sm text-zinc-300">
+                    {rider.what_artist_brings.map((item) => (
+                      <li key={item}>• {item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {rider.what_venue_provides.length > 0 && (
+                <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-4">
+                  <p className="font-black text-red-200">O que a Casa precisa fornecer</p>
+                  <ul className="mt-3 space-y-2 text-sm text-zinc-300">
+                    {rider.what_venue_provides.map((item) => (
+                      <li key={item}>• {item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {rider.hospitality_summary && (
+              <div className="mt-5">
+                <p className="text-xs font-black uppercase tracking-wider text-zinc-500">
+                  Hospitalidade / camarim
+                </p>
+                <p className="mt-2 whitespace-pre-line text-sm leading-6 text-zinc-300">
+                  {rider.hospitality_summary}
+                </p>
+              </div>
+            )}
+          </section>
+        )}
 
         {eventTypes.length > 0 && <section className="aura-card mt-6 rounded-3xl border p-6"><p className="aura-kicker">Experiência</p><h2 className="mt-2 text-xl font-black">Tipos de evento</h2><div className="mt-4 flex flex-wrap gap-2">{eventTypes.map((eventType) => <span key={eventType} className="rounded-full border border-purple-500/25 bg-purple-500/10 px-3 py-1.5 text-sm text-purple-200">{eventType}</span>)}</div></section>}
 
