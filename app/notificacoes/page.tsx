@@ -31,6 +31,20 @@ const labels: Record<string, string> = {
   review_request: "Avalie o evento",
 };
 
+function safeNotificationHref(value: string | null) {
+  const href = (value || "").trim();
+
+  if (
+    !href.startsWith("/") ||
+    href.startsWith("//") ||
+    href.startsWith("/redefinir-senha")
+  ) {
+    return "/notificacoes";
+  }
+
+  return href;
+}
+
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
@@ -200,7 +214,7 @@ export default function NotificationsPage() {
         <div className="mt-6 space-y-3">
           {items.map((item) => (
             <Link
-              href={item.link_url || "/notificacoes"}
+              href={safeNotificationHref(item.link_url)}
               onClick={() => void mark(item.id)}
               key={item.id}
               className={`block rounded-2xl border p-4 transition hover:border-red-500/40 ${
