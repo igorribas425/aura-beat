@@ -1079,23 +1079,13 @@ export default function PerfilCasaPage() {
               />
             </div>
 
-            <div className="md:col-span-2">
-              <label className="mb-2 block text-sm font-bold text-zinc-300">
-                URL do logo ou foto pública
-              </label>
-
-              <input
-                type="url"
-                value={form.avatar_url}
-                onChange={(event) =>
-                  atualizarCampo(
-                    "avatar_url",
-                    event.target.value
-                  )
-                }
-                placeholder="https://…"
-                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 outline-none transition focus:border-red-500"
-              />
+            <div className="md:col-span-2 rounded-2xl border border-red-500/15 bg-red-500/5 p-4">
+              <p className="text-sm font-black text-red-200">
+                Foto principal e galeria
+              </p>
+              <p className="mt-1 text-xs leading-5 text-zinc-500">
+                Adicione as fotos e vídeos do espaço na galeria abaixo. A primeira foto vira a capa automaticamente e você pode trocar a foto principal depois.
+              </p>
             </div>
 
             <div>
