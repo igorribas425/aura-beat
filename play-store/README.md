@@ -17,15 +17,41 @@ O projeto já possui:
 ## Identidade Android definida
 
 - Nome: Aura Beat
-- Package ID previsto: `com.aurabeat.app`
+- Package ID: `com.aurabeat.app`
 - Start URL: `/abrir`
 - Cor principal: `#050507`
 - Orientação: portrait-primary
 - Idioma principal da loja: pt-BR
 
+O package ID deve ser tratado como permanente depois que o aplicativo for publicado na Play Store.
+
+## Preparar usando um domínio provisório
+
+Enquanto o domínio definitivo não for comprado, podemos preparar o projeto com um host HTTPS temporário/fixo da Vercel. Não use um domínio inventado nem um túnel temporário que muda de endereço.
+
+Quando houver um host válido, rode:
+
+```bash
+npm run play:prepare -- --host SEU_HOST
+```
+
+Exemplo de formato:
+
+```bash
+npm run play:prepare -- --host projeto.vercel.app
+```
+
+O comando cria somente arquivos locais em `play-store/generated/`, que ficam ignorados pelo Git.
+
+Quando a chave de assinatura existir, também será possível gerar o modelo de Digital Asset Links:
+
+```bash
+npm run play:prepare -- --host SEU_HOST --sha256 AA:BB:CC:...
+```
+
 ## Etapas que ainda dependem de informação externa
 
-1. Confirmar o domínio final de produção que será usado pelo app.
+1. Confirmar um host HTTPS estável de produção ou provisório.
 2. Criar a conta Google Play Console.
 3. Gerar a chave de assinatura Android fora do GitHub.
 4. Obter o SHA-256 do certificado de assinatura.
@@ -38,7 +64,7 @@ O projeto já possui:
 
 Arquivos de assinatura nunca devem entrar no repositório. O `.gitignore` bloqueia formatos de keystore Android.
 
-O arquivo `assetlinks.template.json` é somente um modelo. Não deve ser copiado para `public/.well-known/assetlinks.json` enquanto o SHA-256 real não existir.
+Os arquivos em `play-store/generated/` são auxiliares locais e não devem ser tratados como chave ou assinatura.
 
 ## Funcionalidades que precisam ser validadas no Android antes da produção
 

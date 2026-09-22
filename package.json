@@ -7,7 +7,8 @@
     "test": "node tests/run.mjs",
     "build": "node scripts/generate-pwa-icons.mjs && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "play:prepare": "node scripts/prepare-play-store.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

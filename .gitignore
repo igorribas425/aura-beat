@@ -24,10 +24,11 @@
 .DS_Store
 *.pem
 
-# Android signing
+# Android signing / generated Play files
 *.jks
 *.keystore
 key.properties
+/play-store/generated/
 
 # debug
 npm-debug.log*
