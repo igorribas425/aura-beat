@@ -2,7 +2,7 @@
 
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { normalizeCapturedImage } from "../../lib/camera-capture";
+import { isIosCameraDevice, normalizeCapturedImage } from "../../lib/camera-capture";
 import { supabase } from "../../lib/supabase";
 
 type RequestStatus = "pending" | "verified" | "rejected";
