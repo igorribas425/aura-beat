@@ -141,13 +141,13 @@ export default function DirectChatPage() {
             .maybeSingle(),
           supabase
             .from("artist_profiles")
-            .select("id")
+            .select("id,verification_status")
             .eq("user_id", user.id)
             .eq("is_active", true)
             .maybeSingle(),
           supabase
             .from("venue_profiles")
-            .select("id")
+            .select("id,verification_status")
             .eq("owner_user_id", user.id)
             .eq("is_active", true)
             .maybeSingle(),
@@ -168,6 +168,20 @@ export default function DirectChatPage() {
             : ownVenueResult.data
               ? "venue"
               : "artist";
+
+      const resolvedVerification =
+        resolvedMode === "venue"
+          ? ownVenueResult.data?.verification_status
+          : ownArtistResult.data?.verification_status;
+
+      if (resolvedVerification !== "verified") {
+        router.replace(
+          resolvedMode === "venue"
+            ? "/verificacao-casa"
+            : "/verificacao-artista",
+        );
+        return;
+      }
 
       setActiveMode(resolvedMode);
 
