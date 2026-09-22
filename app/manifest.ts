@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "Aura Beat",
     description: "Conectando talentos aos melhores eventos.",
     id: "/",
-    start_url: "/",
+    start_url: "/abrir",
     scope: "/",
     lang: "pt-BR",
     display: "standalone",
