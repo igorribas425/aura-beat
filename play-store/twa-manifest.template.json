@@ -1,0 +1,14 @@
+{
+  "packageId": "com.aurabeat.app",
+  "host": "SEU_DOMINIO_DE_PRODUCAO",
+  "name": "Aura Beat",
+  "launcherName": "Aura Beat",
+  "display": "standalone",
+  "startUrl": "/abrir",
+  "themeColor": "#050507",
+  "backgroundColor": "#050507",
+  "navigationColor": "#050507",
+  "orientation": "portrait-primary",
+  "iconUrl": "https://SEU_DOMINIO_DE_PRODUCAO/icons/icon-512.png",
+  "maskableIconUrl": "https://SEU_DOMINIO_DE_PRODUCAO/icons/icon-maskable-512.png"
+}
