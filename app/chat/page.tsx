@@ -235,6 +235,18 @@ export default function ChatPage() {
     }
   );
 
+  const carregarMensagensEffect = useEffectEvent(
+    (conversationId: string) => {
+      void carregarMensagens(conversationId);
+    }
+  );
+
+  const marcarConversaComoLidaEffect = useEffectEvent(
+    (conversationId: string) => {
+      void marcarConversaComoLida(conversationId);
+    }
+  );
+
   useEffect(() => {
     iniciarEffect();
   }, []);
@@ -273,7 +285,7 @@ export default function ChatPage() {
       return;
     }
 
-    void carregarMensagens(
+    carregarMensagensEffect(
       conversaSelecionadaId
     );
 
@@ -339,7 +351,7 @@ export default function ChatPage() {
             nova.sender_user_id !==
             userId
           ) {
-            void marcarConversaComoLida(
+            marcarConversaComoLidaEffect(
               conversaSelecionadaId
             );
           }
