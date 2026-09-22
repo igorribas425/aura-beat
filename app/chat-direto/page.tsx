@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ProfileAvatar } from "../../components/profile-avatar";
 import { supabase } from "../../lib/supabase";
@@ -79,6 +79,12 @@ export default function DirectChatPage() {
     "off" | "granted" | "denied" | "unsupported"
   >("off");
   const [error, setError] = useState("");
+
+  const writeTypingStatusEffect = useEffectEvent(
+    (conversationId: string, typing: boolean) => {
+      void writeTypingStatus(conversationId, typing);
+    },
+  );
 
   useEffect(() => {
     const saved = window.localStorage.getItem("aura-direct-alerts") === "on";
@@ -567,7 +573,7 @@ export default function DirectChatPage() {
       typingActiveRef.current = false;
       lastTypingWriteRef.current = 0;
       setOtherTyping(false);
-      void writeTypingStatus(conversationId, false);
+      writeTypingStatusEffect(conversationId, false);
       void supabase.removeChannel(channel);
     };
   }, [mobileChatOpen, selectedId, userId]);
