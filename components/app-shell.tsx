@@ -28,6 +28,7 @@ const publicPaths = new Set([
   "/excluir-conta",
   "/recuperar-senha",
   "/redefinir-senha",
+  "/abrir",
 ]);
 
 function NavigationIcon({ name }: { name: NavIcon }) {
@@ -536,11 +537,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             aria-label="Aura Beat — Home"
             title="Aura Beat"
           >
-            <img
-              src="/aura-beat-logo.webp"
-              alt=""
-              className="h-12 w-12 shrink-0 object-contain sm:h-14 sm:w-14"
-            />
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 64 64"
+              className="h-12 w-12 shrink-0 rounded-2xl sm:h-14 sm:w-14"
+            >
+              <defs>
+                <linearGradient id="aura-header-gradient" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="#ef4444" />
+                  <stop offset="100%" stopColor="#7e22ce" />
+                </linearGradient>
+              </defs>
+              <rect width="64" height="64" rx="16" fill="#050507" />
+              <circle cx="32" cy="32" r="23" fill="url(#aura-header-gradient)" />
+              <path
+                d="M32 14 16 50h8l3.3-7h9.4l3.3 7h8L32 14Zm0 14 3 7h-6l3-7Z"
+                fill="white"
+              />
+            </svg>
             <span className="hidden leading-none sm:block">
               <span className="block text-lg font-black tracking-[0.18em] text-white">
                 AURA
