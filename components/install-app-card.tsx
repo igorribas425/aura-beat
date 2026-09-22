@@ -108,7 +108,7 @@ export function InstallAppCard() {
 
       <div className="mt-2 flex items-start gap-4">
         <img
-          src="/icons/icon-192.png"
+          src="/icons/icon.svg"
           alt=""
           className="h-16 w-16 rounded-2xl border border-zinc-800 bg-black object-cover"
         />
