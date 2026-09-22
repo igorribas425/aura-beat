@@ -64,7 +64,6 @@ function verificationInfo(status: VerificationStatus) {
 }
 
 export default function PerfilArtistaPage() {
-  const router = useRouter();
   const [stageName, setStageName] = useState("");
   const [bio, setBio] = useState("");
   const [city, setCity] = useState("");
