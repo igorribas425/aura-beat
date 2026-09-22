@@ -3,6 +3,7 @@
 import {
   FormEvent,
   useEffect,
+  useEffectEvent,
   useMemo,
   useState,
 } from "react";
@@ -247,8 +248,12 @@ export default function DisponibilidadesCasaPage() {
   const [mensagem, setMensagem] =
     useState("");
 
-  useEffect(() => {
+  const carregarPaginaEffect = useEffectEvent(() => {
     void carregarPagina();
+  });
+
+  useEffect(() => {
+    carregarPaginaEffect();
   }, []);
 
   async function carregarPagina() {
@@ -894,12 +899,11 @@ export default function DisponibilidadesCasaPage() {
       );
     }, [busca, ofertas]);
 
-  const idsComOfertaUrgente = new Set(
-    ofertas.map((oferta) => oferta.artist_id)
-  );
-
   const disponiveisFiltrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();
+    const idsComOfertaUrgente = new Set(
+      ofertas.map((oferta) => oferta.artist_id)
+    );
 
     return disponiveisAgora.filter((artista) => {
       if (idsComOfertaUrgente.has(artista.artist_id)) {
