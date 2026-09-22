@@ -1405,36 +1405,6 @@ export default function ChatPage() {
     }
   }
 
-  async function trocarModo(
-    novoModo: ModoPerfil
-  ) {
-    setModo(novoModo);
-
-    setConversaSelecionadaId(
-      null
-    );
-
-    setMensagens([]);
-
-    window.history.replaceState(
-      {},
-      "",
-      `/chat?mode=${novoModo}`
-    );
-
-    if (userId) {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ default_mode: novoModo })
-        .eq("id", userId);
-
-      if (error) {
-        console.error(error);
-        setErro("O modo foi alterado no Chat, mas não foi possível salvá-lo como padrão.");
-      }
-    }
-  }
-
   const conversaSelecionada =
     useMemo(
       () =>
