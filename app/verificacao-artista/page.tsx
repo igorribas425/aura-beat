@@ -232,7 +232,7 @@ export default function VerificacaoArtistaPage() {
 
     // No iPhone/iPad usamos o capturador nativo do iOS. Isso evita a
     // visualização preta que pode ocorrer com getUserMedia no Safari/PWA.
-    if (isIosDevice()) {
+    if (isIosCameraDevice()) {
       pararCamera();
       selfieInputRef.current?.click();
       return;
