@@ -2,6 +2,7 @@
 
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { isIosCameraDevice, normalizeCapturedImage } from "../../lib/camera-capture";
 import { supabase } from "../../lib/supabase";
 
 type RequestStatus = "pending" | "verified" | "rejected";
@@ -135,6 +136,7 @@ export default function VerificacaoCasaPage() {
   const [error, setError] = useState("");
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const selfieInputRef = useRef<HTMLInputElement | null>(null);
   const selfieInputRef = useRef<HTMLInputElement | null>(null);
 
   function isIosDevice() {
@@ -737,6 +739,17 @@ export default function VerificacaoCasaPage() {
                 onChange={capturarSelfieNativa}
                 className="hidden"
                 tabIndex={-1}
+              />
+
+              <input
+                ref={selfieInputRef}
+                type="file"
+                accept="image/*"
+                capture="user"
+                onChange={(event) => void handleNativeSelfie(event)}
+                className="hidden"
+                tabIndex={-1}
+                aria-hidden="true"
               />
 
               {!cameraOpen && !selfie && (
