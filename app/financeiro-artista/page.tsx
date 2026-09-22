@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useEffectEvent,
   useMemo,
   useState,
 } from "react";
@@ -232,8 +233,12 @@ export default function FinanceiroArtistaPage() {
     }
   }
 
-  useEffect(() => {
+  const carregarFinanceiroEffect = useEffectEvent(() => {
     void carregarFinanceiro();
+  });
+
+  useEffect(() => {
+    carregarFinanceiroEffect();
   }, []);
 
   const totais =
