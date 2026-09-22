@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 
@@ -157,8 +157,12 @@ export default function FinanceiroCasaPage() {
     }
   }
 
-  useEffect(() => {
+  const carregarFinanceiroEffect = useEffectEvent(() => {
     void carregarFinanceiro();
+  });
+
+  useEffect(() => {
+    carregarFinanceiroEffect();
   }, []);
 
   const totais = useMemo(() => {
