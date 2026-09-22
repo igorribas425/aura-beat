@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
+import { isIosCameraDevice, normalizeCapturedImage } from "../../lib/camera-capture";
 import { supabase } from "../../lib/supabase";
 
 type VerificationStatus = "pending" | "verified" | "rejected";
@@ -107,6 +108,7 @@ export default function VerificacaoArtistaPage() {
   const [error, setError] = useState("");
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const selfieInputRef = useRef<HTMLInputElement | null>(null);
   const selfieInputRef = useRef<HTMLInputElement | null>(null);
 
   function isIosDevice() {
@@ -568,9 +570,20 @@ export default function VerificacaoArtistaPage() {
                   tabIndex={-1}
                 />
 
+                <input
+                  ref={selfieInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="user"
+                  onChange={(event) => void handleNativeSelfie(event)}
+                  className="hidden"
+                  tabIndex={-1}
+                  aria-hidden="true"
+                />
+
                 <button
                   type="button"
-                  onClick={abrirCamera}
+                  onClick={() => void abrirCamera()}
                   disabled={blocked || !moduleReady || cameraOpen}
                   className="mt-4 w-full rounded-2xl border border-purple-500/40 bg-purple-500/10 px-4 py-3.5 font-black text-purple-200 transition hover:bg-purple-500/20 disabled:cursor-not-allowed disabled:opacity-50"
                 >
