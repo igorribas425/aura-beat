@@ -119,7 +119,7 @@ export default function FinanceiroCasaPage() {
         error: casaError,
       } = await supabase
         .from("venue_profiles")
-        .select("id, trade_name")
+        .select("id, trade_name, verification_status")
         .eq("owner_user_id", user.id)
         .maybeSingle();
 
@@ -129,6 +129,11 @@ export default function FinanceiroCasaPage() {
 
       if (!casa) {
         setErro("Perfil de Casa não encontrado.");
+        return;
+      }
+
+      if (casa.verification_status !== "verified") {
+        router.replace("/verificacao-casa");
         return;
       }
 
