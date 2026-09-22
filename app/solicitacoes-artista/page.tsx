@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useEffectEvent,
   useState,
 } from "react";
 
@@ -179,8 +180,12 @@ export default function SolicitacoesArtistaPage() {
   const [mensagem, setMensagem] =
     useState("");
 
-  useEffect(() => {
+  const carregarPaginaEffect = useEffectEvent(() => {
     void carregarPagina();
+  });
+
+  useEffect(() => {
+    carregarPaginaEffect();
   }, []);
 
   async function carregarPagina() {
