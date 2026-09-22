@@ -9,9 +9,17 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
-  const targetUrl =
+  const requestedUrl =
     event.notification.data && event.notification.data.url
       ? event.notification.data.url
+      : "/chat-direto";
+
+  const targetUrl =
+    typeof requestedUrl === "string" &&
+    requestedUrl.startsWith("/") &&
+    !requestedUrl.startsWith("//") &&
+    !requestedUrl.startsWith("/redefinir-senha")
+      ? requestedUrl
       : "/chat-direto";
 
   event.waitUntil(
