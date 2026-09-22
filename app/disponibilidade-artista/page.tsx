@@ -3,6 +3,7 @@
 import {
   FormEvent,
   useEffect,
+  useEffectEvent,
   useMemo,
   useState,
 } from "react";
@@ -212,8 +213,12 @@ export default function DisponibilidadeArtistaPage() {
   const [mensagem, setMensagem] =
     useState("");
 
-  useEffect(() => {
+  const carregarPaginaEffect = useEffectEvent(() => {
     void carregarPagina();
+  });
+
+  useEffect(() => {
+    carregarPaginaEffect();
   }, []);
 
   useEffect(() => {
