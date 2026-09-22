@@ -21,6 +21,7 @@ type NavIcon = "home" | "explore" | "offers" | "events" | "chat" | "alerts" | "c
 const publicPaths = new Set([
   "/",
   "/login",
+  "/abrir",
   "/cadastro",
   "/cadastro/login",
   "/privacidade",
