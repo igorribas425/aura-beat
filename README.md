@@ -39,8 +39,10 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 1. Copie `.env.example` para `.env.local` e use a URL e a chave **publishable** do Supabase.
 2. Aplique as migrations de `supabase/migrations` primeiro em staging. Elas não são aplicadas automaticamente por este repositório.
-3. Configure `SUPABASE_SERVICE_ROLE_KEY`, `PAYMENT_WEBHOOK_SECRET` e a chave do provedor somente no cofre de segredos do servidor. Nunca exponha essas variáveis com o prefixo `NEXT_PUBLIC_`.
-4. O endpoint `POST /api/payments/webhook` aceita eventos assinados por HMAC-SHA256 no header `x-aura-signature`. A criação de cobranças deve ser conectada ao SDK do provedor escolhido; nenhuma transação real ocorre sem essa integração.
+3. Configure no cofre de segredos do servidor: `SUPABASE_SERVICE_ROLE_KEY`, `ASAAS_API_KEY`, `ASAAS_API_URL`, `ASAAS_PIX_FEE` e `ASAAS_WEBHOOK_TOKEN`. Nunca exponha essas variáveis com o prefixo `NEXT_PUBLIC_`.
+4. A integração de Pix usa o ASAAS nas rotas `/api/payments/asaas/*` e `/api/subscriptions/asaas/*`.
+5. No ASAAS, configure o webhook para `POST /api/payments/webhook` no domínio de produção do Aura Beat. O token configurado no ASAAS deve ser exatamente o mesmo valor de `ASAAS_WEBHOOK_TOKEN`, enviado no header `asaas-access-token`.
+6. O webhook valida o pagamento pelo ID do ASAAS, referência externa e valor antes de atualizar cobranças ou mensalidades.
 
 ### Limitação de localização na PWA
 
