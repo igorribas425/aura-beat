@@ -148,13 +148,17 @@ export function PlanStatusCard({
           },
         ];
 
+  const isTrial = active && access?.status === "trialing";
+
   const period = !active
     ? "Nenhum plano ativo"
-    : access.unlimited
-      ? "♾ Acesso ilimitado"
-      : access.currentPeriodEnd
-        ? `Ativo até ${formatDate(access.currentPeriodEnd)}`
-        : "Plano ativo";
+    : isTrial && access.trialEndsAt
+      ? `🎁 30 dias grátis · até ${formatDate(access.trialEndsAt)}`
+      : access.unlimited
+        ? "♾ Acesso ilimitado"
+        : access.currentPeriodEnd
+          ? `Ativo até ${formatDate(access.currentPeriodEnd)}`
+          : "Plano ativo";
 
   return (
     <section
@@ -192,7 +196,9 @@ export function PlanStatusCard({
 
           <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-500">
             {active
-              ? "O Aura Beat libera os recursos deste nível automaticamente."
+              ? isTrial
+                ? "Período promocional de lançamento no plano Básico. Não há cobrança automática ao final dos 30 dias."
+                : "O Aura Beat libera os recursos deste nível automaticamente."
               : "Seu acesso aos recursos do Aura Beat fica bloqueado até você escolher um plano e confirmar o pagamento."}
           </p>
         </div>
@@ -207,6 +213,13 @@ export function PlanStatusCard({
           </button>
         )}
       </div>
+
+      {isTrial && (
+        <div className="mt-5 rounded-2xl border border-green-500/25 bg-green-500/5 px-4 py-3 text-sm text-green-200">
+          <span className="font-black">🎁 PERÍODO GRÁTIS DE LANÇAMENTO</span>
+          <span className="ml-2 text-green-300/80">Plano Básico por 30 dias.</span>
+        </div>
+      )}
 
       <div className="mt-6 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {features.map((feature) => (
