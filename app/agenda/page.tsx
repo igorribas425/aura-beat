@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import {
   resolveAgendaAccess,
 } from "../../lib/agenda-access.mjs";
+import { getMyPlanAccess, hasPlanBenefit } from "../../lib/plan-access";
 import { supabase } from "../../lib/supabase";
 
 type Artista = {
@@ -468,6 +469,13 @@ export default function AgendaPage() {
 
       if (perfil.verification_status !== "verified") {
         router.replace("/verificacao-artista");
+        return;
+      }
+
+      const planAccess = await getMyPlanAccess("artist");
+
+      if (!hasPlanBenefit(planAccess, "agenda")) {
+        router.replace("/planos-artista?recurso=agenda");
         return;
       }
 
