@@ -46,6 +46,17 @@ function planVisual(code: string) {
     };
   }
 
+  if (code === "free") {
+    return {
+      border: "border-cyan-500/30",
+      bg: "bg-gradient-to-b from-cyan-500/5 to-zinc-950",
+      badge: "bg-cyan-500/10 text-cyan-300 border-cyan-500/30",
+      title: "text-cyan-200",
+      glow: "shadow-[0_0_30px_rgba(34,211,238,0.06)]",
+      top: "ACESSO INICIAL",
+    };
+  }
+
   return {
     border: "border-zinc-800",
     bg: "bg-zinc-950",
@@ -214,10 +225,11 @@ export default function VenuePlansPage() {
           </p>
         </section>
 
-        <section className="rounded-3xl border border-green-500/25 bg-green-500/5 p-5">
-          <p className="font-black text-green-300">🎁 30 dias grátis para novas Casas verificadas</p>
+        <section className="rounded-3xl border border-cyan-500/25 bg-cyan-500/5 p-5">
+          <p className="font-black text-cyan-300">○ Plano Gratuito permanente para Casas verificadas</p>
           <p className="mt-2 text-sm leading-6 text-zinc-400">
-            No lançamento, novos cadastros recebem o plano Básico por 30 dias após a aprovação da verificação. Sem cobrança automática.
+            Explorar Artistas e chat ficam disponíveis sem prazo. Criação de ofertas,
+            gestão profissional de eventos, filtros avançados e relatórios ficam nos planos pagos.
           </p>
         </section>
 
@@ -290,10 +302,12 @@ export default function VenuePlansPage() {
                   </div>
 
                   <p className="mt-5 text-3xl font-black text-green-400">
-                    {money(plan.monthly_price)}
-                    <span className="text-sm font-semibold text-zinc-500">
-                      /mês
-                    </span>
+                    {plan.code === "free" ? "Grátis" : money(plan.monthly_price)}
+                    {plan.code !== "free" && (
+                      <span className="text-sm font-semibold text-zinc-500">
+                        /mês
+                      </span>
+                    )}
                   </p>
 
                   <div className="mt-6 space-y-2">
@@ -328,19 +342,33 @@ export default function VenuePlansPage() {
 
                   <button
                     type="button"
-                    onClick={() => router.push(`/assinatura/${plan.id}`)}
+                    disabled={plan.code === "free"}
+                    onClick={() => {
+                      if (plan.code !== "free") {
+                        router.push(`/assinatura/${plan.id}`);
+                      }
+                    }}
                     className={`mt-6 w-full rounded-xl px-4 py-3 text-sm font-black transition ${
-                      current
-                        ? "border border-green-700 text-green-300 hover:bg-green-950/30"
-                        : "bg-green-600 text-white hover:bg-green-500"
+                      plan.code === "free"
+                        ? "cursor-default border border-cyan-700/50 bg-cyan-500/5 text-cyan-300"
+                        : current
+                          ? "border border-green-700 text-green-300 hover:bg-green-950/30"
+                          : "bg-green-600 text-white hover:bg-green-500"
                     }`}
                   >
-                    {current ? "Renovar por mais 1 mês" : "Assinar com Pix"}
+                    {plan.code === "free"
+                      ? current
+                        ? "Seu plano gratuito"
+                        : "Disponível automaticamente"
+                      : current
+                        ? "Renovar por mais 1 mês"
+                        : "Assinar com Pix"}
                   </button>
 
                   <p className="mt-3 text-xs leading-5 text-zinc-500">
-                    Pagamento processado pelo ASAAS. Após a confirmação do Pix,
-                    o plano é ativado automaticamente por 1 mês.
+                    {plan.code === "free"
+                      ? "Liberado automaticamente após a verificação da Casa, sem cobrança e sem prazo."
+                      : "Pagamento processado pelo ASAAS. Após a confirmação do Pix, o plano é ativado automaticamente por 1 mês."}
                   </p>
                 </article>
               );
