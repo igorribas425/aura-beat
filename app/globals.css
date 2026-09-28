@@ -499,7 +499,20 @@ html[data-theme="light"] .aura-explore-map .aura-map-tiles {
   flex-direction: column;
   align-items: center;
   gap: 5px;
+  cursor: pointer;
   transform: translateZ(0);
+  transition: transform .18s ease, filter .18s ease;
+  will-change: transform;
+}
+
+.aura-profile-marker:hover {
+  transform: translateY(-2px) scale(1.045);
+  filter: saturate(1.08);
+}
+
+.aura-explore-map .leaflet-marker-icon:focus-visible .aura-profile-marker {
+  transform: translateY(-2px) scale(1.045);
+  filter: saturate(1.08);
 }
 
 .aura-profile-marker-photo {
@@ -522,6 +535,40 @@ html[data-theme="light"] .aura-explore-map .aura-map-tiles {
     0 0 14px color-mix(in srgb, var(--aura-marker) 48%, transparent),
     0 0 30px color-mix(in srgb, var(--aura-marker) 24%, transparent),
     0 10px 28px rgba(0,0,0,.35);
+  isolation: isolate;
+}
+
+.aura-profile-marker-aura {
+  position: absolute;
+  inset: -9px;
+  z-index: 0;
+  border: 1px solid color-mix(in srgb, var(--aura-marker) 58%, transparent);
+  border-radius: 999px;
+  pointer-events: none;
+  opacity: .62;
+  box-shadow: 0 0 16px color-mix(in srgb, var(--aura-marker) 36%, transparent);
+}
+
+.aura-profile-marker-aura > span {
+  position: absolute;
+  inset: -7px;
+  border: 1px solid color-mix(in srgb, var(--aura-marker) 38%, transparent);
+  border-radius: inherit;
+}
+
+.aura-profile-marker-aura-intermediate {
+  border-color: rgba(168,85,247,.72);
+  box-shadow:
+    0 0 16px rgba(168,85,247,.34),
+    0 0 28px rgba(59,130,246,.16);
+}
+
+.aura-profile-marker-aura-pro {
+  inset: -11px;
+  border-color: rgba(251,191,36,.82);
+  box-shadow:
+    0 0 18px rgba(251,191,36,.48),
+    0 0 34px rgba(168,85,247,.28);
 }
 
 .aura-profile-marker-photo::after {
@@ -539,6 +586,8 @@ html[data-theme="light"] .aura-explore-map .aura-map-tiles {
 }
 
 .aura-profile-marker-image {
+  position: relative;
+  z-index: 2;
   display: block !important;
   width: 50px !important;
   height: 50px !important;
@@ -554,12 +603,15 @@ html[data-theme="light"] .aura-explore-map .aura-map-tiles {
 }
 
 .aura-profile-marker-fallback {
+  position: relative;
+  z-index: 2;
   font-size: 23px;
   font-weight: 900;
 }
 
 .aura-profile-marker-online {
   position: absolute;
+  z-index: 3;
   right: -1px;
   bottom: 1px;
   width: 15px;
@@ -572,6 +624,7 @@ html[data-theme="light"] .aura-explore-map .aura-map-tiles {
 
 .aura-profile-marker-own {
   position: absolute;
+  z-index: 5;
   left: 50%;
   top: -11px;
   transform: translateX(-50%);
@@ -702,6 +755,57 @@ html[data-theme="light"] .aura-explore-map .aura-map-tiles {
   .aura-profile-marker--pro .aura-profile-marker-photo {
     animation: aura-pro-marker-glow 2.8s ease-in-out infinite;
   }
+
+  .aura-profile-marker-aura-pro {
+    animation: aura-pro-marker-halo 2.45s ease-out infinite;
+  }
+
+  .aura-profile-marker-aura-pro > span {
+    animation: aura-pro-marker-halo 2.45s .85s ease-out infinite;
+  }
+
+  .aura-profile-marker-aura-intermediate {
+    animation: aura-intermediate-marker-breathe 3.2s ease-in-out infinite;
+  }
+
+  .aura-profile-marker-plan-pro {
+    animation: aura-pro-badge-shine 2.4s ease-in-out infinite;
+  }
+}
+
+@keyframes aura-pro-marker-halo {
+  0% {
+    transform: scale(.88);
+    opacity: .82;
+  }
+  70%,100% {
+    transform: scale(1.28);
+    opacity: 0;
+  }
+}
+
+@keyframes aura-intermediate-marker-breathe {
+  0%,100% {
+    transform: scale(.96);
+    opacity: .48;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: .82;
+  }
+}
+
+@keyframes aura-pro-badge-shine {
+  0%,100% {
+    filter: brightness(1);
+    box-shadow: 0 5px 14px rgba(0,0,0,.28);
+  }
+  50% {
+    filter: brightness(1.2);
+    box-shadow:
+      0 5px 14px rgba(0,0,0,.28),
+      0 0 16px rgba(251,191,36,.42);
+  }
 }
 
 @keyframes aura-pro-marker-glow {
@@ -762,6 +866,19 @@ html[data-theme="light"] .aura-explore-map .aura-map-tiles {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .aura-profile-marker,
+  .aura-profile-marker:hover,
+  .aura-explore-map .leaflet-marker-icon:focus-visible .aura-profile-marker {
+    transition: none;
+    transform: translateZ(0);
+  }
+
+  .aura-profile-marker--pro .aura-profile-marker-photo,
+  .aura-profile-marker-aura,
+  .aura-profile-marker-aura > span,
+  .aura-profile-marker-plan-pro,
   .aura-self-location-marker::before,
-  .aura-self-location-marker::after { animation: none; }
+  .aura-self-location-marker::after {
+    animation: none;
+  }
 }
