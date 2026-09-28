@@ -814,64 +814,70 @@ html[data-theme="light"] .aura-explore-map .aura-map-tiles {
 
 .aura-mini-presskit-energy-frame {
   position: absolute !important;
-  inset: 1px;
-  z-index: 4 !important;
-  overflow: hidden;
-  border-radius: 1.45rem;
+  inset: 0;
+  z-index: 1 !important;
+  border-radius: 1.5rem;
   pointer-events: none;
 }
 
 .aura-mini-presskit-energy-frame::before {
   content: "";
   position: absolute;
-  inset: -58%;
-  border-radius: 46%;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
   background:
     conic-gradient(
       from 0deg,
-      transparent 0 12%,
-      rgba(251,191,36,.92) 17%,
-      rgba(249,115,22,.86) 22%,
-      transparent 31% 46%,
-      rgba(168,85,247,.86) 53%,
-      rgba(251,191,36,.74) 61%,
-      transparent 70% 86%,
-      rgba(249,115,22,.78) 92%,
+      transparent 0 10%,
+      rgba(251,191,36,.96) 17%,
+      rgba(249,115,22,.9) 24%,
+      transparent 34% 48%,
+      rgba(168,85,247,.9) 56%,
+      rgba(251,191,36,.82) 64%,
+      transparent 74% 88%,
+      rgba(249,115,22,.82) 94%,
       transparent
     );
-  filter: blur(1px);
-  opacity: .82;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  filter:
+    drop-shadow(0 0 5px rgba(251,191,36,.68))
+    drop-shadow(0 0 9px rgba(168,85,247,.38));
+  opacity: .9;
 }
 
 .aura-mini-presskit-energy-frame::after {
   content: "";
   position: absolute;
-  inset: 2px;
-  border-radius: 1.32rem;
-  background: #08080c;
+  inset: 4px;
+  border: 1px solid rgba(251,191,36,.12);
+  border-radius: 1.35rem;
   box-shadow:
-    inset 0 0 18px rgba(251,191,36,.05),
-    inset 0 0 30px rgba(168,85,247,.04);
+    inset 0 0 18px rgba(251,191,36,.025),
+    0 0 18px rgba(168,85,247,.08);
 }
 
 .aura-mini-presskit-energy-frame > span {
   position: absolute;
-  inset: 7px;
-  z-index: 2;
-  border-radius: 1.2rem;
+  inset: -1px;
+  border-radius: inherit;
   background:
-    radial-gradient(circle at 12% 8%, #fde68a 0 1.8px, transparent 2.6px),
-    radial-gradient(circle at 34% 3%, #fb923c 0 1.4px, transparent 2.2px),
-    radial-gradient(circle at 74% 7%, #fbbf24 0 1.7px, transparent 2.5px),
-    radial-gradient(circle at 94% 21%, #c084fc 0 1.6px, transparent 2.4px),
-    radial-gradient(circle at 97% 62%, #fb923c 0 1.7px, transparent 2.5px),
-    radial-gradient(circle at 82% 95%, #fde68a 0 1.6px, transparent 2.4px),
-    radial-gradient(circle at 28% 97%, #a855f7 0 1.7px, transparent 2.5px),
-    radial-gradient(circle at 4% 72%, #fbbf24 0 1.5px, transparent 2.3px);
+    radial-gradient(circle at 12% 4%, #fde68a 0 1.8px, transparent 2.7px),
+    radial-gradient(circle at 35% 1%, #fb923c 0 1.5px, transparent 2.4px),
+    radial-gradient(circle at 75% 3%, #fbbf24 0 1.7px, transparent 2.6px),
+    radial-gradient(circle at 99% 22%, #c084fc 0 1.7px, transparent 2.6px),
+    radial-gradient(circle at 98% 64%, #fb923c 0 1.8px, transparent 2.7px),
+    radial-gradient(circle at 82% 99%, #fde68a 0 1.7px, transparent 2.6px),
+    radial-gradient(circle at 28% 99%, #a855f7 0 1.8px, transparent 2.7px),
+    radial-gradient(circle at 1% 72%, #fbbf24 0 1.6px, transparent 2.5px);
   filter:
-    drop-shadow(0 0 4px rgba(251,191,36,.85))
-    drop-shadow(0 0 7px rgba(249,115,22,.52));
-  opacity: .78;
+    drop-shadow(0 0 4px rgba(251,191,36,.82))
+    drop-shadow(0 0 6px rgba(249,115,22,.44));
+  opacity: .7;
 }
 
 .aura-mini-presskit-avatar-shell {
