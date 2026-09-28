@@ -564,11 +564,53 @@ html[data-theme="light"] .aura-explore-map .aura-map-tiles {
 }
 
 .aura-profile-marker-aura-pro {
-  inset: -11px;
-  border-color: rgba(251,191,36,.82);
-  box-shadow:
-    0 0 18px rgba(251,191,36,.48),
-    0 0 34px rgba(168,85,247,.28);
+  inset: -13px;
+  border: 0;
+  opacity: 1;
+  box-shadow: none;
+}
+
+.aura-profile-marker-aura-pro::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background:
+    conic-gradient(
+      from 0deg,
+      transparent 0 12%,
+      rgba(251,191,36,.95) 18%,
+      rgba(249,115,22,.95) 27%,
+      rgba(168,85,247,.92) 43%,
+      transparent 55% 68%,
+      rgba(251,191,36,.88) 78%,
+      transparent 92%
+    );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  filter:
+    drop-shadow(0 0 5px rgba(251,191,36,.9))
+    drop-shadow(0 0 9px rgba(168,85,247,.58));
+}
+
+.aura-profile-marker-aura-pro > span {
+  inset: -5px;
+  border: 0;
+  background:
+    radial-gradient(circle at 50% 0%, #fde68a 0 2px, transparent 2.7px),
+    radial-gradient(circle at 88% 25%, #fb923c 0 1.8px, transparent 2.5px),
+    radial-gradient(circle at 96% 62%, #c084fc 0 2px, transparent 2.8px),
+    radial-gradient(circle at 70% 96%, #fbbf24 0 1.6px, transparent 2.4px),
+    radial-gradient(circle at 18% 82%, #fb923c 0 1.8px, transparent 2.5px),
+    radial-gradient(circle at 2% 38%, #a855f7 0 1.7px, transparent 2.4px);
+  filter:
+    drop-shadow(0 0 4px rgba(251,191,36,.88))
+    drop-shadow(0 0 6px rgba(249,115,22,.55));
+  opacity: .95;
 }
 
 .aura-profile-marker-photo::after {
@@ -744,24 +786,162 @@ html[data-theme="light"] .aura-explore-map .aura-map-tiles {
     linear-gradient(135deg,#32125a,#0d0a13 72%);
 }
 
+.aura-mini-presskit {
+  position: relative;
+  isolation: isolate;
+}
+
+.aura-mini-presskit > * {
+  position: relative;
+  z-index: 2;
+}
+
+.aura-mini-presskit[data-plan="pro"] {
+  box-shadow:
+    0 0 0 1px rgba(251,191,36,.24),
+    0 0 34px rgba(251,191,36,.14),
+    0 0 54px rgba(168,85,247,.10),
+    0 24px 64px rgba(0,0,0,.46);
+}
+
 .aura-mini-presskit[data-plan="pro"] .aura-mini-presskit-cover {
   background:
-    radial-gradient(circle at 86% 15%, rgba(251,191,36,.26), transparent 24%),
-    radial-gradient(circle at 14% 88%, rgba(168,85,247,.24), transparent 30%),
+    radial-gradient(circle at 86% 15%, rgba(251,191,36,.29), transparent 24%),
+    radial-gradient(circle at 14% 88%, rgba(168,85,247,.27), transparent 30%),
+    radial-gradient(circle at 52% -8%, rgba(249,115,22,.14), transparent 28%),
     linear-gradient(135deg,#3a2910,#170d24 72%);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .aura-profile-marker--pro .aura-profile-marker-photo {
-    animation: aura-pro-marker-glow 2.8s ease-in-out infinite;
-  }
+.aura-mini-presskit-energy-frame {
+  position: absolute !important;
+  inset: 1px;
+  z-index: 4 !important;
+  overflow: hidden;
+  border-radius: 1.45rem;
+  pointer-events: none;
+}
 
+.aura-mini-presskit-energy-frame::before {
+  content: "";
+  position: absolute;
+  inset: -58%;
+  border-radius: 46%;
+  background:
+    conic-gradient(
+      from 0deg,
+      transparent 0 12%,
+      rgba(251,191,36,.92) 17%,
+      rgba(249,115,22,.86) 22%,
+      transparent 31% 46%,
+      rgba(168,85,247,.86) 53%,
+      rgba(251,191,36,.74) 61%,
+      transparent 70% 86%,
+      rgba(249,115,22,.78) 92%,
+      transparent
+    );
+  filter: blur(1px);
+  opacity: .82;
+}
+
+.aura-mini-presskit-energy-frame::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: 1.32rem;
+  background: #08080c;
+  box-shadow:
+    inset 0 0 18px rgba(251,191,36,.05),
+    inset 0 0 30px rgba(168,85,247,.04);
+}
+
+.aura-mini-presskit-energy-frame > span {
+  position: absolute;
+  inset: 7px;
+  z-index: 2;
+  border-radius: 1.2rem;
+  background:
+    radial-gradient(circle at 12% 8%, #fde68a 0 1.8px, transparent 2.6px),
+    radial-gradient(circle at 34% 3%, #fb923c 0 1.4px, transparent 2.2px),
+    radial-gradient(circle at 74% 7%, #fbbf24 0 1.7px, transparent 2.5px),
+    radial-gradient(circle at 94% 21%, #c084fc 0 1.6px, transparent 2.4px),
+    radial-gradient(circle at 97% 62%, #fb923c 0 1.7px, transparent 2.5px),
+    radial-gradient(circle at 82% 95%, #fde68a 0 1.6px, transparent 2.4px),
+    radial-gradient(circle at 28% 97%, #a855f7 0 1.7px, transparent 2.5px),
+    radial-gradient(circle at 4% 72%, #fbbf24 0 1.5px, transparent 2.3px);
+  filter:
+    drop-shadow(0 0 4px rgba(251,191,36,.85))
+    drop-shadow(0 0 7px rgba(249,115,22,.52));
+  opacity: .78;
+}
+
+.aura-mini-presskit-avatar-shell {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  isolation: isolate;
+}
+
+.aura-mini-presskit-avatar-shell > *:not(.aura-mini-presskit-avatar-orbit) {
+  position: relative;
+  z-index: 2;
+}
+
+.aura-mini-presskit-avatar-orbit {
+  position: absolute;
+  inset: -9px;
+  z-index: 1;
+  border-radius: 1.9rem;
+  pointer-events: none;
+}
+
+.aura-mini-presskit-avatar-orbit::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background:
+    conic-gradient(
+      from 0deg,
+      transparent 0 10%,
+      #fbbf24 17%,
+      #fb923c 25%,
+      #a855f7 42%,
+      transparent 54% 68%,
+      #fde68a 78%,
+      transparent 91%
+    );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  filter:
+    drop-shadow(0 0 5px rgba(251,191,36,.8))
+    drop-shadow(0 0 9px rgba(168,85,247,.45));
+}
+
+.aura-mini-presskit-avatar-orbit > span {
+  position: absolute;
+  inset: -7px;
+  border-radius: 2.1rem;
+  background:
+    radial-gradient(circle at 50% 0%, #fde68a 0 2px, transparent 2.8px),
+    radial-gradient(circle at 93% 27%, #fb923c 0 1.8px, transparent 2.6px),
+    radial-gradient(circle at 88% 78%, #c084fc 0 1.9px, transparent 2.7px),
+    radial-gradient(circle at 46% 100%, #fbbf24 0 1.7px, transparent 2.5px),
+    radial-gradient(circle at 4% 68%, #fb923c 0 1.7px, transparent 2.5px),
+    radial-gradient(circle at 8% 20%, #a855f7 0 1.8px, transparent 2.6px);
+  filter: drop-shadow(0 0 5px rgba(251,191,36,.78));
+}
+
+@media (prefers-reduced-motion: no-preference) {
   .aura-profile-marker-aura-pro {
-    animation: aura-pro-marker-halo 2.45s ease-out infinite;
+    animation: aura-pro-marker-orbit 3.8s linear infinite;
   }
 
   .aura-profile-marker-aura-pro > span {
-    animation: aura-pro-marker-halo 2.45s .85s ease-out infinite;
+    animation: aura-pro-particles-orbit 2.7s linear infinite reverse;
   }
 
   .aura-profile-marker-aura-intermediate {
@@ -770,6 +950,82 @@ html[data-theme="light"] .aura-explore-map .aura-map-tiles {
 
   .aura-profile-marker-plan-pro {
     animation: aura-pro-badge-shine 2.4s ease-in-out infinite;
+  }
+
+  .aura-mini-presskit-energy-frame::before {
+    animation: aura-pro-card-border-spin 8s linear infinite;
+  }
+
+  .aura-mini-presskit-energy-frame > span {
+    animation: aura-pro-card-particles 9s linear infinite;
+  }
+
+  .aura-mini-presskit-avatar-orbit {
+    animation: aura-pro-avatar-orbit 4.6s linear infinite;
+  }
+
+  .aura-mini-presskit-avatar-orbit > span {
+    animation: aura-pro-avatar-particles 3.1s linear infinite reverse;
+  }
+}
+
+@keyframes aura-pro-marker-orbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes aura-pro-particles-orbit {
+  0% {
+    transform: rotate(0deg) scale(.96);
+    opacity: .76;
+  }
+  50% {
+    transform: rotate(180deg) scale(1.04);
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(360deg) scale(.96);
+    opacity: .76;
+  }
+}
+
+@keyframes aura-pro-card-border-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes aura-pro-card-particles {
+  0% {
+    transform: rotate(0deg) scale(.985);
+    opacity: .62;
+  }
+  50% {
+    transform: rotate(180deg) scale(1.015);
+    opacity: .9;
+  }
+  100% {
+    transform: rotate(360deg) scale(.985);
+    opacity: .62;
+  }
+}
+
+@keyframes aura-pro-avatar-orbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes aura-pro-avatar-particles {
+  0% {
+    transform: rotate(0deg) scale(.98);
+    opacity: .72;
+  }
+  50% {
+    transform: rotate(180deg) scale(1.06);
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(360deg) scale(.98);
+    opacity: .72;
   }
 }
 
@@ -877,6 +1133,10 @@ html[data-theme="light"] .aura-explore-map .aura-map-tiles {
   .aura-profile-marker-aura,
   .aura-profile-marker-aura > span,
   .aura-profile-marker-plan-pro,
+  .aura-mini-presskit-energy-frame::before,
+  .aura-mini-presskit-energy-frame > span,
+  .aura-mini-presskit-avatar-orbit,
+  .aura-mini-presskit-avatar-orbit > span,
   .aura-self-location-marker::before,
   .aura-self-location-marker::after {
     animation: none;
