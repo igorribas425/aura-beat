@@ -278,6 +278,11 @@ export function MiniPressKit(
       data-kind={profile.kind}
       data-plan={profile.planCode || "none"}
     >
+      {profile.planCode === "pro" && (
+        <span className="aura-mini-presskit-energy-frame" aria-hidden="true">
+          <span />
+        </span>
+      )}
       <div className="aura-mini-presskit-cover p-5 pb-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/70">
@@ -295,13 +300,23 @@ export function MiniPressKit(
           )}
         </div>
         <div className="mt-5 flex items-end gap-4">
-          <ProfileAvatar
-            kind={profile.kind}
-            name={profile.name}
-            url={profile.avatarUrl}
-            sizeClassName="h-24 w-24"
-            className={`${planAppearance(profile).avatar} shadow-2xl`}
-          />
+          <div className="aura-mini-presskit-avatar-shell shrink-0">
+            {profile.planCode === "pro" && (
+              <span
+                className="aura-mini-presskit-avatar-orbit"
+                aria-hidden="true"
+              >
+                <span />
+              </span>
+            )}
+            <ProfileAvatar
+              kind={profile.kind}
+              name={profile.name}
+              url={profile.avatarUrl}
+              sizeClassName="h-24 w-24"
+              className={`${planAppearance(profile).avatar} shadow-2xl`}
+            />
+          </div>
           <div className="min-w-0 flex-1 pb-1">
             <IdentityBadges profile={profile} />
             <h2 className="mt-2 truncate text-2xl font-black text-white">{profile.name}</h2>
