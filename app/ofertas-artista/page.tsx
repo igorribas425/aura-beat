@@ -9,6 +9,7 @@ import {
 
 import { useRouter } from "next/navigation";
 import { formatBRL } from "../../lib/finance";
+import { getMyPlanAccess, hasPlanBenefit } from "../../lib/plan-access";
 import { supabase } from "../../lib/supabase";
 
 type Artista = {
@@ -316,6 +317,18 @@ export default function OfertasArtistaPage() {
 
       const perfilArtista =
         perfil as Artista;
+
+      if (perfilArtista.verification_status !== "verified") {
+        router.replace("/verificacao-artista");
+        return;
+      }
+
+      const planAccess = await getMyPlanAccess("artist");
+
+      if (!hasPlanBenefit(planAccess, "offers")) {
+        router.replace("/planos-artista?recurso=ofertas");
+        return;
+      }
 
       setArtista(
         perfilArtista
