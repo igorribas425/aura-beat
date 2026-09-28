@@ -2,7 +2,9 @@
 
 import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PlanStatusCard } from "../../components/plan-status-card";
 import { formatBRL } from "../../lib/finance";
+import { getMyPlanAccess, type PlanAccess } from "../../lib/plan-access";
 import { supabase } from "../../lib/supabase";
 
 type Plan = {
@@ -61,6 +63,7 @@ function benefitText(key: string, value: unknown) {
 
   if (key === "visibility") {
     const labels: Record<string, string> = {
+      limited: "Visibilidade inicial",
       standard: "Visibilidade padrão",
       enhanced: "Visibilidade ampliada",
       high: "Alta visibilidade",
@@ -90,6 +93,7 @@ export default function ArtistPlansPage() {
   const [error, setError] = useState("");
   const [plans, setPlans] = useState<Plan[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [access, setAccess] = useState<PlanAccess | null>(null);
   const [artistName, setArtistName] = useState("");
 
   async function load() {
@@ -121,7 +125,7 @@ export default function ArtistPlansPage() {
 
       setArtistName(artist.stage_name);
 
-      const [planResult, subscriptionResult] = await Promise.all([
+      const [planResult, subscriptionResult, planAccess] = await Promise.all([
         supabase
           .from("plans")
           .select("id,code,name,monthly_price,benefits,is_active")
@@ -133,6 +137,7 @@ export default function ArtistPlansPage() {
           .select("id,plan_id,status,trial_ends_at,current_period_end,provider,created_at")
           .eq("artist_id", artist.id)
           .order("created_at", { ascending: false }),
+        getMyPlanAccess("artist"),
       ]);
 
       if (planResult.error) throw planResult.error;
@@ -140,6 +145,7 @@ export default function ArtistPlansPage() {
 
       setPlans((planResult.data || []) as Plan[]);
       setSubscriptions((subscriptionResult.data || []) as Subscription[]);
+      setAccess(planAccess);
     } catch (caught) {
       console.error(caught);
       setError(
@@ -160,20 +166,12 @@ export default function ArtistPlansPage() {
     loadEffect();
   }, []);
 
-  const currentSubscription = useMemo(
-    () =>
-      subscriptions.find((subscription) =>
-        ["active", "trialing", "past_due"].includes(subscription.status),
-      ) || null,
-    [subscriptions],
-  );
-
   const currentPlan = useMemo(
     () =>
-      currentSubscription
-        ? plans.find((plan) => plan.id === currentSubscription.plan_id) || null
+      access?.active
+        ? plans.find((plan) => plan.id === access.planId) || null
         : null,
-    [currentSubscription, plans],
+    [access, plans],
   );
 
   if (loading) {
@@ -195,10 +193,11 @@ export default function ArtistPlansPage() {
           </p>
         </section>
 
-        <section className="rounded-3xl border border-green-500/25 bg-green-500/5 p-5">
-          <p className="font-black text-green-300">🎁 30 dias grátis para novos Artistas verificados</p>
+        <section className="rounded-3xl border border-cyan-500/25 bg-cyan-500/5 p-5">
+          <p className="font-black text-cyan-300">○ Plano Gratuito permanente para Artistas verificados</p>
           <p className="mt-2 text-sm leading-6 text-zinc-400">
-            No lançamento, novos cadastros recebem o plano Básico por 30 dias após a aprovação da identidade. Sem cobrança automática.
+            Perfil, Press Kit e chat ficam disponíveis sem prazo. Ofertas, agenda, analytics,
+            destaque e suporte profissional ficam nos planos pagos.
           </p>
         </section>
 
@@ -208,44 +207,10 @@ export default function ArtistPlansPage() {
           </div>
         )}
 
-        <section className="rounded-3xl border border-zinc-800 bg-zinc-950 p-6">
-          <p className="text-xs font-black uppercase text-purple-400">
-            Plano atual
-          </p>
-
-          {currentPlan && currentSubscription ? (
-            <div className="mt-4 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h2 className="text-3xl font-black">{currentPlan.name}</h2>
-                <p className="mt-2 text-2xl font-black text-green-400">
-                  {money(currentPlan.monthly_price)}/mês
-                </p>
-                <p className="mt-2 text-sm text-zinc-500">
-                  Status: {currentSubscription.status}
-                  {currentSubscription.status === "trialing" &&
-                    currentSubscription.trial_ends_at &&
-                    ` · grátis até ${date(currentSubscription.trial_ends_at)}`}
-                  {currentSubscription.current_period_end
-                    ? ` · período até ${date(currentSubscription.current_period_end)}`
-                    : currentSubscription.status === "active"
-                      ? " · ♾ acesso ilimitado"
-                      : ""}
-                </p>
-              </div>
-
-              <span className="h-fit rounded-full border border-green-800 bg-green-950/20 px-4 py-2 text-sm font-black text-green-300">
-                ✓ Plano ativo
-              </span>
-            </div>
-          ) : (
-            <div className="mt-4 rounded-2xl border border-dashed border-zinc-800 p-6">
-              <h2 className="text-xl font-black">Sem plano ativo</h2>
-              <p className="mt-2 text-sm text-zinc-500">
-                Você ainda não possui uma assinatura ativa.
-              </p>
-            </div>
-          )}
-        </section>
+        <PlanStatusCard
+          audience="artist"
+          access={access}
+        />
 
         <section>
           <div className="mb-4">
@@ -289,7 +254,9 @@ export default function ArtistPlansPage() {
                           ? "MAIS COMPLETO"
                           : plan.code === "intermediate"
                             ? "PROFISSIONAL"
-                            : "ESSENCIAL"}
+                            : plan.code === "free"
+                              ? "ACESSO INICIAL"
+                              : "ESSENCIAL"}
                       </p>
                       <h3 className={`mt-2 text-2xl font-black ${
                         plan.code === "pro"
@@ -309,8 +276,10 @@ export default function ArtistPlansPage() {
                   </div>
 
                   <p className="mt-4 text-3xl font-black text-green-400">
-                    {money(plan.monthly_price)}
-                    <span className="text-sm font-semibold text-zinc-500">/mês</span>
+                    {plan.code === "free" ? "Grátis" : money(plan.monthly_price)}
+                    {plan.code !== "free" && (
+                      <span className="text-sm font-semibold text-zinc-500">/mês</span>
+                    )}
                   </p>
 
                   <div className="mt-5 space-y-2">
@@ -329,19 +298,33 @@ export default function ArtistPlansPage() {
 
                   <button
                     type="button"
-                    onClick={() => router.push(`/assinatura/${plan.id}`)}
+                    disabled={plan.code === "free"}
+                    onClick={() => {
+                      if (plan.code !== "free") {
+                        router.push(`/assinatura/${plan.id}`);
+                      }
+                    }}
                     className={`mt-6 w-full rounded-xl px-4 py-3 text-sm font-black transition ${
-                      current
-                        ? "border border-green-700 text-green-300 hover:bg-green-950/30"
-                        : "bg-green-600 text-white hover:bg-green-500"
+                      plan.code === "free"
+                        ? "cursor-default border border-cyan-700/50 bg-cyan-500/5 text-cyan-300"
+                        : current
+                          ? "border border-green-700 text-green-300 hover:bg-green-950/30"
+                          : "bg-green-600 text-white hover:bg-green-500"
                     }`}
                   >
-                    {current ? "Renovar por mais 1 mês" : "Assinar com Pix"}
+                    {plan.code === "free"
+                      ? current
+                        ? "Seu plano gratuito"
+                        : "Disponível automaticamente"
+                      : current
+                        ? "Renovar por mais 1 mês"
+                        : "Assinar com Pix"}
                   </button>
 
                   <p className="mt-3 text-xs leading-5 text-zinc-500">
-                    Pagamento processado pelo ASAAS. Após a confirmação do Pix,
-                    o plano é ativado automaticamente por 1 mês.
+                    {plan.code === "free"
+                      ? "Liberado automaticamente após a verificação do perfil, sem cobrança e sem prazo."
+                      : "Pagamento processado pelo ASAAS. Após a confirmação do Pix, o plano é ativado automaticamente por 1 mês."}
                   </p>
                 </article>
               );
