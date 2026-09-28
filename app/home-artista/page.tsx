@@ -1285,13 +1285,29 @@ export default function HomeArtistaPage() {
             <button
               type="button"
               onClick={() =>
-                abrirAreaProtegidaArtista("/ofertas-artista")
+                hasPlanBenefit(planAccess, "offers")
+                  ? abrirAreaProtegidaArtista("/ofertas-artista")
+                  : router.push("/planos-artista?recurso=ofertas")
               }
-              className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-red-500/50"
+              className={
+                "rounded-2xl border p-5 text-left transition " +
+                (hasPlanBenefit(planAccess, "offers")
+                  ? "border-zinc-800 bg-zinc-950 hover:border-red-500/50"
+                  : "border-zinc-800 bg-zinc-950/70 hover:border-zinc-700")
+              }
             >
               <div className="text-2xl">🔥</div>
               <p className="mt-3 font-bold">Ofertas</p>
-              <p className="mt-1 text-xs text-zinc-500">Ver oportunidades</p>
+              <p className="mt-1 text-xs text-zinc-500">
+                {hasPlanBenefit(planAccess, "offers")
+                  ? "Ver oportunidades"
+                  : "Plano Básico ou superior"}
+              </p>
+              {!hasPlanBenefit(planAccess, "offers") && (
+                <span className="mt-3 inline-flex rounded-full border border-zinc-700 bg-black/30 px-2.5 py-1 text-[10px] font-black uppercase text-zinc-400">
+                  🔒 Bloqueado no Gratuito
+                </span>
+              )}
             </button>
 
             <button
@@ -1363,13 +1379,29 @@ export default function HomeArtistaPage() {
             <button
               type="button"
               onClick={() =>
-                abrirAreaProtegidaArtista("/agenda")
+                hasPlanBenefit(planAccess, "agenda")
+                  ? abrirAreaProtegidaArtista("/agenda")
+                  : router.push("/planos-artista?recurso=agenda")
               }
-              className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-left transition hover:border-red-500/50"
+              className={
+                "rounded-2xl border p-5 text-left transition " +
+                (hasPlanBenefit(planAccess, "agenda")
+                  ? "border-zinc-800 bg-zinc-950 hover:border-red-500/50"
+                  : "border-zinc-800 bg-zinc-950/70 hover:border-zinc-700")
+              }
             >
               <div className="text-2xl">📅</div>
               <p className="mt-3 font-bold">Agenda</p>
-              <p className="mt-1 text-xs text-zinc-500">Datas e eventos</p>
+              <p className="mt-1 text-xs text-zinc-500">
+                {hasPlanBenefit(planAccess, "agenda")
+                  ? "Datas e eventos"
+                  : "Plano Básico ou superior"}
+              </p>
+              {!hasPlanBenefit(planAccess, "agenda") && (
+                <span className="mt-3 inline-flex rounded-full border border-zinc-700 bg-black/30 px-2.5 py-1 text-[10px] font-black uppercase text-zinc-400">
+                  🔒 Bloqueado no Gratuito
+                </span>
+              )}
             </button>
 
             <button
@@ -1433,11 +1465,13 @@ export default function HomeArtistaPage() {
 
             <button
               onClick={() =>
-                abrirAreaProtegidaArtista("/ofertas-artista")
+                hasPlanBenefit(planAccess, "offers")
+                  ? abrirAreaProtegidaArtista("/ofertas-artista")
+                  : router.push("/planos-artista?recurso=ofertas")
               }
               className="text-sm font-semibold text-red-500"
             >
-              Ver todas
+              {hasPlanBenefit(planAccess, "offers") ? "Ver todas" : "Desbloquear"}
             </button>
 
           </div>
