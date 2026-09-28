@@ -9,6 +9,7 @@ import {
 
 import { useRouter } from "next/navigation";
 import { formatBRL } from "../../lib/finance";
+import { getMyPlanAccess, hasPlanBenefit } from "../../lib/plan-access";
 import { supabase } from "../../lib/supabase";
 
 type Casa = {
@@ -398,6 +399,18 @@ export default function OfertasCasaPage() {
 
       const casaEncontrada =
         perfilCasa as Casa;
+
+      if (casaEncontrada.verification_status !== "verified") {
+        router.replace("/verificacao-casa");
+        return;
+      }
+
+      const planAccess = await getMyPlanAccess("venue");
+
+      if (!hasPlanBenefit(planAccess, "offers")) {
+        router.replace("/planos-casa?recurso=ofertas");
+        return;
+      }
 
       setCasa(
         casaEncontrada
