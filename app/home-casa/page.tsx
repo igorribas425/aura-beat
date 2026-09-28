@@ -182,10 +182,13 @@ export default function HomeCasaPage() {
     {
       icon: "🔥",
       label: "Ofertas",
-      detail: "Criar e acompanhar",
+      detail: hasPlanBenefit(planAccess, "offers")
+        ? "Criar e acompanhar"
+        : "Plano Básico ou superior",
       href: "/ofertas",
       requiresVerification: true,
       hover: "hover:border-red-500/50",
+      locked: !hasPlanBenefit(planAccess, "offers"),
     },
     {
       icon: "🎟️",
@@ -301,10 +304,19 @@ export default function HomeCasaPage() {
 
                 <button
                   type="button"
-                  onClick={() => abrirAreaProtegidaCasa("/ofertas")}
-                  className="rounded-xl bg-red-500 px-4 py-2 text-sm font-black text-white"
+                  onClick={() =>
+                    hasPlanBenefit(planAccess, "offers")
+                      ? abrirAreaProtegidaCasa("/ofertas")
+                      : router.push("/planos-casa?recurso=ofertas")
+                  }
+                  className={
+                    "rounded-xl px-4 py-2 text-sm font-black " +
+                    (hasPlanBenefit(planAccess, "offers")
+                      ? "bg-red-500 text-white"
+                      : "border border-zinc-700 bg-zinc-900 text-zinc-400")
+                  }
                 >
-                  Criar oferta
+                  {hasPlanBenefit(planAccess, "offers") ? "Criar oferta" : "🔒 Criar oferta"}
                 </button>
               </div>
             </div>
@@ -345,9 +357,11 @@ export default function HomeCasaPage() {
                 key={atalho.href}
                 type="button"
                 onClick={() =>
-                  "requiresVerification" in atalho && atalho.requiresVerification
-                    ? abrirAreaProtegidaCasa(atalho.href)
-                    : router.push(atalho.href)
+                  "locked" in atalho && atalho.locked
+                    ? router.push("/planos-casa")
+                    : "requiresVerification" in atalho && atalho.requiresVerification
+                      ? abrirAreaProtegidaCasa(atalho.href)
+                      : router.push(atalho.href)
                 }
                 className={`group relative overflow-hidden rounded-2xl border p-5 text-left transition duration-300 ${
                   "destaque" in atalho && atalho.destaque
