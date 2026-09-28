@@ -49,6 +49,17 @@ function visual(code: string | null) {
     };
   }
 
+  if (code === "free") {
+    return {
+      border: "border-cyan-500/30",
+      bg: "bg-gradient-to-br from-cyan-500/5 via-zinc-950 to-zinc-950",
+      badge: "border-cyan-500/30 bg-cyan-500/10 text-cyan-300",
+      kicker: "text-cyan-300",
+      glow: "shadow-[0_0_36px_rgba(34,211,238,0.06)]",
+      icon: "○",
+    };
+  }
+
   return {
     border: "border-zinc-700",
     bg: "bg-zinc-950",
@@ -74,9 +85,29 @@ export function PlanStatusCard({
     audience === "artist"
       ? [
           {
-            key: "base",
-            label: "Perfil, Press Kit, chat, ofertas e agenda",
-            available: active,
+            key: "core_profile",
+            label: "Perfil profissional",
+            available: value(access, "core_profile") === true,
+          },
+          {
+            key: "presskit",
+            label: "Press Kit com fotos e vídeos",
+            available: value(access, "presskit") === true,
+          },
+          {
+            key: "chat",
+            label: "Chat direto com Casas",
+            available: value(access, "chat") === true,
+          },
+          {
+            key: "offers",
+            label: "Receber e responder ofertas",
+            available: value(access, "offers") === true,
+          },
+          {
+            key: "agenda",
+            label: "Agenda profissional",
+            available: value(access, "agenda") === true,
           },
           {
             key: "visibility",
@@ -85,7 +116,9 @@ export function PlanStatusCard({
                 ? "Alta visibilidade"
                 : visibility === "enhanced"
                   ? "Visibilidade ampliada"
-                  : "Visibilidade padrão",
+                  : visibility === "limited"
+                    ? "Visibilidade inicial"
+                    : "Visibilidade padrão",
             available: active,
           },
           {
@@ -114,19 +147,29 @@ export function PlanStatusCard({
         ]
       : [
           {
-            key: "base",
-            label: "Explorar DJs, chat, ofertas e eventos",
-            available: active,
+            key: "explore",
+            label: "Explorar DJs e Artistas",
+            available: value(access, "explore") === true,
+          },
+          {
+            key: "chat",
+            label: "Chat direto com Artistas",
+            available: value(access, "chat") === true,
           },
           {
             key: "offers",
             label:
               offerLevel === "high"
-                ? "Recursos de oferta em nível Pro"
+                ? "Ofertas em nível Pro"
                 : offerLevel === "enhanced"
-                  ? "Recursos de oferta ampliados"
-                  : "Recursos de oferta padrão",
-            available: active,
+                  ? "Ofertas com recursos ampliados"
+                  : "Criar ofertas e contratações",
+            available: Boolean(value(access, "offers")),
+          },
+          {
+            key: "events",
+            label: "Gestão de eventos",
+            available: value(access, "events") === true,
           },
           {
             key: "advanced_filters",
@@ -149,16 +192,19 @@ export function PlanStatusCard({
         ];
 
   const isTrial = active && access?.status === "trialing";
+  const isFree = active && access?.planCode === "free";
 
   const period = !active
     ? "Nenhum plano ativo"
-    : isTrial && access.trialEndsAt
-      ? `🎁 30 dias grátis · até ${formatDate(access.trialEndsAt)}`
-      : access.unlimited
-        ? "♾ Acesso ilimitado"
-        : access.currentPeriodEnd
-          ? `Ativo até ${formatDate(access.currentPeriodEnd)}`
-          : "Plano ativo";
+    : isFree
+      ? "Gratuito permanente · recursos limitados"
+      : isTrial && access.trialEndsAt
+        ? `🎁 Período grátis · até ${formatDate(access.trialEndsAt)}`
+        : access.unlimited
+          ? "♾ Acesso sem prazo"
+          : access.currentPeriodEnd
+            ? `Ativo até ${formatDate(access.currentPeriodEnd)}`
+            : "Plano ativo";
 
   return (
     <section
@@ -185,7 +231,9 @@ export function PlanStatusCard({
                   ? "PRO"
                   : access.planCode === "intermediate"
                     ? "INTERMEDIÁRIO"
-                    : "BÁSICO"}
+                    : access.planCode === "free"
+                      ? "GRÁTIS"
+                      : "BÁSICO"}
               </span>
             )}
           </div>
@@ -196,10 +244,12 @@ export function PlanStatusCard({
 
           <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-500">
             {active
-              ? isTrial
-                ? "Período promocional de lançamento no plano Básico. Não há cobrança automática ao final dos 30 dias."
-                : "O Aura Beat libera os recursos deste nível automaticamente."
-              : "Seu acesso aos recursos do Aura Beat fica bloqueado até você escolher um plano e confirmar o pagamento."}
+              ? isFree
+                ? "Você pode usar os recursos essenciais do Aura Beat sem prazo e sem cobrança. Ofertas, agenda/eventos e ferramentas profissionais ficam disponíveis nos planos pagos."
+                : isTrial
+                  ? "Período promocional sem cobrança automática ao final."
+                  : "O Aura Beat libera os recursos deste nível automaticamente."
+              : "Conclua a verificação do perfil para liberar o acesso gratuito. Os planos pagos adicionam recursos profissionais."}
           </p>
         </div>
 
