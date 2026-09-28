@@ -303,21 +303,36 @@ export function ArtistMediaManager({
           </p>
         </div>
 
-        <label className="cursor-pointer rounded-xl bg-purple-600 px-5 py-3 text-sm font-black text-white transition hover:bg-purple-500">
-          {uploading ? "Enviando..." : "Adicionar da galeria"}
-          <input
-            type="file"
-            multiple
-            disabled={uploading}
-            accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
-            onChange={uploadFiles}
-            className="hidden"
-          />
-        </label>
+        <div className="flex flex-wrap gap-2">
+          <label className="cursor-pointer rounded-xl bg-purple-600 px-5 py-3 text-sm font-black text-white transition hover:bg-purple-500">
+            {uploading ? "Enviando..." : "Adicionar várias fotos"}
+            <input
+              type="file"
+              multiple
+              disabled={uploading}
+              accept="image/*"
+              onChange={uploadFiles}
+              className="hidden"
+            />
+          </label>
+
+          <label className="cursor-pointer rounded-xl border border-purple-500/40 bg-purple-500/10 px-5 py-3 text-sm font-black text-purple-200 transition hover:bg-purple-500/20">
+            {uploading ? "Enviando..." : "Adicionar vídeos"}
+            <input
+              type="file"
+              multiple
+              disabled={uploading}
+              accept="video/mp4,video/webm"
+              onChange={uploadFiles}
+              className="hidden"
+            />
+          </label>
+        </div>
       </div>
 
-      <p className="mt-3 text-xs text-zinc-500">
-        JPG, PNG, WEBP, MP4 ou WEBM · máximo 25 MB por arquivo.
+      <p className="mt-3 text-xs leading-5 text-zinc-500">
+        Fotos: toque em <strong>Adicionar várias fotos</strong> e selecione quantas quiser de uma vez.
+        JPG, PNG ou WEBP · vídeos MP4/WEBM · máximo 25 MB por arquivo.
       </p>
 
       {message && (
