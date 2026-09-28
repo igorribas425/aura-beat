@@ -146,6 +146,12 @@ function profileMarkerIcon(
   const ownBadge = profile.isOwnProfile
     ? '<span class="aura-profile-marker-own">VOCÊ</span>'
     : "";
+  const planAura =
+    profile.planCode === "pro"
+      ? '<span class="aura-profile-marker-aura aura-profile-marker-aura-pro" aria-hidden="true"><span></span></span>'
+      : profile.planCode === "intermediate"
+        ? '<span class="aura-profile-marker-aura aura-profile-marker-aura-intermediate" aria-hidden="true"><span></span></span>'
+        : "";
   const planBadge =
     profile.planCode === "pro"
       ? '<span class="aura-profile-marker-plan aura-profile-marker-plan-pro">✦ PRO</span>'
@@ -171,6 +177,7 @@ function profileMarkerIcon(
     html: `
       <div class="aura-profile-marker${planClass}" title="${name}" style="--aura-marker:${markerColor}">
         <div class="aura-profile-marker-photo">
+          ${planAura}
           ${media}
           ${availability}
           ${ownBadge}
@@ -383,6 +390,10 @@ export function ExploreMap({ profiles, userLocation, onSelect }: ExploreMapProps
         <span className="rounded-full border border-green-400/30 bg-[#0b0b13]/88 px-3 py-1.5 text-[11px] font-bold text-green-100 shadow-lg backdrop-blur">
           <span className="mr-1.5 text-green-400">●</span>
           Disponível
+        </span>
+        <span className="rounded-full border border-amber-300/35 bg-[#0b0b13]/88 px-3 py-1.5 text-[11px] font-black text-amber-100 shadow-lg backdrop-blur">
+          <span className="mr-1.5 text-amber-300">✦</span>
+          PRO em destaque
         </span>
       </div>
 
