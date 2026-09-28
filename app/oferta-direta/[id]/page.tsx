@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ProfileAvatar } from "../../../components/profile-avatar";
 import { formatBRL } from "../../../lib/finance";
+import { getMyPlanAccess, hasPlanBenefit } from "../../../lib/plan-access";
 import { supabase } from "../../../lib/supabase";
 
 type Artist = {
@@ -157,6 +158,18 @@ export default function DirectOfferPage() {
 
       if (!venueResult.data) {
         router.replace("/perfil-casa");
+        return;
+      }
+
+      if (venueResult.data.verification_status !== "verified") {
+        router.replace("/verificacao-casa");
+        return;
+      }
+
+      const planAccess = await getMyPlanAccess("venue");
+
+      if (!hasPlanBenefit(planAccess, "offers")) {
+        router.replace("/planos-casa?recurso=ofertas");
         return;
       }
 
